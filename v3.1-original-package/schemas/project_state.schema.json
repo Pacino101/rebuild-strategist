@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REBUILD Project State",
+  "type": "object",
+  "required": [
+    "project_id",
+    "project_name",
+    "version",
+    "current_phase",
+    "project_contract",
+    "gate_status",
+    "decisions",
+    "evidence",
+    "assumptions",
+    "tasks",
+    "risks",
+    "open_questions",
+    "change_log"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "current_phase": {
+      "enum": [
+        "R",
+        "E",
+        "B",
+        "U",
+        "I",
+        "D"
+      ]
+    },
+    "project_contract": {
+      "type": "object",
+      "properties": {
+        "business_goal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "decision_maker": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "deadline": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "budget": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ]
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "gate_status": {
+      "type": "object",
+      "properties": {
+        "R": {
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "E": {
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "B": {
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "U": {
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "I": {
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "D": {
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        }
+      }
+    },
+    "decisions": {
+      "type": "array"
+    },
+    "evidence": {
+      "type": "array"
+    },
+    "assumptions": {
+      "type": "array"
+    },
+    "tasks": {
+      "type": "array"
+    },
+    "risks": {
+      "type": "array"
+    },
+    "open_questions": {
+      "type": "array"
+    },
+    "change_log": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

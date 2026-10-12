@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REBUILD Evidence Record",
+  "type": "object",
+  "required": [
+    "evidence_id",
+    "claim",
+    "label",
+    "quality_grade",
+    "source_status",
+    "relevance",
+    "limitations"
+  ],
+  "properties": {
+    "evidence_id": {
+      "type": "string"
+    },
+    "claim": {
+      "type": "string"
+    },
+    "label": {
+      "enum": [
+        "FACT",
+        "INTERPRETATION",
+        "HYPOTHESIS",
+        "DECISION",
+        "UNKNOWN"
+      ]
+    },
+    "quality_grade": {
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "NOT_GRADED"
+      ]
+    },
+    "source_status": {
+      "enum": [
+        "provided",
+        "retrieved",
+        "calculated",
+        "expert_judgment",
+        "assumption",
+        "missing"
+      ]
+    },
+    "source": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "geography": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sample_or_method": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "relevance": {
+      "type": "string"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "calculation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "not_assessed"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,26 @@
+routing:
+  research:
+    preferred: [available_web_research, verified_seo_research_tool]
+    fallback: [user_provided_sources, manual_research_plan]
+  analytics:
+    preferred: [posthog, matomo]
+    fallback: [user_provided_exports, metric_definition_template]
+  workflow:
+    preferred: [n8n]
+    fallback: [workflow_specification_only]
+  crm:
+    preferred: [twenty, mautic]
+    fallback: [crm_field_and_lifecycle_design]
+  social_distribution:
+    preferred: [postiz]
+    fallback: [content_calendar_and_manual_publish_checklist]
+  data_pipeline:
+    preferred: [airbyte]
+    fallback: [data_contract_and_manual_import_plan]
+  seo_content:
+    preferred: [openseo, alwrity, claude_seo]
+    fallback: [search_intent_map_and_editorial_brief]
+routing_rules:
+  - "Use only tools whose runtime availability is verified."
+  - "If preferred tool is unavailable, do not simulate its results; use the declared fallback."
+  - "No production writes or outbound actions without explicit approval."

@@ -1,0 +1,34 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node (only if you add tooling around the package)
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Project state written by the skill at runtime — this is client work, not source.
+# Never commit a real `.rebuild/` directory: it contains the client's numbers,
+# decisions and evidence. Only commit synthetic examples under examples/.
+.rebuild/
+**/.rebuild/
+
+# Local scratch and verification output
+*.log
+tmp/
+scratch/
+.verify-output/

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evidence.schema.json",
+  "title": "REBUILD Evidence Record",
+  "description": "One claim in the evidence library, with its label, source grade and provenance.",
+  "type": "object",
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "description": "Stable id, e.g. EV-014."
+    },
+    "claim": {
+      "type": "string",
+      "description": "The claim as stated, in one sentence."
+    },
+    "label": {
+      "$ref": "#/$defs/label"
+    },
+    "quality_grade": {
+      "$ref": "#/$defs/grade"
+    },
+    "source_status": {
+      "type": "string",
+      "enum": [
+        "provided",
+        "retrieved",
+        "calculated",
+        "expert_judgment",
+        "assumption",
+        "missing"
+      ],
+      "description": "How the material was obtained. 'calculated' covers a reproducible calculation from stated inputs."
+    },
+    "source": {
+      "type": "string",
+      "description": "Named source, document or dataset."
+    },
+    "source_date": {
+      "type": "string",
+      "description": "Publication or retrieval date, ISO where possible."
+    },
+    "geography": {
+      "type": "string",
+      "description": "Geography the evidence applies to."
+    },
+    "sample_or_method": {
+      "type": "string",
+      "description": "Sample size and method, when applicable."
+    },
+    "relevance": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "Relevance to the decision at hand — independent of quality."
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Known weaknesses: coverage, recency, bias, conflicts of interest."
+    },
+    "calculation": {
+      "type": "string",
+      "description": "Inputs and formula, when the claim is a calculation rather than a citation."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    }
+  },
+  "required": [
+    "evidence_id",
+    "claim",
+    "label",
+    "quality_grade",
+    "source_status",
+    "relevance",
+    "limitations"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "grade": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "NOT_GRADED"
+      ],
+      "description": "Source quality, graded separately from relevance. A first-party, B official or audited, C credible secondary, D expert judgment, E untested planning assumption."
+    },
+    "label": {
+      "type": "string",
+      "enum": [
+        "FACT",
+        "INTERPRETATION",
+        "HYPOTHESIS",
+        "DECISION",
+        "UNKNOWN",
+        "OBSERVATION"
+      ]
+    }
+  }
+}

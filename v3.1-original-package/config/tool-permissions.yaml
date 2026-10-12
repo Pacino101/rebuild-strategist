@@ -1,0 +1,13 @@
+default_policy:
+  read_only_research: allow_if_tool_available
+  draft_generation: allow
+  analytics_read: allow_if_authorized
+  write_to_staging: require_user_confirmation
+  write_to_production: require_explicit_approval
+  spend_or_bid_changes: require_explicit_approval
+  publish_or_schedule_public_content: require_explicit_approval
+  outbound_customer_messages: require_explicit_approval
+  bulk_crm_changes: require_explicit_approval
+  sensitive_data_export: deny_by_default
+  destructive_actions: deny_by_default_unless_explicitly_confirmed
+  unknown_permissions: deny_and_escalate

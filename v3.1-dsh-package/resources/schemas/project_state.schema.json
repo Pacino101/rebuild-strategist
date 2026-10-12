@@ -1,0 +1,755 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project_state.schema.json",
+  "title": "REBUILD Project State",
+  "description": "The persisted project state. Written to .rebuild/state.json under the single-file convention; under split-files, sibling artifacts live beside it and storage_convention records which is in use.",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "description": "State schema version, not the skill version."
+    },
+    "storage_convention": {
+      "type": "string",
+      "enum": [
+        "single-file",
+        "split-files"
+      ],
+      "description": "single-file keeps everything in state.json; split-files also writes .rebuild/kpi/, .rebuild/experiments/ and .rebuild/evidence/."
+    },
+    "current_phase": {
+      "type": "string",
+      "enum": [
+        "R",
+        "E",
+        "B",
+        "U",
+        "I",
+        "D"
+      ],
+      "description": "The REBUILD phase currently open. Rollback moves this backwards, which is expected."
+    },
+    "project_contract": {
+      "type": "object",
+      "description": "The Project Contract agreed at intake.",
+      "properties": {
+        "objective": {
+          "type": "string",
+          "description": "The business decision or outcome this project must move."
+        },
+        "decision_maker": {
+          "type": "string",
+          "description": "Who decides, by role."
+        },
+        "client": {
+          "type": "string",
+          "description": "The commissioning party, where different from the decision-maker."
+        },
+        "audience": {
+          "type": "string",
+          "description": "Target customer or segment, or 'unknown' with the plan to establish it."
+        },
+        "deliverable": {
+          "type": "string",
+          "description": "Named artifact(s) and format expected."
+        },
+        "deadline": {
+          "type": "string"
+        },
+        "budget": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Amount with currency, or a range."
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Non-negotiables: legal, operational, brand, capacity."
+        },
+        "available_data": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Datasets and documents actually available, with provenance."
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "approval_needs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Which decisions or actions need which human approval."
+        },
+        "business_goal": {
+          "type": "string",
+          "description": "The commercial goal the project serves."
+        },
+        "success_kpi": {
+          "type": "string",
+          "description": "The metric that will show whether it worked."
+        }
+      },
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "description": "Compact project identity, when not using project_contract.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "client": {
+          "type": "string"
+        },
+        "business_goal": {
+          "type": "string"
+        },
+        "decision_maker": {
+          "type": "string"
+        },
+        "deadline": {
+          "type": "string"
+        },
+        "budget": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "success_kpi": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "problem": {
+      "type": "object",
+      "description": "Reframe output: the real problem, not the request.",
+      "properties": {
+        "client_request": {
+          "type": "string"
+        },
+        "surface_task": {
+          "type": "string"
+        },
+        "true_business_problem": {
+          "type": "string"
+        },
+        "problem_tree": {
+          "type": "string"
+        },
+        "root_cause_hypotheses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence.schema.json"
+      },
+      "description": "The evidence library. Recorded per claim, with label and grade."
+    },
+    "consumer": {
+      "type": "object",
+      "description": "Customer understanding, including the insight chain Who → What → Why → Conflict → Emotion → Insight.",
+      "properties": {
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "behaviors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "emotion": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The emotional register of the tension — required by the insight chain."
+        },
+        "insights": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only findings that pass the action test: if true, what do we change?"
+        }
+      },
+      "additionalProperties": false
+    },
+    "market": {
+      "type": "object",
+      "description": "External context. PESTEL+ macro axes belong here where they bear on the decision.",
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "geography": {
+          "type": "string"
+        },
+        "size_method": {
+          "type": "string"
+        },
+        "trends": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "competitors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "substitutes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "macro_axes": {
+          "type": "object",
+          "description": "PESTEL+ scan, filtered to what changes the decision.",
+          "properties": {
+            "political": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "economic": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "social": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "technological": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "environmental": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "legal": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "opportunity": {
+      "type": "object",
+      "description": "Options considered, chosen and rejected.",
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "At least three realistic options, or a stated reason why fewer fit."
+        },
+        "selected": {
+          "type": "string"
+        },
+        "rejected": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "strategy": {
+      "type": "object",
+      "description": "The accepted strategic choice and its architecture.",
+      "properties": {
+        "strategic_choice": {
+          "type": "string"
+        },
+        "positioning": {
+          "type": "string"
+        },
+        "value_proposition": {
+          "type": "string"
+        },
+        "business_model": {
+          "type": "string"
+        },
+        "product_architecture": {
+          "type": "string"
+        },
+        "brand_architecture": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "complex_project": {
+      "type": "object",
+      "description": "Required for place-based, park, city, real-estate and platform projects.",
+      "properties": {
+        "stakeholder_structure": {
+          "type": "string"
+        },
+        "resource_flow": {
+          "type": "string"
+        },
+        "value_flow": {
+          "type": "string"
+        },
+        "cash_flow": {
+          "type": "string"
+        },
+        "governance": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "description": "What will actually be built and run.",
+      "properties": {
+        "creative_brief": {
+          "type": "string"
+        },
+        "big_idea": {
+          "type": "string"
+        },
+        "content_system": {
+          "type": "string"
+        },
+        "growth_funnel": {
+          "type": "string"
+        },
+        "channel_plan": {
+          "type": "string"
+        },
+        "roadmap": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gate_status": {
+      "type": "object",
+      "description": "One result per gate.",
+      "properties": {
+        "R": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "E": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "B": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "U": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "I": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        },
+        "D": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_GAPS",
+            "BLOCKED",
+            "NOT_REVIEWED"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "kpi_tree": {
+      "$ref": "kpi_tree.schema.json"
+    },
+    "experiments": {
+      "type": "array",
+      "items": {
+        "$ref": "experiment.schema.json"
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A recorded decision. Accepted decisions are never silently overwritten.",
+        "properties": {
+          "decision_id": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string",
+            "description": "What was decided."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why, in terms of the evidence and constraints."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "approved",
+              "rejected",
+              "superseded"
+            ]
+          },
+          "rejected_options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The alternatives considered and why each lost."
+          },
+          "decided_by": {
+            "type": "string"
+          },
+          "decided_at": {
+            "type": "string"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "evidence_id values this decision rests on."
+          }
+        },
+        "required": [
+          "statement",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "assumption_id": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "impact_if_false": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "validation_status": {
+            "type": "string",
+            "enum": [
+              "untested",
+              "testing",
+              "validated",
+              "invalidated",
+              "expired"
+            ]
+          },
+          "test": {
+            "type": "string",
+            "description": "The cheapest valid test, and its pre-agreed pass/fail threshold."
+          },
+          "owner": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement",
+          "validation_status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "task_packet.schema.json"
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "risk_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "likelihood": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "impact": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "trigger": {
+            "type": "string",
+            "description": "The observable event that means this risk is materialising."
+          },
+          "mitigation": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "residual_risk": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "mitigated",
+              "accepted",
+              "realised",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "validation": {
+      "type": "object",
+      "description": "Validation state, including the Red Team record.",
+      "properties": {
+        "red_team": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "One Red Team pass.",
+            "properties": {
+              "angle": {
+                "type": "string",
+                "enum": [
+                  "customer",
+                  "competition",
+                  "business",
+                  "finance",
+                  "execution",
+                  "organization",
+                  "technology",
+                  "measurement",
+                  "reputation_legal"
+                ]
+              },
+              "finding": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "countermeasure": {
+                "type": "string"
+              },
+              "kill_criteria": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "angle",
+              "finding"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "description": "Postmortem, closed after the D gate.",
+      "properties": {
+        "result": {
+          "type": "string"
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "learning": {
+          "type": "string"
+        },
+        "new_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Rules the next project inherits."
+        }
+      },
+      "additionalProperties": false
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "change_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "One state change.",
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "change": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "change"
+        ]
+      }
+    }
+  },
+  "required": [
+    "project_id",
+    "project_name",
+    "version",
+    "current_phase",
+    "project_contract",
+    "gate_status",
+    "decisions",
+    "evidence",
+    "assumptions",
+    "tasks",
+    "risks",
+    "open_questions",
+    "change_log"
+  ],
+  "additionalProperties": false
+}

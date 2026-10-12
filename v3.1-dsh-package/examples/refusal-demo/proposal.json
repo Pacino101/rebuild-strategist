@@ -1,0 +1,36 @@
+{
+  "units": 75,
+  "monthly_revenue_at_full_occupancy": 163620,
+  "owner_fitout_investment": 3000000,
+  "claim_summary": {
+    "payback_years": 1.9,
+    "occupancy_target_6m": 0.88,
+    "opening_marketing_budget": 400000,
+    "cac_ceiling": 4500
+  },
+  "claim_modelling": {
+    "payback_years_low": 2.4,
+    "payback_years_high": 2.8
+  },
+  "claim_kpi_table": {
+    "payback_months_max": 30
+  },
+  "doc_a_operating_fee": 15000,
+  "doc_b_operator_steady_cost": 57800,
+  "doc_b_operator_ramp_cost": 85000,
+  "owner_share_pct": 0.65,
+  "owner_priority_draw": 63768,
+  "monthly_marketing_from_premium_phase": 25000,
+  "occupied_unit_ratio": null,
+  "renewals_included_in_cac_denominator": true,
+  "sales_labour_in_cac_numerator": false,
+  "demand_evidence": [],
+  "planned_experiment": {
+    "status": "complete",
+    "control": "",
+    "guardrails": [],
+    "decision_rule": "we'll figure it out later",
+    "primary_metric": "impressions",
+    "claim_strength": "causal"
+  }
+}

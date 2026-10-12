@@ -1,0 +1,12 @@
+{
+  "cohort_size": 1840,
+  "result": [
+    {"period": 0, "retention": 1.0},
+    {"period": 1, "retention": 0.62},
+    {"period": 2, "retention": 0.48},
+    {"period": 3, "retention": 0.41},
+    {"period": 4, "retention": 0.37},
+    {"period": 5, "retention": 0.35},
+    {"period": 6, "retention": 0.34}
+  ]
+}

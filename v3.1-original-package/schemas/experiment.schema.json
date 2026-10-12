@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REBUILD Experiment Card",
+  "type": "object",
+  "required": [
+    "experiment_id",
+    "hypothesis",
+    "audience",
+    "variant",
+    "primary_metric",
+    "guardrails",
+    "decision_rule",
+    "status"
+  ],
+  "properties": {
+    "experiment_id": {
+      "type": "string"
+    },
+    "hypothesis": {
+      "type": "string"
+    },
+    "audience": {
+      "type": "string"
+    },
+    "control": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "variant": {
+      "type": "string"
+    },
+    "primary_metric": {
+      "type": "string"
+    },
+    "guardrails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sample_logic": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "decision_rule": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "approved",
+        "running",
+        "completed",
+        "inconclusive",
+        "stopped"
+      ]
+    },
+    "result": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

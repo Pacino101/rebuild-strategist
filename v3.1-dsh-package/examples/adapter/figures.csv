@@ -1,0 +1,8 @@
+field,value,grade
+price_per_unit,99,A
+variable_cost_per_unit,18,A
+retention_months,24,B
+monthly_fixed_costs,40000,A
+payback_tolerance_months,12,E
+claimed_cac,900,B
+revenue_per_customer,99,A

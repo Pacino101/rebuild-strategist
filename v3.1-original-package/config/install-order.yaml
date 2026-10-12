@@ -1,0 +1,25 @@
+install_order:
+  - step: 1
+    name: skill_and_references
+    acceptance: "Harness loads the main Skill and can retrieve references."
+  - step: 2
+    name: master_agent
+    acceptance: "Intake, routing, gate and evidence protocol smoke tests pass."
+  - step: 3
+    name: schemas_and_project_state
+    acceptance: "Project state and task packets remain structured across turns."
+  - step: 4
+    name: specialist_roles
+    acceptance: "Each configured specialist returns required fields and respects scope."
+  - step: 5
+    name: read_only_integrations
+    acceptance: "Connection test and source provenance are recorded."
+  - step: 6
+    name: analytics_and_data_pipeline
+    acceptance: "Metric definitions and data permissions verified with sample data."
+  - step: 7
+    name: staging_workflows
+    acceptance: "Workflow tested in staging with no external side effects."
+  - step: 8
+    name: production_actions
+    acceptance: "Only after explicit authorization, rollback plan and audit log are tested."

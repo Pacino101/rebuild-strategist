@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REBUILD KPI Tree Node",
+  "type": "object",
+  "required": [
+    "metric_name",
+    "metric_type",
+    "definition",
+    "unit",
+    "period",
+    "source_of_truth",
+    "owner"
+  ],
+  "properties": {
+    "metric_name": {
+      "type": "string"
+    },
+    "metric_type": {
+      "enum": [
+        "outcome",
+        "driver",
+        "diagnostic",
+        "activity",
+        "guardrail"
+      ]
+    },
+    "definition": {
+      "type": "string"
+    },
+    "formula": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "unit": {
+      "type": "string"
+    },
+    "period": {
+      "type": "string"
+    },
+    "cohort": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_of_truth": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "baseline": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "target": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

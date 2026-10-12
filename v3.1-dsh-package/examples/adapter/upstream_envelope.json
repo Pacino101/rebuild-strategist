@@ -1,0 +1,16 @@
+{
+  "source_system": "warehouse",
+  "resource": "finance.monthly_unit_econ",
+  "method": "dbt run --select unit_econ",
+  "generated_at": "2026-10-12T20:30:00+08:00",
+  "measures": [
+    {"name": "price_per_unit", "value": 99, "grade": "A", "note": "orders table, net of discount"},
+    {"name": "gross_margin_pct", "value": 0.42, "grade": "A", "note": "finance definition, FY26"},
+    {"name": "retention_months", "value": 19, "grade": "B", "note": "cohort survival to month 19"},
+    {"name": "monthly_fixed_costs", "value": 40000, "grade": "A"},
+    {"name": "payback_tolerance_months", "value": 12, "grade": "E", "note": "management target, unvalidated"},
+    {"name": "monthly_revenue", "value": 182000, "grade": "A"},
+    {"name": "customer_acquisition_spend", "value": 55000, "grade": "A"},
+    {"name": "gross_margin", "value": 0.42, "grade": "A", "note": "duplicate under a different name"}
+  ]
+}

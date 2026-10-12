@@ -1,0 +1,88 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Package integrity and schema quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Static integrity
+        run: ./tests/verify_package.sh
+
+      - name: Schema validator unit and adversarial tests
+        run: python3 tests/test_validator.py
+
+      - name: Refusal demo (exits 1 by design)
+        run: python3 examples/refusal-demo/demo.py || test $? -eq 1
+
+      - name: Deterministic strategy arithmetic
+        run: python3 tools/strategy_calc.py --check
+
+      - name: Adapter contract checker rejects malformed adapters
+        run: python3 tools/check_adapter.py --self-test
+
+      - name: All reference adapters pass the contract
+        run: |
+          python3 tools/check_adapter.py --adapter tools/adapters/csv_export.py \
+            -- --input examples/adapter/figures.csv --system "reference fixture"
+          python3 tools/check_adapter.py --adapter tools/adapters/posthog.py \
+            -- --offline examples/adapter/posthog_retention.json
+          python3 tools/check_adapter.py --adapter tools/adapters/posthog.py \
+            -- --offline examples/adapter/posthog_funnel.json --insight funnel
+          python3 tools/check_adapter.py --adapter tools/adapters/upstream_json.py \
+            -- --file examples/adapter/upstream_envelope.json
+
+      - name: End-to-end — adapter output feeds the arithmetic
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          env = subprocess.run(
+              ["python3", "tools/adapters/upstream_json.py",
+               "--file", "examples/adapter/upstream_envelope.json"],
+              capture_output=True, text=True, check=True)
+          doc = json.loads(env.stdout)
+          assert doc["model"], "adapter produced no model fields"
+          assert doc["missing"], "this fixture is expected to report unused inputs"
+          out = subprocess.run(
+              ["python3", "tools/strategy_calc.py", "--json"],
+              input=json.dumps(doc["model"]), capture_output=True, text=True)
+          print("chain ok:", out.returncode)
+          PY
+
+      - name: The skill body must stay inside the context-pruner budget
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          s = open("SKILL.md", encoding="utf-8").read()
+          m = re.match(r'^---\n(.*?)\n---\n', s, re.S)
+          body = s[m.end():]
+          wrapper = ('<skill_content name="rebuild-strategist">\n<skill_resources>\n'
+                     'Base directory for this skill: ' + 'x' * 52 + '\n'
+                     'Resolve relative paths mentioned by this skill against the base directory before '
+                     'using them. Load referenced resources only as needed.\n</skill_resources>\n\n'
+                     '<skill_instructions>\n' + body + '\n</skill_instructions>\n</skill_content>')
+          n = len(wrapper)
+          print(f"rendered skill body: {n} chars (limit 8192)")
+          if n >= 8192:
+              print("FAIL: a compaction event would trim the middle of the instructions out of context")
+              sys.exit(1)
+          PY

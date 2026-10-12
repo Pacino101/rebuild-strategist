@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "adapter_output.schema.json",
+  "title": "REBUILD Adapter Output",
+  "description": "What a data adapter must emit on stdout. See resources/ADAPTER_CONTRACT.md. The point of this schema is that an adapter cannot omit the fact that it omitted something: fields it could not source must appear in `missing`.",
+  "type": "object",
+  "properties": {
+    "adapter": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the adapter that produced this, e.g. 'posthog-export'."
+    },
+    "source": {
+      "type": "object",
+      "description": "Where the data came from and how it was retrieved, so a reviewer can reproduce it.",
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "resource": { "type": "string", "minLength": 1 },
+        "retrieved_at": { "type": "string", "minLength": 1, "description": "ISO 8601 timestamp." },
+        "method": {
+          "type": "string",
+          "minLength": 1,
+          "description": "e.g. 'manual CSV export', 'REST API v2', 'SQL warehouse query', 'MCP tool'."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["not_configured", "configured", "connected", "tested", "production_approved"],
+          "description": "The status this adapter has actually evidenced. configured at most, until run against the live system."
+        }
+      },
+      "required": ["system", "resource", "retrieved_at", "method", "status"],
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "description": "Business-model fields for tools/strategy_calc.py. Omit what you cannot source; never default it.",
+      "properties": {
+        "price_per_unit": { "type": "number" },
+        "variable_cost_per_unit": { "type": "number" },
+        "purchases_per_month": { "type": "number" },
+        "retention_months": { "type": "number" },
+        "discount_rate_monthly": { "type": "number" },
+        "monthly_fixed_costs": { "type": "number" },
+        "capacity_units": { "type": "number" },
+        "marketing_budget": { "type": "number" },
+        "expected_new_customers": { "type": "number" },
+        "expected_units": { "type": "number" },
+        "claimed_cac": { "type": "number" },
+        "payback_tolerance_months": { "type": "number" },
+        "margin_of_safety": { "type": "number" },
+        "test_baseline_rate": { "type": "number" },
+        "test_relative_effect": { "type": "number" },
+        "available_sample": { "type": "number" },
+        "parties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "share_of": { "type": "number" },
+              "monthly_cost": { "type": "number" },
+              "monthly_inflow": { "type": "number" },
+              "reserve": { "type": "number" }
+            },
+            "required": ["name"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "array",
+      "description": "Required for every DERIVED field. Untransformed passthroughs may be omitted.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string", "minLength": 1, "description": "Field in `model`." },
+          "source_field": { "type": "string", "description": "Where it came from in the source." },
+          "note": { "type": "string", "description": "Any transformation applied." },
+          "grade": { "$ref": "evidence.schema.json#/$defs/grade" }
+        },
+        "required": ["field", "grade"],
+        "additionalProperties": false
+      }
+    },
+    "missing": {
+      "type": "array",
+      "description": "Fields the source could not supply. This array is how an adapter stays honest: omitting a field silently is the failure mode this schema exists to prevent.",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["adapter", "source", "model", "missing"],
+  "additionalProperties": false
+}

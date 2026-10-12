@@ -1,0 +1,69 @@
+# Status is factual operational state, not intent.
+# Update only after actual setup/connection/test evidence.
+status_legend:
+  - not_configured
+  - configured
+  - connected
+  - tested
+  - production_approved
+tools:
+  n8n:
+    role: workflow_orchestration
+    preferred_access: API_or_MCP_if_available
+    status: not_configured
+    side_effects: possible
+    approval_required_for: [production_workflow_activation, outbound_actions, destructive_changes]
+  posthog:
+    role: product_analytics_and_experiments
+    preferred_access: API_or_MCP_if_available
+    status: not_configured
+    side_effects: read_and_write_possible
+    approval_required_for: [production_event_changes, experiment_launch]
+  mautic:
+    role: marketing_automation
+    preferred_access: API_or_MCP_if_available
+    status: not_configured
+    side_effects: customer_messaging
+    approval_required_for: [campaign_activation, outbound_messages, contact_changes]
+  matomo:
+    role: web_analytics
+    preferred_access: API_or_MCP_if_available
+    status: not_configured
+    side_effects: read_and_write_possible
+    approval_required_for: [tracking_changes, data_export]
+  twenty:
+    role: crm
+    preferred_access: API_or_MCP_if_available
+    status: not_configured
+    side_effects: customer_record_changes
+    approval_required_for: [record_updates, bulk_imports, outbound_actions]
+  postiz:
+    role: social_publishing
+    preferred_access: API_or_MCP_if_available
+    status: not_configured
+    side_effects: public_publishing
+    approval_required_for: [publish, schedule, delete]
+  airbyte:
+    role: data_ingestion
+    preferred_access: API_or_MCP_if_available
+    status: not_configured
+    side_effects: data_movement
+    approval_required_for: [production_sync, sensitive_data_movement]
+  openseo:
+    role: seo_research
+    preferred_access: verify_actual_product_and_API
+    status: not_configured
+    side_effects: unknown_until_verified
+    approval_required_for: [account_changes, paid_actions]
+  claude_seo:
+    role: seo_assistance
+    preferred_access: verify_exact_project_and_access_method
+    status: not_configured
+    side_effects: unknown_until_verified
+    approval_required_for: [external_publication]
+  alwrity:
+    role: content_and_marketing_assistance
+    preferred_access: verify_actual_product_and_API
+    status: not_configured
+    side_effects: possible
+    approval_required_for: [external_publication]

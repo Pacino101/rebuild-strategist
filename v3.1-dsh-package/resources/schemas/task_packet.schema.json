@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task_packet.schema.json",
+  "title": "REBUILD Task Packet",
+  "description": "The contract given to one specialist role for one piece of work.",
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "assigned_role": {
+      "type": "string",
+      "enum": [
+        "master_cmo",
+        "research_intelligence",
+        "customer_insight",
+        "business_economics",
+        "strategy_positioning",
+        "brand_product",
+        "creative_content",
+        "seo_geo",
+        "growth_media",
+        "crm_lifecycle",
+        "analytics_experimentation",
+        "red_team",
+        "review_learning"
+      ]
+    },
+    "objective": {
+      "type": "string",
+      "description": "The decision this task informs."
+    },
+    "context": {
+      "type": "string",
+      "description": "Background the role needs and does not already have."
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Exact, answerable questions. Not 'research everything'."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "description": "Path, URL or system."
+          },
+          "source_status": {
+            "type": "string",
+            "enum": [
+              "provided",
+              "retrieved",
+              "calculated",
+              "expert_judgment",
+              "assumption",
+              "missing"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "source_status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "evidence_standard": {
+      "type": "object",
+      "description": "Minimum evidence quality for this task, and what must stay an assumption.",
+      "properties": {
+        "minimum_grade": {
+          "type": "string",
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "NOT_GRADED"
+          ]
+        },
+        "required_attributes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "e.g. source, date, geography, sample, method"
+        },
+        "must_remain_labeled_assumption": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "minimum_grade"
+      ],
+      "additionalProperties": false
+    },
+    "output_contract": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The ten envelope fields every role returns."
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "What must be true for this task to count as done."
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Upstream results this task must wait for."
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "deadline": {
+      "type": "string"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "description": "Accountable human or role."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "dispatched",
+        "in_progress",
+        "returned",
+        "accepted",
+        "rejected"
+      ]
+    },
+    "stop_condition": {
+      "type": "string",
+      "description": "When to stop and return blocked instead of guessing."
+    },
+    "side_effects_allowed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Always false for specialist tasks. Specialists never publish, spend, message customers or change production systems."
+    }
+  },
+  "required": [
+    "task_id",
+    "project_id",
+    "assigned_role",
+    "objective",
+    "context",
+    "questions",
+    "inputs",
+    "output_contract",
+    "acceptance_criteria",
+    "evidence_standard",
+    "risk_level",
+    "stop_condition"
+  ],
+  "additionalProperties": false
+}

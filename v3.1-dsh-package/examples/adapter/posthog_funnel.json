@@ -1,0 +1,8 @@
+{
+  "result": [
+    {"step": "product view", "count": 12480},
+    {"step": "add to cart", "count": 1420},
+    {"step": "checkout started", "count": 690},
+    {"step": "order completed", "count": 524}
+  ]
+}
