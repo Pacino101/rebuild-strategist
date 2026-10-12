@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# REBUILD Strategist launcher.
+#
+# Runs the CLI from this checkout, so the repository layout (agents/, schemas/,
+# examples/) stays intact. Symlink it onto your PATH:
+#
+#   ln -s "$PWD/bin/rebuild" /usr/local/bin/rebuild
+#
+# Why there is no pip package: the orchestrator reads agents/, schemas/ and
+# examples/ relative to the repository root. Installing the code into
+# site-packages would separate it from those files and break the tool.
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+REPO="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+
+PY=""
+for candidate in python3 python; do
+  if command -v "$candidate" >/dev/null 2>&1 &&
+     "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null; then
+    PY="$candidate"; break
+  fi
+done
+[ -n "$PY" ] || { echo "REBUILD requires Python 3.9+ (https://www.python.org/downloads/)" >&2; exit 1; }
+
+exec "$PY" "$REPO/core/rebuild_cli.py" "$@"

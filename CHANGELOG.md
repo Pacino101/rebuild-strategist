@@ -1,5 +1,48 @@
 # Changelog
 
+## V3.10.0 — English documentation, installer, Python 3.9
+
+Two fair criticisms of the previous state, both fixed.
+
+### 1. The project was Chinese-only
+The repository held **111,827 Chinese characters and zero English**. An
+international visitor could not tell what it was. Now:
+
+- **`README.md` is English** and is the primary entry point.
+- **`README.zh-CN.md` preserves the Chinese version byte-for-byte** — nothing lost.
+- Remaining Chinese docs are being translated incrementally; the README is the
+  front door and mattered most.
+
+### 2. There was no way to install it
+No `pyproject.toml`, no `install.sh`, no launcher, **no release and no tag** —
+so there was literally nothing to download.
+
+- **`install.sh`** — one command: checks Python, downloads the latest release
+  (no git required), runs the test suite to verify, installs the DeepSeek
+  Harness skill if `~/.dsh` exists, prints next steps.
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/Pacino101/rebuild-strategist/main/install.sh | bash
+  ```
+- **`bin/rebuild`** — a launcher that resolves symlinks and runs the CLI from
+  the checkout, so the repository layout stays intact.
+- **GitHub Release with a tag** — real downloadable archives.
+
+### 3. Deliberately *not* done: a pip package
+The orchestrator reads `agents/`, `schemas/` and `examples/` relative to the
+repository root. Installing the code into `site-packages` would separate it from
+those files and break the tool. The README states this instead of advertising a
+`pip install` that does not work.
+
+### 4. Python 3.9 support (a real bug, not a version gate)
+Two provider tests failed on 3.9, and the project simply declared "Python 3.10+".
+The actual cause was a genuine defect: reading an error response body crashed
+when the `HTTPError` carried no `fp`. Reading an error message should never take
+down the call. Fixed — **all 297 tests now pass on 3.9**, the requirement is
+lowered to 3.9+, and CI covers 3.9–3.13.
+
+Hiding a bug behind a version requirement is the same failure mode this project
+criticises elsewhere.
+
 ## V3.9.0 — 决策循环首次真正闭合
 
 这是整个项目**第一次**把真实世界的结果回填进决策库。D 阶段此前只有机制、

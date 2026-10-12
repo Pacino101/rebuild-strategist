@@ -1,123 +1,228 @@
 # REBUILD Strategist
 
-**一套原创的、以决策为中心的品牌营销方法论操作系统。**
+[![CI](https://github.com/Pacino101/rebuild-strategist/actions/workflows/tests.yml/badge.svg)](https://github.com/Pacino101/rebuild-strategist/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](#requirements)
 
-大多数营销 prompt 和模板工具解决的是「怎么写出一份看起来像咨询报告的文档」。
-REBUILD 解决的是另一个问题：**你怎么知道这份报告里的结论值得相信，以及它值得被花多少钱去执行。**
+**A decision-centric operating system for marketing strategy.**
 
-它不追求产出更长的报告，而强制回答四个问题：
+Most marketing prompts and template tools solve the wrong problem: *"how do I produce a document that looks like a consulting report."*
 
-1. 现在真正需要做出的是什么决定？
-2. 哪些是事实，哪些是推断，哪些只是假设？
-3. 为此放弃了什么，代价是什么？
-4. 什么证据出现时，应当推翻这个决定？
+REBUILD solves this one: **how do you know whether the conclusions in that report are worth believing — and worth spending money on?**
 
-## 这个项目不是什么
+It does not try to produce longer reports. It forces four questions:
 
-在说它能做什么之前，先划清边界。一个把「不夸大」当卖点的项目，最不该在自我介绍里含糊。
+1. What decision actually needs to be made right now?
+2. Which statements are facts, which are inferences, which are only assumptions?
+3. What was given up, and at what cost?
+4. What evidence would prove this decision wrong?
 
-| 它不是 | 原因 |
-|---|---|
-| **不是投放 / CRM / 分析工具** | 不连接任何营销数据平台，不发送广告，不管理客户，不采集用户行为。这些事请继续用你现有的平台做。 |
-| **不是自动化执行系统** | 它不替你执行任何营销动作。产出是决策与验证方案，落地仍然靠人。 |
-| **不是并行多 Agent 运行时** | `core/orchestrator.py` 会**按顺序**逐个调用角色契约，一次一个模型调用。角色之间不通信、不并行、不互相评审。把顺序调用包装成「多 Agent 协同」正是本项目反对的事。 |
-| **不内置任何平台连接器** | 支持导入本地文件（CSV / TSV / JSON / JSONL / TXT / MD / XLSX）与你自建的 HTTP 端点，但**不预置** PostHog / Mautic / 广告平台的连接器或字段映射——那些由你自己给出 URL 与字段路径。 |
-| **不保证结论正确** | 它约束的是论证过程是否诚实、可追溯、可证伪，不是结论本身是否正确。 |
+[中文说明见 README.zh-CN.md](README.zh-CN.md)
 
-**它的商业价值目前是假设，不是结论。** 可能的方向包括咨询交付、企业内训、以及作为评测层（对已有营销方案或 AI 输出做结构化审查）。**这三个方向均未被任何真实项目验证，本仓库不为它们背书。**
+---
 
-目前**已被验证**的是：方法论自洽、状态机确定性、Schema 校验生效、证据账本可写可查、数据源可导入本地文件与自建端点、编排器可零网络干跑并正确拒绝非法迁移、评测脚手架可端到端运行。
+## Install
 
-**仍未验证**的是它的商业价值，以及它能否在**更多**真实项目上复现同样的效果。
+### Requirements
 
-`examples/metro_apartment/` 是一次真实项目的完整运行（已脱敏），它在单位经济上抓到了一个
-用营销手段修不好的条款问题。但**这是一个案例，不是样本**——它证明了流程能跑完并算出结论，
-不证明方法可推广，也不证明结论被采纳。
+**Python 3.9+ and nothing else.** Zero third-party dependencies — the entire system is standard library. No numpy, pandas, openpyxl, jsonschema, or LLM SDK.
 
-## 六阶段决策循环
+### Option 1 — one command
 
-```text
-R  Reality             界定现实     什么问题、症状与决策分别是什么
-E  Evidence            建立证据     每条判断标记 FACT/INFERENCE/ASSUMPTION/UNKNOWN
-B  Bet                 战略下注     2–4 个实质不同的选项，显式取舍
-U  Unit Economics      商业成立性   收入≠利润，ROAS≠贡献利润，口径必须可复算
-I  Implementation      执行与观测   每项行动绑定负责人、成本、指标与停止条件
-D  Decision Review     决策复盘     区分执行偏差、策略偏差与假设偏差
-                         ▲                    │
-                         └──── 假设被证伪 ─────┘
+```bash
+curl -fsSL https://raw.githubusercontent.com/Pacino101/rebuild-strategist/main/install.sh | bash
 ```
 
-关键在于：它是一个**带回退的循环**，不是一条单向流水线。证据不足退回 Evidence，单位经济不成立退回 Strategy，假设被反证退回受影响的决策阶段——而不是在报告末尾加一段风险提示了事。
+Downloads the repository to `~/.rebuild-strategist`, runs the test suite, and installs the DeepSeek Harness skill if `~/.dsh` exists.
 
-## 三条硬约束
+### Option 2 — download the release (no git needed)
 
-**证据必须可追溯。** 每条关键判断标注四类之一：
-`FACT`（可核验来源）、`INFERENCE`（须写明推理桥梁）、`ASSUMPTION`（暂定前提）、`UNKNOWN`（信息不足）。
-可信度分 HIGH / MEDIUM / LOW，**不以模型语气作为证据**。
+```bash
+curl -L -o rebuild-strategist.tar.gz \
+  https://github.com/Pacino101/rebuild-strategist/archive/refs/tags/v3.10.0.tar.gz
+tar -xzf rebuild-strategist.tar.gz
+cd rebuild-strategist-3.10.0
+python -m unittest discover -s tests
+```
 
-**取舍必须显式。** 每个战略建议至少包含一个备选方案、放弃项、代价与成立条件。
-说不清放弃什么，说明还没想清楚选择。
-
-**财务口径必须可复算。** 每个指标写清公式、分子分母、时间范围与数据来源。
-LTV 不标观察窗口即无效，CAC 不区分渠道/全口径/增量口径即无效。
-
-## 角色分工
-
-主 Agent 负责编排与门禁，8 个职能角色各有独立的使命、输入边界、专属追问清单与失败模式：
-
-| 角色 | 核心问题 |
-|---|---|
-| Customer Evidence | 需求是否真实存在，由谁在什么情境下发生 |
-| Market Structure | 生意处于什么结构里，凭借什么进入 |
-| Positioning & Strategy | 在客户心里占什么位置，为此放弃什么 |
-| Business Model | 财务上是否成立，多久回本，何时会崩 |
-| Growth System | 通过什么机制获得可重复的获客 |
-| Measurement & Experiment | 怎么知道成了，怎么知道该停 |
-| Red Team | 什么证据能推翻当前选择 |
-| Learning & Review | 实际发生了什么，假设如何更新 |
-
-角色之间有明确的越权拒绝机制——例如 Market Structure 拒绝回答需求强度，Business Model 拒绝提出定位主张。
-
-## 快速验证
-
-需要 Python 3.10+，**无任何第三方依赖**。
+### Option 3 — clone, then put the launcher on your PATH
 
 ```bash
 git clone https://github.com/Pacino101/rebuild-strategist.git
 cd rebuild-strategist
-
-# 单元测试（211 项）
-python -m unittest discover -s tests -v
-
-# 项目状态校验
-python core/rebuild_cli.py validate examples/nanjiang_tea/project.json
-
-# 确定性状态迁移
-python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
+ln -s "$PWD/bin/rebuild" /usr/local/bin/rebuild
+rebuild --help
 ```
 
-状态机由 7 个状态与明确的回退迁移构成，见 `core/state_machine.json`。
-门禁不通过时，系统允许停留、补证或降级输出——**不以「完成所有表格」为成功标准**。
-
-## 接入你自己的模型
-
-`bench/provider.py` 是一个**可插拔的模型接入层**，纯标准库实现，不需要 `pip install` 任何东西。两种运行方式：
-
-**手动模式（默认）** —— 零配置、**零网络请求**。渲染提示词，你自行粘贴到任意聊天窗口，再把输出贴回来。适合资料不能外发的场景。
-
-**HTTP 模式** —— 直接调用模型 API：
+> **There is no pip package, deliberately.** The orchestrator reads `agents/`,
+> `schemas/` and `examples/` relative to the repository root. Installing the code
+> into `site-packages` would separate it from those files and break the tool.
+> Run it from a checkout.
 
 ```bash
-python bench/provider.py list                      # 查看所有预设
-python bench/provider.py check deepseek            # 预检 base_url / model / 密钥
+git clone https://github.com/Pacino101/rebuild-strategist.git
+cd rebuild-strategist
+python -m unittest discover -s tests -v      # 297 tests, no network
+```
+
+### Verify the install
+
+```bash
+python core/rebuild_cli.py validate examples/metro_apartment/project.json
+cd examples/metro_apartment/rebuild && python3 scripts/run_all.py
+```
+
+The second command reproduces every number in the worked case study.
+
+---
+
+## What this project is NOT
+
+Stated before what it can do, because a project whose selling point is "we don't overclaim" should not be vague in its own introduction.
+
+| It is not | Because |
+|---|---|
+| **An ads / CRM / analytics tool** | It connects to no marketing data platform, sends no ads, manages no customers, collects no behavioural data. Keep using your existing platforms for that. |
+| **An automated execution system** | It performs no marketing action. It produces decisions and validation plans; execution is still human. |
+| **A parallel multi-agent runtime** | `core/orchestrator.py` calls role contracts **sequentially** — one role, one model call. Roles do not talk to each other or run concurrently. Wrapping sequential calls as "multi-agent collaboration" is exactly what this project argues against. |
+| **A connector library** | It imports local files and HTTP endpoints *you* provide. It ships **no** connectors for PostHog, Mautic, ad platforms, or CRMs. |
+| **A guarantee of correct conclusions** | It constrains whether the *reasoning* is honest, traceable and falsifiable. It does not make the conclusion right. |
+
+**Its commercial value is currently a hypothesis, not a result.** Plausible directions include consulting delivery, corporate training, and use as an evaluation layer for marketing proposals or AI output. **None has been validated by a real client engagement, and this repository does not claim otherwise.**
+
+What *has* been verified: the methodology is internally consistent; the state machine is deterministic; the schema validator, evidence ledger, decision store, data sources and orchestrator are implemented and covered by tests; the orchestrator runs end-to-end against a real model; and one real, anonymised project has been run through it.
+
+---
+
+## Quick start
+
+### 1. Validate a project
+
+```bash
+python core/rebuild_cli.py validate examples/metro_apartment/project.json
+```
+
+### 2. Load your evidence
+
+```bash
+# Import raw material (CSV / TSV / JSON / JSONL / TXT / MD / XLSX)
+python core/rebuild_cli.py source add-file projects/my-project ~/Downloads/orders.csv
+
+# Record a piece of evidence — validated against the schema before it is written
+python core/rebuild_cli.py evidence add projects/my-project \
+    --claim "Enquiries in the two weeks before peak season run ~3x the annual average" \
+    --type FACT --confidence MEDIUM \
+    --source-doc DOC-001 \
+    --scope "Owned stores, local repeat customers" \
+    --decision-impact "Determines whether the annual budget shifts to a peak-season push"
+
+# Which assumptions still have no evidence behind them?
+python core/rebuild_cli.py evidence gaps projects/my-project
+```
+
+### 3. Run the loop
+
+```bash
+# No API key needed: generates task packets only, zero network calls
+python core/rebuild_cli.py run projects/my-project --dry-run
+
+# Or drive a real model
+export DEEPSEEK_API_KEY=sk-xxx
+python core/rebuild_cli.py run projects/my-project --provider deepseek
+```
+
+### 4. Record the decision, review it later
+
+```bash
+python core/rebuild_cli.py decision add projects/my-project \
+    --question "Which brand and channel strategy should we commit to?" \
+    --option "Peak-season push|Demand is concentrated" \
+    --option "Even spend year-round|Stable but misses the peak" \
+    --chosen "Peak-season push" \
+    --rejected "Even spend year-round|Misses the peak" \
+    --tradeoff "Gives up off-season visibility" \
+    --assumption "Demand concentrates in late March" \
+    --falsification "Refuted if April repeat rate falls below 15%" \
+    --validation "Small A/B test, n=200" \
+    --review-date 2027-05-01
+
+# Later: which decisions are due for review and have not been reviewed?
+python core/rebuild_cli.py decision due projects/my-project
+
+# Back-fill what actually happened
+python core/rebuild_cli.py decision outcome projects/my-project --id DR-001 \
+    --expected "Peak-season sales up 30%" \
+    --actual "Up 12%, below target" \
+    --deviation EXECUTION --next-action ADJUST \
+    --notes "Underfunded, not a wrong direction"
+```
+
+---
+
+## The six-phase loop
+
+```text
+R  Reality             Frame it        What is the decision vs. the symptom?
+E  Evidence            Build evidence  Label every claim FACT / INFERENCE / ASSUMPTION / UNKNOWN
+B  Bet                 Choose          Compare 2-4 materially different options; state what you gave up
+U  Unit Economics      Does it work    Revenue != profit, ROAS != contribution margin
+I  Implementation      Execute         Bind every action to owner, cost, metric, stop condition
+D  Decision Review     Review          Separate execution failure from strategy failure
+                         ^                    |
+                         +--- assumption falsified ---+
+```
+
+It is a **loop with rollback**, not a pipeline. Insufficient evidence rolls back to E; broken unit economics roll back to B; a falsified assumption rolls back to the affected phase — rather than appending a risk paragraph to the end of a report.
+
+## Three hard constraints
+
+**Evidence must be traceable.** Every material claim is labelled `FACT`, `INFERENCE`, `ASSUMPTION` or `UNKNOWN`, with confidence `HIGH` / `MEDIUM` / `LOW`. **Model tone is not evidence.**
+
+**Trade-offs must be explicit.** Every recommendation carries at least one alternative, what was rejected, the cost, and the conditions under which it holds. If you cannot say what you gave up, you have not finished deciding.
+
+**Financial definitions must be reproducible.** Every metric states its formula, numerator, denominator, time window and data source. An LTV without an observation window is not a number. A CAC that does not distinguish channel / blended / incremental basis is not a number.
+
+---
+
+## Roles
+
+A master agent owns orchestration and gates. Eight specialist roles each have a distinct mission, explicit input boundaries (they **refuse** out-of-scope questions), their own interrogation checklist and their own failure modes.
+
+| Role | Core question |
+|---|---|
+| Customer Evidence | Does the need actually exist, for whom, in what situation? |
+| Market Structure | What structure is this business in, and what earns entry? |
+| Positioning & Strategy | What position do we hold in the customer's mind, and what do we give up? |
+| Business Model | Does it work financially, how long to payback, when does it break? |
+| Growth System | Through what mechanism do we acquire repeatably? |
+| Measurement & Experiment | How do we know it worked, and how do we know to stop? |
+| Red Team | What evidence would overturn the current choice? |
+| Learning & Review | What actually happened, and how do the assumptions update? |
+
+The refusal mechanism is the point: Market Structure refuses to answer demand-strength questions; Business Model refuses to propose positioning. Contracts live in `agents/`.
+
+---
+
+## Connecting your own model
+
+`bench/provider.py` is a pluggable model layer: standard library only, no SDK. Two modes.
+
+**Manual (default) — zero network calls.** Render the prompt, paste it into any chat window, save the output back.
+
+**HTTP — call an API directly.**
+
+```bash
+python bench/provider.py list                      # built-in presets
+python bench/provider.py check deepseek            # preflight: base_url / model / key
 
 export DEEPSEEK_API_KEY=sk-xxx
 python bench/provider.py call deepseek --prompt-file prompt.txt
 ```
 
-内置预设：`openai` · `deepseek` · `moonshot` · `qwen` · `anthropic` · `ollama`（本地模型）· `custom`。
+Presets: `openai` · `deepseek` · `moonshot` · `qwen` · `anthropic` · `ollama` (local) · `custom`.
 
-**接任意 OpenAI 兼容端点**（自建代理、其他国产模型、本地推理服务都适用）：
+**Any OpenAI-compatible endpoint** — a self-hosted proxy, another vendor, a local inference server:
 
 ```bash
 python bench/provider.py call custom \
@@ -126,338 +231,288 @@ python bench/provider.py call custom \
     --api-key-env YOUR_KEY
 ```
 
-**让盲评实验直接跑在你的模型上**：
+**Extending it:** add one dict to `PROVIDER_PRESETS` in `provider.py` (`label` / `api_style` / `base_url` / `model` / `api_key_env`). Custom headers go in `ProviderConfig.extra_headers`. Two protocols are implemented: `openai` (`/chat/completions`) and `anthropic` (`/messages`).
+
+> **API keys are read from environment variables only** — never written to disk, never committed. In HTTP mode, prompt content is sent to the endpoint you specify. For confidential material, use manual mode or a local model.
+
+---
+
+## Evidence ledger
+
+The methodology demands that every key judgement be traceable. Before this existed, `evidence.schema.json` was a specification nobody read, and there was nowhere to put evidence.
 
 ```bash
-python bench/bench_runner.py execute --provider deepseek
+python core/rebuild_cli.py evidence list       projects/my-project
+python core/rebuild_cli.py evidence check      projects/my-project   # schema + semantic quality
+python core/rebuild_cli.py evidence gaps       projects/my-project   # assumptions with no evidence
+python core/rebuild_cli.py evidence provenance projects/my-project   # how much is machine-verifiable
+python core/rebuild_cli.py evidence export     projects/my-project --out ledger.md
 ```
 
-**如何扩展**：在 `provider.py` 的 `PROVIDER_PRESETS` 里加一条字典即可（字段 `label` / `api_style` / `base_url` / `model` / `api_key_env`）；需要自定义请求头时用 `ProviderConfig.extra_headers`。目前实现两种协议：`openai`（`/chat/completions`）与 `anthropic`（`/messages`）。
+Stored as `<project>/evidence.jsonl` — one record per line: diffable, human-readable, no database.
 
-> ⚠️ **密钥只从环境变量读取**，不落盘、不进仓库。一旦使用 HTTP 模式，提示词内容会发送到你所指定的端点——涉及客户资料或商业机密时，请改用手动模式或本地模型。
+**Records that violate the schema are rejected before being written.** A corrupt line raises an error rather than being skipped, because silently skipping would make evidence disappear.
 
-> **注意**：provider 层同时服务于 `bench/` 评测流程与 `core/orchestrator.py` 运行时。编排器按阶段**顺序**调用角色契约，不是并行多 Agent（见上方「这个项目不是什么」）。
+Beyond the schema, it checks what a schema cannot:
 
-## 证据账本
-
-方法论要求「每条关键判断可追溯」，但在此之前**没有地方存证据**——`evidence.schema.json` 定义了却没有任何代码读它。现在它可用了：
-
-```bash
-# 写入一条证据（写入前强制校验 schema，不合规直接拒绝）
-python core/rebuild_cli.py evidence add projects/my-project \
-    --claim "春茶季前两周询价量约为平峰期 3 倍" \
-    --type FACT --confidence MEDIUM \
-    --source "门店台账 2026-03" --observed-at 2026-03-20 \
-    --scope "南涧县自营门店自饮客群" \
-    --decision-impact "决定是否把全年预算改为春茶季集中投放"
-
-python core/rebuild_cli.py evidence list   projects/my-project
-python core/rebuild_cli.py evidence check  projects/my-project   # schema + 语义质量
-python core/rebuild_cli.py evidence gaps   projects/my-project   # 哪些假设还没有证据
-python core/rebuild_cli.py evidence export projects/my-project --out ledger.md
-```
-
-存储为 `<项目>/evidence.jsonl`：每行一条，可 diff、可人工审阅、无数据库依赖。
-
-**schema 之外还查什么。** schema 只能保证字段齐全、取值合法，保证不了这条证据有用。因此额外检查：
-
-| 情况 | 为什么算问题 |
+| Situation | Why it is a problem |
 |---|---|
-| 标为 `FACT` 却没有来源 | 事实必须可核验，做不到就该降级为推断 |
-| 标为 `ASSUMPTION` 却没写重查条件 | 未验证的前提必须说明什么情况下重查 |
-| 标为 `UNKNOWN` 却给 `HIGH` 可信度 | 语义冲突：信息不足不应给高可信度 |
-| `decision_impact` 写成「无」 | 不指向任何决策的证据不构成证据 |
+| Labelled `FACT` with no source | Facts must be verifiable; otherwise downgrade to inference |
+| Labelled `ASSUMPTION` with no recheck trigger | An unverified premise must state when it gets rechecked |
+| Labelled `UNKNOWN` with `HIGH` confidence | Contradiction: insufficient information cannot be high confidence |
+| `decision_impact` is empty or "n/a" | Evidence that changes no decision is not evidence |
 
-这些是**警告而非错误**：不阻断写入，但会出现在 `evidence check` 的输出里。
+These are **warnings, not errors** — they do not block writing, but they surface in `evidence check`.
 
-## 导入你的数据
+**Machine-verifiable provenance.** A `source` of the form `DOC-001` points into the material library and can be checked automatically; free text cannot. A reference to a document that does not exist is a **dangling link**, and dangling links are errors, not warnings — a link that claims to be verifiable but is not is worse than plain text.
+
+---
+
+## Importing your data
 
 ```bash
-# 本地文件：CSV / TSV / JSON / JSONL / TXT / MD / XLSX
+# Local files: CSV / TSV / JSON / JSONL / TXT / MD / XLSX
 python core/rebuild_cli.py source add-file projects/my-project ~/Downloads/orders.csv
 
-# 你自己的 HTTP 端点
+# Your own HTTP endpoint
 python core/rebuild_cli.py source add-url projects/my-project \
     --name my-orders --url https://api.example.com/orders \
     --header-env "Authorization=MY_API_TOKEN" \
     --records-path "data.items" --save-spec
 
 python core/rebuild_cli.py source list   projects/my-project
-python core/rebuild_cli.py source verify projects/my-project   # 内容与哈希是否一致
+python core/rebuild_cli.py source verify projects/my-project   # has the source been altered?
 ```
 
-两处刻意设计：
+Two deliberate choices:
 
-- **中文编码兜底。** 依次尝试 utf-8-sig → utf-8 → gb18030 → big5 → latin-1。中文导出的 CSV 十有八九是 GBK，按 UTF-8 读会整片乱码——**乱码喂进模型比没有数据更糟**，模型会照着乱码编。
-- **密钥不进 spec 文件。** spec 只记录「哪个请求头对应哪个环境变量」，真实值运行时从环境变量读取。写在文件里的密钥迟早会进 git。
+- **CJK encoding fallback.** It tries utf-8-sig → utf-8 → gb18030 → big5 → latin-1 in order. CSV files exported from Chinese tools are frequently GBK; reading them as UTF-8 produces mojibake, and **mojibake fed to a model is worse than no data** — the model writes confidently about garbage.
+- **Secrets never enter the spec file.** The spec records *which header maps to which environment variable*; the value is read at runtime. A secret written to a file ends up in git eventually.
 
-XLSX 用标准库 `zipfile` + `xml.etree` 解析，**不需要 pandas 或 openpyxl**。每条材料都存 SHA-256，`source verify` 可校验来源是否被改动过。
+**XLSX is parsed with the standard library** (`zipfile` + `xml.etree`) — no pandas, no openpyxl. Every document is stored with a SHA-256 so `source verify` can detect tampering.
 
-## 运行编排
+---
+
+## Runtime orchestrator
 
 ```bash
-# 默认手动模式：只生成任务包，零网络请求
-python core/rebuild_cli.py run projects/my-project --dry-run
-
-# 接上你自己的模型跑完整循环
-export DEEPSEEK_API_KEY=sk-xxx
+python core/rebuild_cli.py run projects/my-project --dry-run       # packets only, no network
 python core/rebuild_cli.py run projects/my-project --provider deepseek
-
-# 提高运行间一致性（但多数 API 在 0 下也不保证完全确定）
-python core/rebuild_cli.py run projects/my-project --provider deepseek --temperature 0
 ```
 
-> ⚠️ **单次运行的输出不是「答案」，只是起点。** 实测同一输入跑三次，
-> 决策方向一致但细节差异可达 2.5 倍（反证条件 6/10/15 条）。
-> 因此内置了多次运行比对——见下节。
+The orchestrator dispatches roles phase by phase, injects evidence and material, asks the model to judge the gate, and has the **state machine** adjudicate the transition.
 
-编排器做四件事：按阶段调度角色 → 注入证据与材料 → 请模型判定门禁 → **由状态机裁决迁移**。
+Three constraints that are not negotiable:
 
-三条不可让步的约束：
+1. **Sequential, not pretending to be parallel.** One role, one model call, in order.
+2. **The state machine adjudicates transitions, not the model.** The model answers "which event should fire"; whether that event is legal and where it leads is decided by `core/state_machine.json`. An illegal event is rejected and recorded.
+3. **Evidence proposed by the model never enters the ledger.** Model output is not evidence. Suggestions are written to run artefacts for human review — auto-ingesting would degrade the ledger into "a list of things the model said."
 
-1. **顺序执行，不假装并行。** 一个角色一次模型调用，依次进行，角色之间不通信。
-2. **状态迁移由状态机裁决，不由模型裁决。** 模型只回答「应触发哪个事件」；该事件是否合法、迁移到哪个状态，一律由 `core/state_machine.json` 决定。模型给出非法事件会被拒绝并记入报告。
-3. **模型提出的证据不进入账本。** 模型输出不是证据。它建议的条目只写入运行产物供人工审核——自动入账会让「证据账本」退化成「模型说过的话清单」。
+**Per-phase gates.** Each phase is judged against its own criteria from `REBUILD_METHOD.md` — R asks whether the problem is framed, not whether evidence is sufficient. Gate verdicts are graded: `SUFFICIENT` / `DEGRADED` (must declare limitations) / `INSUFFICIENT`.
 
-产物写入 `<项目>/runs/<时间戳>/`：每个角色的任务包与输出、门禁判定原文、决策记录（经 schema 校验）。`runs/` 默认不提交。
+> The failure this system guards against is **not** "proceeding with incomplete evidence" — it is **"proceeding while pretending the evidence is complete."**
 
-## 多次运行比对
+Artefacts land in `<project>/runs/<timestamp>/`: packet and output per role, raw gate verdicts, and a schema-validated decision record. `runs/` is gitignored.
 
-单个输出不能当作答案，所以有了这个：
+---
 
-```bash
-# 同一输入重复 3 次（每次重置项目状态）
-python core/rebuild_cli.py run projects/my-project --provider deepseek \
-    --temperature 0 --repeat 3
+## Cost
 
-# 确定性比对：迁移路径、终态分布、逐阶段门禁档位、条目数量极差
-python core/rebuild_cli.py compare projects/my-project --last 3
+Measured against a real API:
 
-# 再用模型判定「几次建议在方向上是否一致」
-python core/rebuild_cli.py compare projects/my-project --last 3 --judge-with deepseek
-```
-
-**两类结论被刻意分开，不能混为一谈：**
-
-| 轴 | 怎么算 | 能说明什么 |
-|---|---|---|
-| **过程可复现性** | 确定性计算，不用模型 | 路径 / 终态 / 档位是否一致 |
-| **结论一致性** | 模型判定，标注 `judged_by_model` | 建议方向是否一致 |
-
-**「迁移路径相同」不等于「建议相同」。** 把前者说成后者是这类工具最容易犯的错。
-模型判定的结果也带自己的 caveat——它是参考信号，不是事实。
-
-过程不一致时 `compare` 返回非零退出码，可以直接用在脚本里。
-
-## 成本
-
-跑完一次完整的 R→E→B→U→I→D 的实测消耗：
-
-| 规模 | 模型调用 | tokens | 耗时 |
+| Scope | Model calls | Tokens | Time |
 |---|---|---|---|
-| 两阶段 | 6 次 | 28,671 | 56 s |
-| **完整六阶段** | **16 次** | **91,723** | **~110 s** |
+| Two phases | 6 | 28,671 | 56 s |
+| **Full six-phase loop** | **16** | **91,723** | **~110 s** |
 
-费用需要你自己给单价——**本项目不内置任何价格**，因为价格会变，
-写死在代码里就会变成一个悄悄过期的数字：
+Cost requires unit prices you supply — **no prices are built in**, because prices change and a hardcoded price becomes a number that silently goes stale:
 
 ```bash
 python core/rebuild_cli.py run projects/my-project --provider deepseek \
     --price-input 0.28 --price-output 0.42
 ```
 
-两条约束：
+- **Tokens are facts, cost is an estimate.** Token counts are read from the API's `usage` field. When usage is unavailable it is recorded as unavailable and the total is marked **incomplete** — never estimated.
+- Every cost result carries a caveat: this is an estimate from *your* unit prices, **not a bill**.
 
-- **token 是事实，费用是估算。** token 直接读 API 的 `usage` 字段；
-  读不到就注明「总数不完整」，**绝不估算**。
-- 费用结果始终带一句 caveat：这是按你给的单价算的估算，**不是账单金额**。
+`compare` aggregates cost across runs.
 
-`compare` 会跨运行合计成本。
+---
 
-## 决策记录与复盘
+## Multi-run comparison
 
-方法论里 D（Decision Review）阶段要求「比较预期与实际、区分执行偏差与策略失效、记录下一步如何改变」。**在此之前这一环完全是空的**——`project.json` 里的 `decision_records` 永远是个空数组，决策做完就散了，系统永远学不到自己的决策对不对。
+A single run is a starting point, not an answer. Measured on identical input at `temperature 0`, three runs all concluded "validate first" but differed by **2.5x** in the number of falsification conditions.
 
 ```bash
-# 落一份决策
-python core/rebuild_cli.py decision add projects/my-project \
-    --question "优先选择哪一项品牌与渠道策略？" \
-    --option "春茶季集中投放|需求集中，转化率高" \
-    --option "全年均投|稳定但错过峰值" \
-    --chosen "春茶季集中投放" \
-    --rejected "全年均投|峰值把握不足" \
-    --tradeoff "放弃淡季曝光" \
-    --assumption "需求集中在 3 月下旬至 4 月上旬" \
-    --falsification "若 4 月复购率低于 15% 则推翻" \
-    --validation "小规模 A/B 测试" \
-    --review-date 2026-05-01
+# Repeat the same input N times (state is reset between runs)
+python core/rebuild_cli.py run projects/my-project --provider deepseek \
+    --temperature 0 --repeat 3
 
-# 到了该复盘的时候，它会主动找上门
-python core/rebuild_cli.py decision due projects/my-project
+# Deterministic comparison
+python core/rebuild_cli.py compare projects/my-project --last 3
 
-# 回填实际结果
-python core/rebuild_cli.py decision outcome projects/my-project --id DR-001 \
-    --expected "春茶季销量提升 30%" \
-    --actual "实际提升 12%，未达预期" \
-    --deviation EXECUTION --next-action ADJUST \
-    --notes "投放量不足，不是方向错误"
+# Plus a model-judged verdict on whether the recommendations agree in direction
+python core/rebuild_cli.py compare projects/my-project --last 3 --judge-with deepseek
 ```
 
-`decision due` 按复审日期把**「该复盘却没复盘」的决策摆到眼前**，而不是等你想起来。`decision outcome` 强制区分偏差类型：
+Two axes, deliberately kept apart:
 
-| 偏差类型 | 含义 |
+| Axis | Computed how | What it tells you |
+|---|---|---|
+| **Process reproducibility** | Deterministic, no model | whether paths, final states and gate grades matched |
+| **Conclusion agreement** | Model-judged, flagged `judged_by_model` | whether the recommendations point the same way |
+
+**"Same transition path" is not "same recommendation."** Conflating them is the easiest mistake this kind of tool can make. The comparison exits non-zero when process outcomes diverge, so it is usable in scripts.
+
+---
+
+## Decision records and review
+
+Phase D requires comparing expectation against actual, separating execution failure from strategy failure, and recording what changes next. **This loop was previously empty** — `decision_records` in `project.json` was an array that never filled up, so the system could produce decisions but never learn whether they were right.
+
+`decision due` surfaces **decisions past their review date that have not been reviewed**, rather than waiting to be remembered.
+
+| Deviation type | Meaning |
 |---|---|
-| `EXECUTION` | 执行偏差——方向对、力度不足 |
-| `STRATEGY` | 策略失效——方向本身错了 |
-| `ASSUMPTION` | 关键假设错误 |
-| `MIXED` / `UNKNOWN` | 多重原因 / 无法归因（选 `UNKNOWN` 必须说明理由，不允许含糊过去） |
+| `AS_EXPECTED` | It went as predicted — no attribution needed |
+| `EXECUTION` | Right direction, insufficient force |
+| `STRATEGY` | The direction itself was wrong |
+| `ASSUMPTION` | A key assumption was false |
+| `MIXED` / `UNKNOWN` | Multiple causes / cannot attribute (choosing `UNKNOWN` requires a stated reason) |
 
-决策会自动同步回 `project.json` 的 `decision_records`，标注 `PENDING_REVIEW` 或 `REVIEWED`。
+Decisions sync back into `project.json` marked `PENDING_REVIEW` or `REVIEWED`.
 
-> **模型产出的决策记录不会自动入库。** 编排器跑完只把决策记录写进运行产物；要入库必须由人显式执行 `decision import`——与证据同一条原则：模型输出不等于已成立的决策。
+> **Decision records produced by the model do not enter the store automatically.** The orchestrator writes them to run artefacts; a human runs `decision import`. Same principle as evidence: model output is not an established decision.
 
-## 证据来源可核验
+---
 
-证据的 `source` 有两种写法，系统知道自己在处理哪一种：
+## Maturity statement
 
-- **`DOC-001`**（材料编号）——指向材料库里的一份材料，**可被机器核验**。指向不存在的材料会报错，因为这是「自称可核验但实际核验不了」的断链。
-- **自由文本**（如「门店台账 2026-03」）——无法自动核验，只能靠人工。
+This is the most important section. Please read it.
 
-```bash
-python core/rebuild_cli.py source add-file projects/my-project ~/orders.csv
-python core/rebuild_cli.py evidence add projects/my-project \
-    --claim "..." --type FACT --confidence MEDIUM \
-    --source-doc DOC-001 --scope "..." --decision-impact "..."
-python core/rebuild_cli.py evidence provenance projects/my-project   # 可核验比例
-```
+**Implemented and tested**
+- Methodology and phase gates (documented)
+- Deterministic state machine: 7 states, legal and rollback transitions
+- **JSON Schema validator** (standard library): type / required / properties / additionalProperties / items / enum / ranges / anyOf / oneOf / allOf. **Unimplemented keywords raise warnings rather than being silently ignored**
+- **Evidence ledger**: JSONL append, schema validation before write, semantic quality checks, gap analysis, verifiable-provenance ratio, Markdown export
+- **Data sources**: local files (CSV / TSV / JSON / JSONL / TXT / MD / XLSX with CJK encoding fallback) and user-supplied HTTP endpoints; SHA-256 provenance; secrets from environment only
+- **Runtime orchestrator**: sequential per-phase role dispatch, evidence and material injection, per-phase gates with three-tier verdicts, state-machine-adjudicated transitions, schema-validated decision record. **Validated end-to-end against a real model**
+- **Decision store and review**: persistence, proactive overdue-review surfacing, outcome back-fill with mandatory deviation typing, write-back to `project.json`
+- **Multi-run comparison**: process reproducibility kept strictly separate from model-judged conclusion agreement
+- **Token accounting**: per-call usage capture; cost computed only when you supply prices
+- 6 JSON Schemas enforced: project, evidence, decision, decision outcome, experiment, KPI tree
+- 8 differentiated specialist role contracts
+- DeepSeek Harness skill and installation guide (`harness/`)
+- Blind-review harness: hashed IDs, shuffled order, identity hiding, reviewer agreement checks
+- Model provider layer (OpenAI-compatible and Anthropic-compatible)
+- 297 unit tests, passing on Python 3.9–3.13
+- GitHub Actions CI, including an end-to-end smoke test and reproduction of the worked case
 
-## 成熟度声明
+**Not implemented**
+- **Parallel multi-agent dispatch** — the orchestrator is strictly sequential
+- **Built-in marketing platform connectors** — deliberately excluded
+- **Decision history versioning and dependency rollback** — decisions are stored and reviewable, but a falsified assumption does not yet auto-list affected decisions
+- **Execution of marketing actions** — the system produces decisions and validation plans; it does not advertise, message, or write to any external system
 
-这一节是本项目最重要的部分，请认真读。
+**Unverified**
+- End-to-end quality in any host environment
+- **The absolute quality of orchestrator output** — it runs end-to-end, and multi-run comparison tells you whether it is *stable*; **it cannot tell you whether it is *right***
+- Whether the model-judged agreement verdict is itself reliable (it is a model output, subject to the same variance)
+- Comparative quality against plain prompts or single-skill setups (the pilot is underpowered and **does not constitute comparative evidence**)
+- Reviewer independence in the pilot (the two reviewers have no recorded provenance)
+- A complete loop on a real commercial project (the real case correctly blocks at R; E–I–D were exercised on a constructed test project)
+- Real-world ROI impact, and the commercial value hypotheses
 
-**已实现并通过测试**
-- 原创方法论与阶段门禁（已文档化）
-- 确定性状态机：7 状态 / 合法与回退迁移
-- **JSON Schema 校验器**（纯标准库）：type / required / properties / additionalProperties / items / enum / 范围与长度 / anyOf / oneOf / allOf。**未实现的关键字会报警而不是静默通过**
-- **证据账本**：JSONL 追加存储、写入前强制 schema 校验、语义质量检查、缺口分析、来源可核验比例、Markdown 导出
-- **数据源层**：本地文件（CSV / TSV / JSON / JSONL / TXT / MD / XLSX，含中文编码兜底）+ 自建 HTTP 端点（密钥只走环境变量）+ 内容哈希校验
-- **运行时编排器**：按阶段顺序调度角色、注入证据与材料、**逐阶段门禁**（三档：充足 / 降级放行 / 不足）、模型判定门禁、**状态机裁决迁移**（模型的非法事件会被拒绝）、产出经 schema 校验的决策记录。**已在真实模型上跑通**，见 [`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md)
-- **决策记录与复盘**：决策入库、复审到期主动提醒、结果回填并强制区分执行偏差 / 策略失效 / 假设错误、写回 `project.json`
-- 6 份数据 Schema：项目、证据、决策、决策结果、实验、KPI 树
-- 8 个角色的完整契约
-- DeepSeek Harness Skill 与安装说明（`harness/`）
-- 单元测试（211 项，Python 3.10–3.13）
-- 盲评实验脚手架：编号散列、身份隐藏、评审一致性检查、拒绝不足两名评审与不完整覆盖
-- 模型 Provider 接入层（OpenAI 兼容 / Anthropic 兼容两种调用方式）
-- scorecard 结构校验：总分与分项一致性、取值域、必填字段
-- 基准用例与 32 分评分量表
-- 一轮先导实验（1/4 用例，样本不足，见 `bench/PILOT_B03.md`）
+> `agents/*.md` are **methodology contracts, not runtime agent instances.**
+> Writing "sub-agent" in a prompt does not create a sub-agent at runtime.
+> The distinction is deliberate: packaging prompts as delivered capability is the most common form of self-deception in this field.
 
-**未实现**
-- **并行多 Agent 调度** —— 编排器是顺序执行：一个角色一次模型调用。真正的并行与互相评审需要宿主支持（如 DeepSeek Harness 的子 Agent），本项目不假装具备
-- **内置营销数据平台连接器** —— 刻意不包含。数据源层只接受你自己给的文件或端点
-- **决策历史版本与依赖回退** —— 决策存了、能复盘，但假设被证伪时还不会自动列出受影响的决策节点
-- **营销动作的实际执行** —— 系统产出决策与验证方案，但不投放、不发消息、不写回任何外部系统
-- DeepSeek Harness 端到端集成
+---
 
-**未验证**
-- 在任何宿主中的端到端运行效果
-- 与单 Agent / 基础提示词的质量对照（先导实验样本不足，**不构成对照证据**）
-- 评审独立性（先导实验的两名评审身份与产生方式无记录）
-- 真实商业项目中的 ROI 改善
-- 商业价值假设：咨询交付 / 企业内训 / 评测层三条路径**均未验证**
-- ~~在真实客户数据上能否端到端跑完一次完整的 R→E→B→U→I→D~~ —— **已验证一次**，见 `examples/metro_apartment/`（单案例，非样本；局限已在案例 README 中逐条列明）
-- 编排器接上真实模型后的输出质量（现有测试全部使用注入的假模型）
-- 决策复盘能否在真实项目中按期发生（机制有了，但还没有人真正用过）
+## Worked case study
 
-> `agents/*.md` 中的角色是**方法论契约**，不是运行时的 Agent 实例。
-> 提示词里写了子 Agent，不等于运行时创建了子 Agent。
-> 这个区分是刻意的，因为我们认为把提示词包装成已交付的能力是行业里最常见的一种自欺。
-
-## 原创性边界
-
-本仓库中的阶段模型、决策记录协议、证据等级体系、阶段门禁、角色契约、反证机制、评测规程与状态机均为原创设计。
-
-不声称营销理论史上绝对无人提出过类似概念。原创性应以**具体实现、独立文档、版本历史和可复现实验**来建立，而不是靠「世界首创」的宣传。如果你发现实质相似的方法论，欢迎提 Issue 讨论——这会让这个项目更可信。
-
-不内置 n8n、PostHog、Mautic 等第三方营销项目。宿主（如 DeepSeek Harness）是运行环境，不是方法论来源，适配层不得重新定义 REBUILD 策略。
-
-## 评测
-
-`bench/` 提供四个固定基准用例、32 分八项量表，以及一套**防止自欺的盲评脚手架**。
-
-其中**诚实性得 0 分即判定样本失败**，不以总分抵消。
-
-```bash
-python bench/bench_runner.py generate --runs 3    # 生成盲评清单
-python bench/bench_runner.py template             # 空白评分表
-python bench/bench_runner.py import r1.csv r2.csv  # 合并评审
-python bench/bench_runner.py reveal               # 揭示身份（需 ≥2 名评审）
-python bench/bench_runner.py summarise            # 汇总并检查门槛
-```
-
-脚手架强制执行：编号由 SHA-256 散列生成且同配置每次运行不同、呈现顺序打乱、评审看不到配置身份、少于两名评审或任一评审未覆盖全部条目时拒绝揭示、两名评审分差超 6 分时提示复核。
-
-操作手册见 `bench/HOWTO.md`，评审规程见 `bench/REVIEW_PROTOCOL.md`。
-
-**当前状态：一次先导实验（pilot），不是正式评测结果。**
-
-⚠️ **下列数字不得作为结论引用。** 它只证明评测流程可以端到端跑通，不证明 REBUILD 优于任何方案。
-
-| 配置 | 评审甲 | 评审乙 | 均值 |
-|---|---|---|---|
-| A 普通提示词 | 16 | 13 | 14.5 |
-| B 单 Skill 框架 | 19 | 18 | 18.5 |
-| C REBUILD 完整 | 32 | 31 | 31.5 |
-
-**为什么这批数据不能当结论用：**
-
-- **样本量不足**：只覆盖 4 个用例中的 1 个（B03），每个配置只运行 1 次（`RUBRIC.md` 要求 ≥3 次）。
-- **评审独立性未经验证**：两名评审的身份与产生方式均无留存记录。在补证之前只能视为**自评**，**不能称为「两名独立评审盲评」**。
-- **绝对分数偏高**：C 组给出 32/32 与 31/32，接近满分。满分本身是评分尺度可能过松的警示信号。
-- **单一用例**：B03 恰是四个用例中最容易拉开差距的一个，其余三个表现未知。
-
-原始逐行评分见 `bench/scorecard.csv`，完整局限声明见 [`bench/PILOT_B03.md`](bench/PILOT_B03.md)。
-
-**本项目目前不声称自己在质量上优于任何方案。** 要得出该结论，须完成 4 用例 × 3 配置 × ≥3 次运行 × ≥2 名可验证独立评审，并公布全部原始输出与失败样本。
-
-## 真实项目案例
-
-`examples/metro_apartment/` 是一个**真实商业项目的脱敏版本**，包含三份原始输入材料、
-完整产出（决策页、KPI 树、实验卡片、单位经济模型）、以及可一键复现全部数字的 6 个脚本。
-
-它跑出来的结论是：**这不是营销问题，是分成结构问题。** 在给定条款下，
-运营方每运营一个月都在烧押金——无论出租率是 60% 还是 93%；甲方回本与乙方保本的约束**交集为空**。
+[`examples/metro_apartment/`](examples/metro_apartment/) is a **real commercial project, anonymised**, containing the three source documents, the full output (decision page, KPI tree, experiment cards, unit-economics model, power analysis), and six scripts that reproduce every number.
 
 ```bash
 cd examples/metro_apartment/rebuild && python3 scripts/run_all.py
 ```
 
-脱敏范围与残留风险见该目录的 [`ANONYMIZATION.md`](examples/metro_apartment/ANONYMIZATION.md)。
+What it found: **this was not a marketing problem, it was a profit-split problem.** Under the proposed terms the operator burned cash every month at *any* occupancy between 60% and 93%, and the owner's payback constraint and the operator's break-even constraint had an **empty intersection**. The recommendation was not to sign the current terms.
 
-## 目录
+**What happened next:** the owner accepted the recommendation, the split structure was changed, and the operator did not sign. The predicted blocker materialised.
+
+**What that does and does not prove** — the case README states this in full: it proves the analysis **changed a real decision**; it does **not** prove the analysis was arithmetically right, nor that the **revised** structure works (it has not been modelled), nor that the project is viable (it has not opened, there is no operating data).
+
+> **Being adopted is not the same as being validated.** Adoption shows a conclusion was persuasive; validation takes time.
+> And the owner calling it "viable" is *exactly what the model predicted* — the model said the terms work **for the owner** and not for the operator. The owner was always the party for whom the arithmetic worked.
+
+Anonymisation scope and residual risk are documented in [`ANONYMIZATION.md`](examples/metro_apartment/ANONYMIZATION.md), including an honest list of what could still be inferred.
+
+---
+
+## Real-model validation log
+
+[`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md) records the first end-to-end runs against a live model, including the five defects those runs exposed that **the unit test suite did not catch**.
+
+The most serious: every phase was judged against one shared gate criterion, so `DISCOVER` could never pass — **4 out of 4 runs stalled at the first phase**. After the fix, the same input completed `DISCOVER → REVIEW`.
+
+A recurring pattern worth naming: **four separate schema defects, all found by real use, all the same failure mode** — writing "the normal case" as "the only case":
+
+| # | Schema assumed | Reality |
+|---|---|---|
+| 1 | assumptions are plain strings | the model produced structured objects pairing each assumption with its falsification condition — more useful |
+| 2 | only the current schema is in use | the real project ran on a wider earlier schema |
+| 3 | a decision is always made | when evidence is insufficient, `chosen_option: null` is the honest answer |
+| 4 | every review finds a deviation | "it went as expected" is a legitimate conclusion, not "cannot attribute" |
+
+Unit tests check whether code conforms to the schema. The defects were in whether **the schema conforms to reality**.
+
+---
+
+## Originality boundary
+
+The phase model, decision-record protocol, evidence grading, phase gates, role contracts, falsification mechanism, evaluation protocol and state machine in this repository are original designs.
+
+This project does **not** claim nobody has ever proposed similar concepts. Originality should be established through **concrete implementation, independent documentation, version history and reproducible experiments** — not through a "world first" claim. If you find substantially similar work, please open an issue; that makes the project more credible, not less.
+
+No third-party marketing projects are bundled. A host (such as DeepSeek Harness) is a runtime environment, not the source of the methodology, and an adapter may not redefine REBUILD policy.
+
+---
+
+## Evaluation
+
+`bench/` provides four fixed benchmark cases and a 32-point eight-dimension rubric, where **a zero on honesty fails the sample outright** — total score cannot compensate.
+
+The protocol requires three configurations (plain prompt / single skill / full system), at least three independent runs each, and two blind reviewers.
+
+**The published scorecard is a single-case pilot, not a result.** One case out of four, one run per configuration, reviewers with no recorded provenance. It does not constitute comparative evidence. See [`bench/PILOT_B03.md`](bench/PILOT_B03.md).
+
+---
+
+## Repository layout
 
 ```text
-core/            方法论、状态机、Schema 校验器、证据账本、决策库、编排器、CLI
-agents/          主 Agent 与 8 个职能角色契约
-sources/         数据源层：本地文件与自建 HTTP 端点
-schemas/         项目、证据、决策、决策结果、实验、KPI 数据结构
-bench/           基准用例、评分量表、盲评脚手架、评审规程
-examples/        案例：nanjiang_tea 为空白框架；metro_apartment 为真实项目脱敏版
-harness/         宿主接入说明与可安装的 DeepSeek Harness Skill
-tests/           单元测试与静态检查清单
-docs/            状态与路线图、首次真实模型验证记录
+core/            Methodology, state machine, schema validator, evidence ledger,
+                 decision store, orchestrator, multi-run comparison, CLI
+agents/          Master agent and 8 specialist role contracts
+sources/         Data layer: local files and user-supplied HTTP endpoints
+schemas/         Project, evidence, decision, outcome, experiment, KPI tree
+bench/           Benchmark cases, rubric, blind-review harness, review protocol
+examples/        nanjiang_tea (empty framework); metro_apartment (real, anonymised)
+harness/         Host integration docs and an installable DeepSeek Harness skill
+tests/           Unit tests and a static checklist
+docs/            Status and roadmap; first real-model validation log
 ```
 
-## 贡献
+## Contributing
 
-见 [CONTRIBUTING.md](CONTRIBUTING.md)。核心要求：
-新增战略规则必须说明它**影响的决策、适用边界和失败条件**；
-新增案例必须标注真实/合成/匿名化属性；
-未运行的测试不得标记为通过。
+See [CONTRIBUTING.md](CONTRIBUTING.md). Core requirements:
+a new strategy rule must state **which decision it affects, where it applies and how it fails**;
+a new case must be labelled real / synthetic / anonymised;
+a test that has not been run may not be marked as passing.
 
-行为准则见 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)，安全报告见 [SECURITY.md](SECURITY.md)。
+Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Security reports: [SECURITY.md](SECURITY.md).
 
-## 许可证
+## License
 
-[MIT License](LICENSE)。许可证仅适用于发布者有权授权的仓库内容；REBUILD 名称、标识及未获授权的第三方素材不因本许可证而自动获得使用许可。
+[MIT](LICENSE). The licence covers only content the publisher has the right to license; the REBUILD name and any unauthorised third-party material are not automatically covered.

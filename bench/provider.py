@@ -253,7 +253,13 @@ def complete_with_usage(config, prompt):
         try:
             return caller(config, prompt)
         except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")[:300]
+            # 读取错误响应体在个别情况下会失败（例如 HTTPError 未携带 fp——
+            # Python 3.9 会在这里抛 KeyError）。读不到就当没有响应体：
+            # 为了读一段错误信息而让整个调用崩掉，是把手段当成了目的。
+            try:
+                body = exc.read().decode("utf-8", errors="replace")[:300]
+            except Exception:  # noqa: BLE001
+                body = ""
             # 4xx 多为配置或配额问题，重试无意义
             if 400 <= exc.code < 500 and exc.code not in (429,):
                 raise RuntimeError(
