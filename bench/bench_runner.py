@@ -5,10 +5,12 @@ REBUILD Bench Runner — 盲评对照实验脚手架。
 职责边界：
   - 生成三组配置（A 普通提示词 / B 单 Skill / C REBUILD）的盲评包
   - 随机化每个用例的呈现顺序，隐藏配置身份
+  - 通过 provider 层调用任意模型 API，或渲染提示词供手动粘贴
   - 收集评审打分，回填 scorecard.csv
   - 揭示配置身份（仅在全部评审提交后才可执行）
 
-设计约束：仅使用 Python 标准库。无第三方依赖。
+设计约束：仅使用 Python 标准库。模型调用走 provider.py 的可选接入层，
+未配置 API 时降级为手动模式，不阻塞流程。
 """
 import argparse
 import csv
@@ -21,6 +23,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BENCH = ROOT / "bench"
+sys.path.insert(0, str(BENCH))
+
+import provider as provider_layer
 RUNS = BENCH / "runs"
 SCORECARD = BENCH / "scorecard.csv"
 
@@ -83,10 +88,18 @@ def blind_id(case_id, config_key, salt, run_index=1):
     return f"X-{digest[:10].upper()}"
 
 
-def generate_manifest(salt=None, runs_per_config=1):
-    """生成盲评 manifest：决定哪些输出以什么顺序呈现给评审。"""
+def generate_manifest(salt=None, runs_per_config=1, case_filter=None):
+    """生成盲评 manifest：决定哪些输出以什么顺序呈现给评审。
+
+    case_filter 限定只跑某些用例（首次验证通常只跑一个）。
+    """
     ensure_dirs()
     cases = load_cases()
+    if case_filter:
+        cases = [c for c in cases if c["case_id"] == case_filter]
+        if not cases:
+            available = ", ".join(c["case_id"] for c in load_cases())
+            raise SystemExit(f"找不到用例 {case_filter}。可用: {available}")
     salt = salt or f"{datetime.now(timezone.utc).timestamp():.0f}"
     rng = random.Random(salt)
 
@@ -160,15 +173,25 @@ def reviewer_template():
 
 
 def import_reviews(*paths):
-    """校验评审文件并合并，写入 review_merged.csv。"""
+    """校验评审文件并合并，写入 review_merged.csv。
+
+    兼容 utf-8-sig：评审常在 Excel 中编辑并保存，会带上 BOM，
+    导致首列列名变成 'blindid' 而非 'blinded_id'。
+    """
     validate_header = ["blinded_id", "reviewer"] + RUBRIC_DIMENSIONS
     merged = []
     for path in paths:
-        with open(path, newline="", encoding="utf-8") as f:
+        # 先用 utf-8-sig 试，能同时处理有无 BOM 两种情况
+        with open(path, newline="", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             missing = [c for c in validate_header if c not in (reader.fieldnames or [])]
             if missing:
-                raise SystemExit(f"{path} 缺少字段: {', '.join(missing)}")
+                hint = ""
+                if reader.fieldnames and "﻿" in (reader.fieldnames[0] or ""):
+                    hint = "（检测到 BOM，请用 utf-8 重新保存）"
+                raise SystemExit(
+                    f"{path} 缺少字段: {', '.join(missing)}{hint}"
+                )
             for row in reader:
                 if not row.get("blinded_id"):
                     continue
@@ -382,6 +405,119 @@ def summarise():
     return report
 
 
+def render(case_filter=None, out_dir=None):
+    """渲染提示词成品。有 API 时同时直接生成输出，无 API 时供人工粘贴。"""
+    ensure_dirs()
+    manifest_path = RUNS / "manifest.json"
+    if not manifest_path.exists():
+        raise SystemExit("请先运行 `generate`")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    out = Path(out_dir) if out_dir else RUNS / "prompts_ready"
+    out.mkdir(parents=True, exist_ok=True)
+    cases = {c["case_id"]: c for c in load_cases()}
+
+    rendered = 0
+    for entry in manifest["entries"]:
+        if case_filter and entry["case_id"] != case_filter:
+            continue
+        case = cases.get(entry["case_id"])
+        if case is None:
+            continue
+        template_path = ROOT / entry["source_prompt"]
+        template = template_path.read_text(encoding="utf-8")
+        if "{{PROMPT}}" in template:
+            text = template.replace("{{PROMPT}}", case["prompt"])
+        else:
+            text = (template + "\n\n---\n\n【本次要回答的问题】\n\n"
+                    + case["prompt"] + "\n")
+
+        header = (f"【盲评编号】{entry['blinded_id']}\n"
+                  f"【配置】{entry['config_key']}\n"
+                  f"【用例】{entry['case_id']}\n"
+                  f"【用法】复制以下全部内容，粘贴给模型；输出完成后另存为 "
+                  f"{entry['blinded_id']}.txt 放入 {RUNS}/responses/\n\n")
+        (out / f"{entry['blinded_id']}.txt").write_text(
+            header + text, encoding="utf-8")
+        rendered += 1
+
+    print(f"已渲染 {rendered} 份提示词 → {out}")
+    return out
+
+
+def execute(case_filter=None, provider_name=None, output_dir=None, overrides=None):
+    """调用 API 生成全部输出。无 API 时提示改用手动模式。"""
+    manifest_path = RUNS / "manifest.json"
+    if not manifest_path.exists():
+        raise SystemExit("请先运行 `generate`")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    cases = {c["case_id"]: c for c in load_cases()}
+
+    if not provider_name:
+        print("未指定 provider。两种方式：\n")
+        print("  方式一（无需密钥）：")
+        print("    python bench/bench_runner.py render"
+              + (f" --case {case_filter}" if case_filter else ""))
+        print("    复制提示词到任意模型，拿回输出放入 bench/runs/responses/\n")
+        print("  方式二（配置 API，自动跑）：")
+        print("    python bench/provider.py check deepseek")
+        print("    export DEEPSEEK_API_KEY=sk-xxx")
+        print("    python bench/bench_runner.py execute --provider deepseek"
+              + (f" --case {case_filter}" if case_filter else ""))
+        return 1
+
+    config = provider_layer.ProviderConfig.from_preset(provider_name)
+    for attr, value in (overrides or {}).items():
+        setattr(config, attr, value)
+
+    ok, message = provider_layer.check_available(config)
+    if not ok:
+        print(f"配置检查未通过：{message}", file=sys.stderr)
+        return 1
+    print(f"使用：{message}\n")
+
+    responses = Path(output_dir) if output_dir else RUNS / "responses"
+    responses.mkdir(parents=True, exist_ok=True)
+
+    targets = [e for e in manifest["entries"]
+               if not case_filter or e["case_id"] == case_filter]
+    print(f"将调用 {len(targets)} 次模型（每次费用由你的 API 账户承担）")
+    confirm = input("确认执行？(y/N) ")
+    if confirm.strip().lower() not in ("y", "yes"):
+        print("已取消。")
+        return 1
+
+    failures = []
+    for index, entry in enumerate(targets, start=1):
+        case = cases.get(entry["case_id"])
+        template = (ROOT / entry["source_prompt"]).read_text(encoding="utf-8")
+        if "{{PROMPT}}" in template:
+            prompt = template.replace("{{PROMPT}}", case["prompt"])
+        else:
+            prompt = (template + "\n\n---\n\n【本次要回答的问题】\n\n"
+                      + case["prompt"])
+
+        label = f"[{index}/{len(targets)}] {entry['case_id']} / {entry['config_key']}"
+        print(f"{label} … ", end="", flush=True)
+        try:
+            text = provider_layer.complete(config, prompt)
+        except RuntimeError as exc:
+            print(f"失败：{exc}")
+            failures.append((entry["blinded_id"], str(exc)))
+            continue
+        (responses / f"{entry['blinded_id']}.txt").write_text(
+            text, encoding="utf-8")
+        print(f"完成（{len(text)} 字符）")
+
+    print(f"\n成功 {len(targets) - len(failures)} / {len(targets)}")
+    if failures:
+        print("失败条目：")
+        for blinded, reason in failures:
+            print(f"  {blinded}: {reason}")
+    print(f"输出目录：{responses}")
+    return 0 if not failures else 1
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="REBUILD bench 盲评对照实验脚手架",
@@ -392,8 +528,24 @@ def main():
     g = sub.add_parser("generate", help="生成盲评 manifest 与呈现顺序")
     g.add_argument("--salt", default=None, help="指定盐值以便复现同一顺序")
     g.add_argument("--runs", type=int, default=1, help="每组重复运行次数")
+    g.add_argument("--case", default=None, help="只跑指定用例，如 B03")
 
     sub.add_parser("template", help="生成空白评分表")
+
+    r = sub.add_parser("render", help="渲染提示词成品（供手动粘贴）")
+    r.add_argument("--case", default=None, help="只渲染指定用例，如 B03")
+    r.add_argument("--out", default=None, help="输出目录")
+
+    e = sub.add_parser("execute", help="调用模型 API 生成输出")
+    e.add_argument("--provider", default=None, help="provider 名称，见 provider.py list")
+    e.add_argument("--case", default=None, help="只跑指定用例，如 B03")
+    e.add_argument("--out", default=None, help="输出目录")
+    e.add_argument("--base-url", default=None)
+    e.add_argument("--model", default=None)
+    e.add_argument("--api-key-env", dest="api_key_env", default=None)
+    e.add_argument("--api-style", dest="api_style", default=None)
+    e.add_argument("--temperature", type=float, default=None)
+    e.add_argument("--max-tokens", dest="max_tokens", type=int, default=None)
 
     i = sub.add_parser("import", help="合并评审文件")
     i.add_argument("files", nargs="+", help="review_1.csv review_2.csv ...")
@@ -404,9 +556,25 @@ def main():
 
     args = parser.parse_args()
     if args.cmd == "generate":
-        generate_manifest(salt=args.salt, runs_per_config=args.runs)
+        generate_manifest(salt=args.salt, runs_per_config=args.runs,
+                          case_filter=args.case)
     elif args.cmd == "template":
         reviewer_template()
+    elif args.cmd == "render":
+        render(case_filter=args.case, out_dir=args.out)
+    elif args.cmd == "execute":
+        overrides = {
+            k: v for k, v in {
+                "base_url": args.base_url,
+                "model": args.model,
+                "api_key_env": args.api_key_env,
+                "api_style": args.api_style,
+                "temperature": args.temperature,
+                "max_tokens": args.max_tokens,
+            }.items() if v is not None
+        }
+        return execute(case_filter=args.case, provider_name=args.provider,
+                       output_dir=args.out, overrides=overrides)
     elif args.cmd == "import":
         import_reviews(*args.files)
     elif args.cmd == "reveal":
