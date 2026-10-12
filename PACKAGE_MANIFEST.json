@@ -1,21 +1,23 @@
 {
   "name": "REBUILD Strategist Original Decision-Centric Marketing Agent OS",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "external_marketing_project_dependencies": [],
   "python_runtime_dependencies": [],
   "implemented": [
     "original methodology and phase gates (documented)",
     "deterministic state machine with rollback transitions",
     "JSON Schema validator (stdlib): type/required/properties/additionalProperties/items/enum/ranges/anyOf/oneOf/allOf; unimplemented keywords are reported rather than silently ignored",
-    "evidence ledger: validated JSONL append, semantic quality checks, gap analysis, Markdown export",
+    "evidence ledger: validated JSONL append, semantic quality checks, gap analysis, machine-checkable provenance ratio, Markdown export",
     "data sources: local files (CSV/TSV/JSON/JSONL/TXT/MD/XLSX with CJK encoding fallback) and user-supplied HTTP endpoints; SHA-256 provenance; secrets read from environment only",
     "runtime orchestrator: sequential per-phase role dispatch, evidence and material injection, model-judged gates, state-machine-adjudicated transitions, schema-validated decision record",
-    "5 JSON Schemas enforced: project, evidence, decision, experiment, KPI tree",
+    "decision store: persist decisions, surface overdue reviews proactively, back-fill outcomes with mandatory deviation typing (execution/strategy/assumption/mixed/unknown), write back to project.json",
+    "6 JSON Schemas enforced: project, evidence, decision, decision outcome, experiment, KPI tree",
     "8 differentiated specialist role contracts",
+    "DeepSeek Harness skill and installation guide (harness/)",
     "blind-review harness: hashed ids, shuffled order, identity hiding, reviewer agreement check",
     "model provider layer (OpenAI-compatible and Anthropic-compatible)",
     "scorecard structural validation (totals vs dimensions, value ranges, required fields)",
-    "unit tests (174, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
+    "unit tests (211, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
     "benchmark rubric and 4 fixed cases",
     "GitHub Actions CI workflow for Python 3.10-3.13, including an end-to-end smoke test",
     "community health files: SECURITY, CODE_OF_CONDUCT, PR and Issue templates"
@@ -23,8 +25,8 @@
   "not_implemented": [
     "parallel multi-agent dispatch (the orchestrator is strictly sequential: one role, one model call)",
     "built-in marketing platform connectors (deliberately excluded; the data layer accepts only user-provided files or endpoints)",
-    "database persistence and decision history versioning",
-    "execution of decisions and outcome back-filling",
+    "decision history versioning and dependency rollback (assumptions being refuted does not yet auto-list affected decisions)",
+    "execution of marketing actions (the system produces decisions and validation plans; it does not advertise, message, or write back to any external system)",
     "DeepSeek Harness end-to-end validation"
   ],
   "partial": [
@@ -36,6 +38,7 @@
     "comparative quality against plain prompts or single-skill setups",
     "independence and provenance of the two pilot reviewers (no record kept)",
     "a complete R-E-B-U-I-D run on real client data",
+    "whether decision reviews actually happen on schedule in a real project (the mechanism exists; nobody has used it yet)",
     "commercial value hypotheses: consulting delivery, corporate training, evaluation layer",
     "real-world ROI impact in commercial projects"
   ],

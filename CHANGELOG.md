@@ -1,5 +1,42 @@
 # Changelog
 
+## V3.4.0 — 决策复盘闭环、来源可核验与 Skill 更新
+
+这一版补上的是**最后一段断掉的循环**：D（Decision Review）阶段此前完全没有实现——
+`project.json` 里的 `decision_records` 是个永远为空的数组，决策做完就散了，
+系统能产出决策却永远学不到自己的决策对不对。
+
+### 新增：决策记录与复盘（`core/decisions.py` + `schemas/outcome.schema.json`）
+- 决策入库、按复审日期管理、结果回填，并同步回 `project.json` 的 `decision_records`
+  （标注 `PENDING_REVIEW` / `REVIEWED`）。
+- **`decision due` 把「该复盘却没复盘」的决策主动摆到眼前**，而不是等使用者想起来。
+- **强制区分偏差类型**：`EXECUTION`（执行偏差）/ `STRATEGY`（策略失效）/
+  `ASSUMPTION`（假设错误）/ `MIXED` / `UNKNOWN`。选 `UNKNOWN` 必须说明为什么无法归因。
+- 结果回填时 `actual` 过短会被拒绝：复盘必须写出实际观察到的结果，
+  没有数据时须写「未采集到数据」，不得用印象代替。
+- 质量提示：无复审日期、无反证条件、无代价、无关键假设、单选项、
+  所选方案不在候选列表、同名选项、期限已过期。
+- **模型产出的决策记录不自动入库**：编排器只写运行产物，入库需人工执行
+  `decision import`——与证据同一条原则。
+
+### 新增：证据来源可核验（`ledger.provenance_report` + `evidence provenance`）
+- `source` 写成 `DOC-001` 形式时视为指向材料库，**可被机器核验**；
+  写成自由文本则不能。系统明确区分这两种情况并统计可核验比例。
+- **断链是错误而非警告**：指向不存在的材料比自由文本更糟——
+  它自称可核验，实际核验不了。
+- `evidence add --source-doc DOC-001` 在写入前确认材料存在。
+
+### 更新：宿主接入（`harness/`）
+- `harness/deepseek/SKILL.md` 重写：此前完全没有提及 V3.3 引入的任何能力
+  （编排器 / 证据账本 / 数据源 / 决策库），现已全部纳入，并补充边界声明。
+- 新增 `harness/README.md`：安装步骤、DSH 技能发现规则、卸载方式与能力边界。
+- 新增 `tests/test_harness_skill.py`：把「frontmatter 不合法会导致技能被静默丢弃」
+  变成 CI 能抓住的错误。
+
+### 变更
+- `schemas/` 由 5 份增至 6 份（新增 `outcome.schema.json`）。
+- 单元测试由 174 项增至 211 项。
+
 ## V3.3.0 — 运行时、证据账本与数据源
 
 这一版把三处「文档里写了、代码里没有」的缺口补上：Schema 只是规范文件、

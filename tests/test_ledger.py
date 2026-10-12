@@ -214,5 +214,49 @@ class ExportTests(LedgerTestCase):
         self.assertIn("A \\| B", text)
 
 
+class ProvenanceTests(LedgerTestCase):
+    def _add_document(self, doc_id="DOC-001"):
+        directory = self.dir / "sources" / "documents"
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / f"{doc_id}.json").write_text("{}", encoding="utf-8")
+
+    def test_document_ref_detection(self):
+        self.assertEqual(L.document_ref("DOC-001"), "DOC-001")
+        self.assertIsNone(L.document_ref("门店台账 2026-03"))
+        self.assertIsNone(L.document_ref("doc-001"))   # 必须大写
+        self.assertIsNone(L.document_ref(""))
+
+    def test_linked_source_is_verifiable(self):
+        self._add_document()
+        self.ledger.add(good_record(source="DOC-001"))
+        errors, _ = self.ledger.validate()
+        self.assertEqual(errors, [])
+        report = L.provenance_report(self.dir)
+        self.assertEqual(len(report["linked"]), 1)
+        self.assertEqual(report["verifiable_ratio"], 1.0)
+
+    def test_dangling_source_is_an_error_not_a_warning(self):
+        # 断链比自由文本更糟：它自称可核验，实际核验不了
+        self.ledger.add(good_record(source="DOC-999"))
+        errors, _ = self.ledger.validate()
+        self.assertTrue(any("断链" in e for e in errors), errors)
+        report = L.provenance_report(self.dir)
+        self.assertEqual(len(report["dangling"]), 1)
+
+    def test_free_text_source_is_counted_separately(self):
+        self.ledger.add(good_record(source="门店台账 2026-03"))
+        report = L.provenance_report(self.dir)
+        self.assertEqual(len(report["free_text"]), 1)
+        self.assertEqual(report["verifiable_ratio"], 0.0)
+
+    def test_no_source_is_counted(self):
+        self.ledger.add(good_record(type="UNKNOWN", confidence="LOW", source=None))
+        report = L.provenance_report(self.dir)
+        self.assertEqual(len(report["no_source"]), 1)
+
+    def test_empty_ledger_ratio_is_none(self):
+        self.assertIsNone(L.provenance_report(self.dir)["verifiable_ratio"])
+
+
 if __name__ == "__main__":
     unittest.main()

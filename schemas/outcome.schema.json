@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REBUILD Decision Outcome",
+  "description": "决策的实际结果回填。方法论要求复盘必须比较预期与实际、区分执行偏差与策略失效，并记录下一步如何改变——只有填了这个，决策循环才算闭合。",
+  "type": "object",
+  "required": [
+    "decision_id", "recorded_at", "expected", "actual",
+    "deviation_type", "next_action"
+  ],
+  "properties": {
+    "decision_id": {"type": "string", "minLength": 1},
+    "recorded_at": {"type": "string", "minLength": 1},
+    "expected": {
+      "type": "string", "minLength": 1,
+      "description": "当初预期的结果，须与决策记录中的验证动作对应"
+    },
+    "actual": {
+      "type": "string", "minLength": 1,
+      "description": "实际观察到的结果。没有数据时须写明「未采集到数据」，不得用印象代替"
+    },
+    "deviation_type": {
+      "enum": ["EXECUTION", "STRATEGY", "ASSUMPTION", "MIXED", "UNKNOWN"],
+      "description": "EXECUTION=执行偏差（方向对、力度不足）；STRATEGY=策略失效；ASSUMPTION=关键假设错误；MIXED=多重；UNKNOWN=无法归因"
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "支撑本次复盘判断的证据账本编号"
+    },
+    "assumption_updates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assumption", "status"],
+        "properties": {
+          "assumption": {"type": "string"},
+          "status": {"enum": ["CONFIRMED", "REFUTED", "STILL_UNKNOWN"]},
+          "note": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "next_action": {
+      "enum": ["CONTINUE", "ADJUST", "STOP", "ROLLBACK"],
+      "description": "继续 / 调整 / 停止 / 回退到受影响的决策阶段"
+    },
+    "notes": {"type": ["string", "null"]}
+  },
+  "additionalProperties": false
+}

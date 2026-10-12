@@ -42,6 +42,7 @@ def _collect_domain_errors():
         ("sources", "SourceError"),
         ("ledger", "EvidenceError"),
         ("orchestrator", "OrchestratorError"),
+        ("decisions", "DecisionError"),
     ):
         try:
             module = __import__(module_name)
@@ -126,10 +127,16 @@ def cmd_evidence(args):
     ledger = ledger_module.Ledger(directory)
 
     if args.action == "add":
+        source = args.source
+        if args.source_doc:
+            from sources import DocumentStore
+
+            DocumentStore(directory).get(args.source_doc)  # 不存在则抛错
+            source = args.source_doc
         record = {
             "claim": args.claim,
             "type": args.type,
-            "source": args.source,
+            "source": source,
             "observed_at": args.observed_at,
             "confidence": args.confidence,
             "scope": args.scope,
@@ -200,6 +207,24 @@ def cmd_evidence(args):
             print(f"已导出到 {args.out}")
         else:
             print(text)
+        return 0
+
+    if args.action == "provenance":
+        report = ledger_module.provenance_report(directory)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        if report["dangling"]:
+            print(
+                f"\n{len(report['dangling'])} 条证据的来源是断链（指向不存在的材料）。",
+                file=sys.stderr,
+            )
+            return 1
+        if report["total"] and report["verifiable_ratio"] is not None:
+            print(
+                f"\n可机器核验比例：{report['verifiable_ratio']:.0%}"
+                f"（{len(report['linked'])}/{report['total']}）。"
+                f"自由文本来源无法自动核验，只能靠人工。",
+                file=sys.stderr,
+            )
         return 0
 
     raise ValueError(f"未知的 evidence 动作：{args.action}")
@@ -324,6 +349,138 @@ def cmd_run(args):
     return 0
 
 
+def cmd_decision(args):
+    import decisions as decisions_module
+
+    directory = project_dir_of(args.project)
+    store = decisions_module.DecisionStore(directory)
+
+    if args.action == "add":
+        def pairs(values, left_key, right_key):
+            out = []
+            for raw in values or []:
+                name, _, rest = str(raw).partition("|")
+                out.append({left_key: name.strip(), right_key: rest.strip()})
+            return out
+
+        record = {
+            "question": args.question,
+            "deadline": args.deadline,
+            "options": pairs(args.option, "name", "rationale"),
+            "chosen_option": args.chosen,
+            "rejected_options": pairs(args.rejected, "name", "reason"),
+            "tradeoffs": args.tradeoff or [],
+            "key_assumptions": args.assumption or [],
+            "falsification_conditions": args.falsification or [],
+            "validation_actions": args.validation or [],
+            "review_date": args.review_date,
+        }
+        if args.id:
+            record["decision_id"] = args.id
+        saved = store.add(record)
+        print(json.dumps({"added": saved}, ensure_ascii=False, indent=2))
+        warnings = decisions_module.quality_warnings(saved)
+        if warnings:
+            print("\n质量提示（已写入，但请处理）：", file=sys.stderr)
+            for warning in warnings:
+                print(f"  ⚠ {warning}", file=sys.stderr)
+        return 0
+
+    if args.action == "list":
+        records = store.list()
+        if not records:
+            print("尚无决策记录")
+            return 0
+        for record in records:
+            rid = record.get("decision_id")
+            outcome = store.outcome_of(rid)
+            status = "已复盘" if outcome else "待复盘"
+            print(
+                f"{rid:<8}{status:<8}{record.get('review_date') or '(无复审日期)':<14}"
+                f"{record.get('chosen_option')}"
+            )
+        return 0
+
+    if args.action == "show":
+        if not args.id:
+            raise ValueError("decision show 需要 --id")
+        record = store.load(args.id)
+        outcome = store.outcome_of(args.id)
+        print(json.dumps(record, ensure_ascii=False, indent=2))
+        print("\n--- 复盘结果 ---")
+        print(json.dumps(outcome, ensure_ascii=False, indent=2) if outcome
+              else "尚未复盘。")
+        return 0
+
+    if args.action == "validate":
+        errors, warnings = store.validate()
+        print(json.dumps(
+            {"decisions": len(store.list()), "errors": errors, "warnings": warnings},
+            ensure_ascii=False, indent=2,
+        ))
+        return 1 if errors else 0
+
+    if args.action == "outcome":
+        if not args.id:
+            raise ValueError("decision outcome 需要 --id")
+        outcome = {
+            "decision_id": args.id,
+            "expected": args.expected,
+            "actual": args.actual,
+            "deviation_type": args.deviation,
+            "evidence_ids": args.evidence or [],
+            "next_action": args.next_action,
+            "notes": args.notes,
+        }
+        saved = store.record_outcome(outcome)
+        print(json.dumps({"recorded": saved}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.action == "due":
+        report = store.due_for_review()
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        if report["overdue"]:
+            print(
+                f"\n{len(report['overdue'])} 项决策已过复审日期但尚未复盘。"
+                f"方法论要求 D 阶段闭合——没有复盘就没有学习。",
+                file=sys.stderr,
+            )
+            return 1
+        return 0
+
+    if args.action == "import":
+        # 模型产出的决策记录需人工确认后才入账。
+        # 与证据同一条原则：模型输出不等于已成立的决策。
+        if not args.from_path:
+            raise ValueError("decision import 需要 --from <decision_record.json>")
+        source = Path(args.from_path)
+        if not source.exists():
+            raise ValueError(f"找不到文件：{source}")
+        record = json.loads(source.read_text(encoding="utf-8"))
+        record.pop("decision_id", None)      # 重新编号，避免与现有记录撞号
+        saved = store.add(record)
+        print(json.dumps({"imported": saved}, ensure_ascii=False, indent=2))
+        print(
+            "\n注意：这是模型产出的决策草案，已按原样入库。"
+            "复审日期与反证条件需要你亲自确认后修改。",
+            file=sys.stderr,
+        )
+        for warning in decisions_module.quality_warnings(saved):
+            print(f"  ⚠ {warning}", file=sys.stderr)
+        return 0
+
+    if args.action == "export":
+        text = store.to_markdown()
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            print(f"已导出到 {args.out}")
+        else:
+            print(text)
+        return 0
+
+    raise ValueError(f"未知的 decision 动作：{args.action}")
+
+
 def cmd_schema(args):
     schema_path = Path(args.schema_file) if args.schema_file else sv.guess_schema(
         args.file, SCHEMAS
@@ -368,13 +525,17 @@ def build_parser():
     s.add_argument("--schema-file", default=None)
 
     e = sub.add_parser("evidence", help="证据账本")
-    e.add_argument("action", choices=["add", "list", "check", "gaps", "export"])
+    e.add_argument("action",
+                   choices=["add", "list", "check", "gaps", "export", "provenance"])
     e.add_argument("project")
     e.add_argument("--claim")
     e.add_argument("--type", choices=["FACT", "INFERENCE", "ASSUMPTION", "UNKNOWN"])
     e.add_argument("--confidence", choices=["HIGH", "MEDIUM", "LOW"])
     e.add_argument("--min-confidence", choices=["HIGH", "MEDIUM", "LOW"])
-    e.add_argument("--source", default=None)
+    e.add_argument("--source", default=None,
+                   help="自由文本来源，无法自动核验")
+    e.add_argument("--source-doc", default=None, dest="source_doc",
+                   help="指向材料库的编号（如 DOC-001），可被机器核验")
     e.add_argument("--observed-at", default=None)
     e.add_argument("--scope", default=None)
     e.add_argument("--decision-impact", default=None)
@@ -383,6 +544,38 @@ def build_parser():
     e.add_argument("--id", default=None)
     e.add_argument("--json", action="store_true")
     e.add_argument("--out", default=None)
+
+    d = sub.add_parser("decision", help="决策记录与复盘")
+    d.add_argument("action",
+                   choices=["add", "list", "show", "validate", "outcome",
+                            "due", "export", "import"])
+    d.add_argument("project")
+    d.add_argument("--id", default=None)
+    d.add_argument("--question", default=None)
+    d.add_argument("--deadline", default=None)
+    d.add_argument("--option", action="append",
+                   help='候选方案，形如 "名称|理由"，可重复')
+    d.add_argument("--chosen", default=None, help="采用的方案名称")
+    d.add_argument("--rejected", action="append",
+                   help='放弃的方案，形如 "名称|原因"，可重复')
+    d.add_argument("--tradeoff", action="append", help="代价，可重复")
+    d.add_argument("--assumption", action="append", help="关键假设，可重复")
+    d.add_argument("--falsification", action="append",
+                   help="反证条件，可重复")
+    d.add_argument("--validation", action="append", help="验证动作，可重复")
+    d.add_argument("--review-date", default=None, dest="review_date")
+    # outcome
+    d.add_argument("--expected", default=None)
+    d.add_argument("--actual", default=None)
+    d.add_argument("--deviation", default=None,
+                   choices=["EXECUTION", "STRATEGY", "ASSUMPTION", "MIXED", "UNKNOWN"])
+    d.add_argument("--next-action", default=None, dest="next_action",
+                   choices=["CONTINUE", "ADJUST", "STOP", "ROLLBACK"])
+    d.add_argument("--evidence", action="append")
+    d.add_argument("--notes", default=None)
+    d.add_argument("--out", default=None)
+    d.add_argument("--from", default=None, dest="from_path",
+                   help="import：从运行产物导入决策记录 JSON")
 
     src = sub.add_parser("source", help="数据源")
     src.add_argument("action",
@@ -431,6 +624,8 @@ def main(argv=None):
             return cmd_schema(args)
         if args.cmd == "evidence":
             return cmd_evidence(args)
+        if args.cmd == "decision":
+            return cmd_decision(args)
         if args.cmd == "source":
             return cmd_source(args)
         if args.cmd == "run":

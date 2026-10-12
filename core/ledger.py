@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -39,6 +40,68 @@ class EvidenceError(Exception):
 
 def schemas_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "schemas"
+
+
+#: 形如 DOC-001 的来源视为指向材料库的引用，可被机器核验。
+DOC_REF_PATTERN = re.compile(r"^DOC-\d+$")
+
+
+def document_ref(source):
+    """若来源是材料编号则返回它，否则返回 None。
+
+    这是把「可追溯」从口号变成机制的关键：自由文本来源无法自动核验，
+    材料编号可以。两种都允许，但系统知道自己在处理哪一种。
+    """
+    text = str(source or "").strip()
+    return text if DOC_REF_PATTERN.match(text) else None
+
+
+def documents_dir(project_dir) -> Path:
+    return Path(project_dir) / "sources" / "documents"
+
+
+def existing_document_ids(project_dir) -> set:
+    directory = documents_dir(project_dir)
+    if not directory.exists():
+        return set()
+    return {path.stem for path in directory.glob("DOC-*.json")}
+
+
+def provenance_report(project_dir) -> dict:
+    """证据来源的可核验程度统计。
+
+    区分三档：
+      - linked     来源是材料编号，且材料存在 → **可机器核验**
+      - dangling   来源是材料编号，但材料不存在 → 断链，是错误
+      - free_text  来源是自由文本 → 无法自动核验，只能靠人工
+    """
+    project_dir = Path(project_dir)
+    ledger = Ledger(project_dir)
+    known = existing_document_ids(project_dir)
+
+    linked, dangling, free_text, missing = [], [], [], []
+    for record in ledger.load():
+        rid = record.get("id", "?")
+        source = str(record.get("source") or "").strip()
+        ref = document_ref(source)
+        if ref:
+            (linked if ref in known else dangling).append(
+                {"id": rid, "source": ref, "claim": record.get("claim")}
+            )
+        elif source:
+            free_text.append({"id": rid, "source": source, "claim": record.get("claim")})
+        else:
+            missing.append({"id": rid, "claim": record.get("claim")})
+
+    total = len(linked) + len(dangling) + len(free_text) + len(missing)
+    return {
+        "total": total,
+        "linked": linked,
+        "dangling": dangling,
+        "free_text": free_text,
+        "no_source": missing,
+        "verifiable_ratio": round(len(linked) / total, 3) if total else None,
+    }
 
 
 def load_evidence_schema() -> dict:
@@ -182,6 +245,17 @@ class Ledger:
             if rid in seen:
                 errors.append(f"{rid}: 编号重复")
             seen[rid] = True
+
+        # 指向不存在材料的来源是**断链**：它自称可核验，实际核验不了。
+        # 这比自由文本来源更糟，所以算错误而不是警告。
+        known = existing_document_ids(self.project_dir)
+        for record in records:
+            ref = document_ref(record.get("source"))
+            if ref and ref not in known:
+                errors.append(
+                    f"{record.get('id', '?')}: 来源指向材料 {ref}，"
+                    f"但材料库中没有这份材料（断链）"
+                )
         return errors, warnings
 
     # ------------------------------------------------------------------ 查询

@@ -82,7 +82,7 @@ LTV 不标观察窗口即无效，CAC 不区分渠道/全口径/增量口径即�
 git clone https://github.com/Pacino101/rebuild-strategist.git
 cd rebuild-strategist
 
-# 单元测试（174 项）
+# 单元测试（211 项）
 python -m unittest discover -s tests -v
 
 # 项目状态校验
@@ -210,6 +210,63 @@ python core/rebuild_cli.py run projects/my-project --provider deepseek
 
 产物写入 `<项目>/runs/<时间戳>/`：每个角色的任务包与输出、门禁判定原文、决策记录（经 schema 校验）。`runs/` 默认不提交。
 
+## 决策记录与复盘
+
+方法论里 D（Decision Review）阶段要求「比较预期与实际、区分执行偏差与策略失效、记录下一步如何改变」。**在此之前这一环完全是空的**——`project.json` 里的 `decision_records` 永远是个空数组，决策做完就散了，系统永远学不到自己的决策对不对。
+
+```bash
+# 落一份决策
+python core/rebuild_cli.py decision add projects/my-project \
+    --question "优先选择哪一项品牌与渠道策略？" \
+    --option "春茶季集中投放|需求集中，转化率高" \
+    --option "全年均投|稳定但错过峰值" \
+    --chosen "春茶季集中投放" \
+    --rejected "全年均投|峰值把握不足" \
+    --tradeoff "放弃淡季曝光" \
+    --assumption "需求集中在 3 月下旬至 4 月上旬" \
+    --falsification "若 4 月复购率低于 15% 则推翻" \
+    --validation "小规模 A/B 测试" \
+    --review-date 2026-05-01
+
+# 到了该复盘的时候，它会主动找上门
+python core/rebuild_cli.py decision due projects/my-project
+
+# 回填实际结果
+python core/rebuild_cli.py decision outcome projects/my-project --id DR-001 \
+    --expected "春茶季销量提升 30%" \
+    --actual "实际提升 12%，未达预期" \
+    --deviation EXECUTION --next-action ADJUST \
+    --notes "投放量不足，不是方向错误"
+```
+
+`decision due` 按复审日期把**「该复盘却没复盘」的决策摆到眼前**，而不是等你想起来。`decision outcome` 强制区分偏差类型：
+
+| 偏差类型 | 含义 |
+|---|---|
+| `EXECUTION` | 执行偏差——方向对、力度不足 |
+| `STRATEGY` | 策略失效——方向本身错了 |
+| `ASSUMPTION` | 关键假设错误 |
+| `MIXED` / `UNKNOWN` | 多重原因 / 无法归因（选 `UNKNOWN` 必须说明理由，不允许含糊过去） |
+
+决策会自动同步回 `project.json` 的 `decision_records`，标注 `PENDING_REVIEW` 或 `REVIEWED`。
+
+> **模型产出的决策记录不会自动入库。** 编排器跑完只把决策记录写进运行产物；要入库必须由人显式执行 `decision import`——与证据同一条原则：模型输出不等于已成立的决策。
+
+## 证据来源可核验
+
+证据的 `source` 有两种写法，系统知道自己在处理哪一种：
+
+- **`DOC-001`**（材料编号）——指向材料库里的一份材料，**可被机器核验**。指向不存在的材料会报错，因为这是「自称可核验但实际核验不了」的断链。
+- **自由文本**（如「门店台账 2026-03」）——无法自动核验，只能靠人工。
+
+```bash
+python core/rebuild_cli.py source add-file projects/my-project ~/orders.csv
+python core/rebuild_cli.py evidence add projects/my-project \
+    --claim "..." --type FACT --confidence MEDIUM \
+    --source-doc DOC-001 --scope "..." --decision-impact "..."
+python core/rebuild_cli.py evidence provenance projects/my-project   # 可核验比例
+```
+
 ## 成熟度声明
 
 这一节是本项目最重要的部分，请认真读。
@@ -218,12 +275,14 @@ python core/rebuild_cli.py run projects/my-project --provider deepseek
 - 原创方法论与阶段门禁（已文档化）
 - 确定性状态机：7 状态 / 合法与回退迁移
 - **JSON Schema 校验器**（纯标准库）：type / required / properties / additionalProperties / items / enum / 范围与长度 / anyOf / oneOf / allOf。**未实现的关键字会报警而不是静默通过**
-- **证据账本**：JSONL 追加存储、写入前强制 schema 校验、语义质量检查、缺口分析、Markdown 导出
+- **证据账本**：JSONL 追加存储、写入前强制 schema 校验、语义质量检查、缺口分析、来源可核验比例、Markdown 导出
 - **数据源层**：本地文件（CSV / TSV / JSON / JSONL / TXT / MD / XLSX，含中文编码兜底）+ 自建 HTTP 端点（密钥只走环境变量）+ 内容哈希校验
 - **运行时编排器**：按阶段顺序调度角色、注入证据与材料、模型判定门禁、**状态机裁决迁移**（模型的非法事件会被拒绝）、产出经 schema 校验的决策记录
-- 5 份数据 Schema：项目、证据、决策、实验、KPI 树
+- **决策记录与复盘**：决策入库、复审到期主动提醒、结果回填并强制区分执行偏差 / 策略失效 / 假设错误、写回 `project.json`
+- 6 份数据 Schema：项目、证据、决策、决策结果、实验、KPI 树
 - 8 个角色的完整契约
-- 单元测试（174 项，Python 3.10–3.13）
+- DeepSeek Harness Skill 与安装说明（`harness/`）
+- 单元测试（211 项，Python 3.10–3.13）
 - 盲评实验脚手架：编号散列、身份隐藏、评审一致性检查、拒绝不足两名评审与不完整覆盖
 - 模型 Provider 接入层（OpenAI 兼容 / Anthropic 兼容两种调用方式）
 - scorecard 结构校验：总分与分项一致性、取值域、必填字段
@@ -233,8 +292,8 @@ python core/rebuild_cli.py run projects/my-project --provider deepseek
 **未实现**
 - **并行多 Agent 调度** —— 编排器是顺序执行：一个角色一次模型调用。真正的并行与互相评审需要宿主支持（如 DeepSeek Harness 的子 Agent），本项目不假装具备
 - **内置营销数据平台连接器** —— 刻意不包含。数据源层只接受你自己给的文件或端点
-- 项目持久化与决策历史版本
-- 决策记录的实际落地执行与效果回填
+- **决策历史版本与依赖回退** —— 决策存了、能复盘，但假设被证伪时还不会自动列出受影响的决策节点
+- **营销动作的实际执行** —— 系统产出决策与验证方案，但不投放、不发消息、不写回任何外部系统
 - DeepSeek Harness 端到端集成
 
 **未验证**
@@ -245,6 +304,7 @@ python core/rebuild_cli.py run projects/my-project --provider deepseek
 - 商业价值假设：咨询交付 / 企业内训 / 评测层三条路径**均未验证**
 - 在真实客户数据上能否端到端跑完一次完整的 R→E→B→U→I→D
 - 编排器接上真实模型后的输出质量（现有测试全部使用注入的假模型）
+- 决策复盘能否在真实项目中按期发生（机制有了，但还没有人真正用过）
 
 > `agents/*.md` 中的角色是**方法论契约**，不是运行时的 Agent 实例。
 > 提示词里写了子 Agent，不等于运行时创建了子 Agent。
@@ -300,13 +360,13 @@ python bench/bench_runner.py summarise            # 汇总并检查门槛
 ## 目录
 
 ```text
-core/            方法论、状态机、Schema 校验器、证据账本、运行时编排器、CLI
+core/            方法论、状态机、Schema 校验器、证据账本、决策库、编排器、CLI
 agents/          主 Agent 与 8 个职能角色契约
 sources/         数据源层：本地文件与自建 HTTP 端点
-schemas/         项目、证据、决策、实验、KPI 数据结构
+schemas/         项目、证据、决策、决策结果、实验、KPI 数据结构
 bench/           基准用例、评分量表、盲评脚手架、评审规程
 examples/        案例框架（不含未经验证的项目数据）
-harness/         宿主接入说明与 Skill 文件
+harness/         宿主接入说明与可安装的 DeepSeek Harness Skill
 tests/           单元测试与静态检查清单
 docs/            状态与路线图
 ```

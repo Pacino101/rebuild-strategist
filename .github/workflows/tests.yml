@@ -68,6 +68,29 @@ jobs:
             echo "UNKNOWN 记录带 HIGH 可信度本应被判为质量提示，此处仅验证写入成功"
           fi
 
+          # 证据来源可核验：指向不存在的材料必须被拒绝（断链）
+          python core/rebuild_cli.py evidence provenance "$WORK/proj"
+          if python core/rebuild_cli.py evidence add "$WORK/proj" \
+               --claim "断链测试记录" --type FACT --confidence LOW \
+               --source-doc DOC-999 --scope s --decision-impact d 2>/dev/null; then
+            echo "指向不存在材料的证据本应被拒绝"
+            exit 1
+          fi
+
+          # 决策 → 复盘闭环
+          python core/rebuild_cli.py decision add "$WORK/proj" \
+            --question "CI 夹具：优先选择哪个方案？" \
+            --option "方案甲|理由甲" --option "方案乙|理由乙" \
+            --chosen "方案甲" --rejected "方案乙|理由乙" \
+            --tradeoff "代价甲" --assumption "假设甲" \
+            --falsification "反证条件甲" --validation "验证动作甲" \
+            --review-date 2099-01-01
+          python core/rebuild_cli.py decision validate "$WORK/proj"
+          python core/rebuild_cli.py decision outcome "$WORK/proj" --id DR-001 \
+            --expected "预期达成的结果" --actual "实际观察到的结果，未达预期" \
+            --deviation EXECUTION --next-action ADJUST --notes "执行偏差"
+          test "$(python -c "import json;print(json.load(open('$WORK/proj/project.json'))['decision_records'][0]['status'])")" = "REVIEWED"
+
           # dry-run 必须零网络、零状态变更
           python core/rebuild_cli.py run "$WORK/proj" --dry-run > /dev/null
           test -f "$WORK/proj/runs"/*/run.json
