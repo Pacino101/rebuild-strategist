@@ -216,6 +216,9 @@ def reveal():
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     mapping = {e["blinded_id"]: e["config_key"] for e in manifest["entries"]}
+    # 用例编号必须来自 manifest。此前误将 config_key 写进 case_id 列，
+    # 导致公布的 scorecard 丢失真实用例编号（B01–B04）。
+    case_of = {e["blinded_id"]: e["case_id"] for e in manifest["entries"]}
 
     merged_path = RUNS / "review_merged.csv"
     if not merged_path.exists():
@@ -260,9 +263,9 @@ def reveal():
     key_rows = []
     for row in rows:
         record = {
-            "case_id": mapping.get(row["blinded_id"], "?"),
+            "case_id": case_of.get(row["blinded_id"], "?"),
             "run_id": row["blinded_id"],
-            "config_blinded": row["blinded_id"],
+            "config": mapping.get(row["blinded_id"], "?"),
             "reviewer": row.get("reviewer", ""),
         }
         for dim in RUBRIC_DIMENSIONS:
@@ -274,7 +277,7 @@ def reveal():
 
     out = SCORECARD
     out.parent.mkdir(parents=True, exist_ok=True)
-    header = (["case_id", "run_id", "config_blinded", "reviewer"] +
+    header = (["case_id", "run_id", "config", "reviewer"] +
               RUBRIC_DIMENSIONS + ["total", "critical_failure_count", "notes"])
     with out.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=header)
@@ -351,7 +354,7 @@ def summarise():
         rows = list(csv.DictReader(f))
     agg = {}
     for row in rows:
-        config = mapping.get(row["config_blinded"], "?")
+        config = row.get("config") or mapping.get(row.get("config_blinded", ""), "?")
         try:
             total = float(row["total"])
         except (ValueError, TypeError):
@@ -403,6 +406,104 @@ def summarise():
 
     check_inter_reviewer_agreement()
     return report
+
+
+SCORECARD_HEADER = (["case_id", "run_id", "config", "reviewer"] +
+                    RUBRIC_DIMENSIONS + ["total", "critical_failure_count", "notes"])
+
+
+def check_scorecard(path=None):
+    """校验 scorecard.csv 是否自洽。
+
+    先前的 CI 检查只断言「scorecard 必须为空」。那个断言能防住「还没跑实验就填数」，
+    但一旦有了真实结果就必然误报，且无法识别填错的行。这里改为校验数据本身：
+    取值域、总分与分项之和是否一致、必填字段是否缺失。
+
+    注意：本函数只校验结构自洽，无法证明评分来自真实评审。
+    样本量与评审独立性属于方法学问题，须在 README 与 PILOT 文档中如实声明。
+    """
+    target = Path(path) if path else SCORECARD
+    if not target.exists():
+        raise SystemExit(f"找不到 {target}")
+    with target.open(encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fieldnames = [fn.lstrip("\ufeff") for fn in (reader.fieldnames or [])]
+        rows = list(reader)
+
+    problems = []
+    missing = [c for c in SCORECARD_HEADER if c not in fieldnames]
+    if missing:
+        problems.append(f"表头缺少字段: {', '.join(missing)}")
+
+    try:
+        known_cases = {c["case_id"] for c in load_cases()}
+    except SystemExit:
+        known_cases = set()
+
+    for index, row in enumerate(rows, start=2):
+        label = f"第 {index} 行"
+        for key in ("case_id", "run_id", "config", "reviewer"):
+            if not (row.get(key) or "").strip():
+                problems.append(f"{label}: {key} 为空")
+
+        config = (row.get("config") or "").strip()
+        if config and config not in CONFIG_LABELS:
+            problems.append(f"{label}: config 取值非法 -> {config!r}")
+
+        case_id = (row.get("case_id") or "").strip()
+        if case_id and known_cases and case_id not in known_cases:
+            problems.append(f"{label}: case_id 不在 bench/cases 中 -> {case_id!r}")
+
+        dimensions = []
+        for dimension in RUBRIC_DIMENSIONS:
+            raw = (row.get(dimension) or "").strip()
+            try:
+                value = int(raw)
+            except ValueError:
+                problems.append(f"{label}: {dimension} 不是整数 -> {raw!r}")
+                continue
+            if not 0 <= value <= 4:
+                problems.append(f"{label}: {dimension} 超出 0–4 -> {value}")
+            dimensions.append(value)
+
+        if len(dimensions) == len(RUBRIC_DIMENSIONS):
+            raw_total = (row.get("total") or "").strip()
+            try:
+                total = int(raw_total)
+            except ValueError:
+                problems.append(f"{label}: total 不是整数 -> {raw_total!r}")
+            else:
+                if total != sum(dimensions):
+                    problems.append(
+                        f"{label}: total={total} 与分项之和 {sum(dimensions)} 不一致"
+                    )
+
+        raw_failures = (row.get("critical_failure_count") or "").strip()
+        try:
+            failures = int(raw_failures)
+            if failures < 0:
+                problems.append(f"{label}: critical_failure_count 为负")
+        except ValueError:
+            problems.append(f"{label}: critical_failure_count 不是整数 -> {raw_failures!r}")
+
+    if problems:
+        print("scorecard 结构校验失败：")
+        for problem in problems:
+            print(f"  - {problem}")
+        raise SystemExit(1)
+
+    if not rows:
+        print("scorecard 为空（仅表头）：评测框架已就绪，尚无实验结果。")
+        print("这是合法状态，但 README 必须如实说明「尚未公布任何对照实验结果」。")
+    else:
+        reviewers = sorted({(r.get("reviewer") or "").strip() for r in rows} - {""})
+        cases = sorted({(r.get("case_id") or "").strip() for r in rows} - {""})
+        print(
+            f"scorecard 结构自洽：{len(rows)} 行 / {len(reviewers)} 名评审 / "
+            f"{len(cases)} 个用例（{', '.join(cases)}）"
+        )
+        print("结构校验不能证明样本量充足或评审独立——请核对 README 中的声明。")
+    return rows
 
 
 def render(case_filter=None, out_dir=None):
@@ -554,6 +655,9 @@ def main():
 
     sub.add_parser("summarise", help="按配置汇总并检查门槛")
 
+    c = sub.add_parser("check-scorecard", help="校验 scorecard.csv 结构是否自洽")
+    c.add_argument("--path", default=None, help="默认 bench/scorecard.csv")
+
     args = parser.parse_args()
     if args.cmd == "generate":
         generate_manifest(salt=args.salt, runs_per_config=args.runs,
@@ -581,6 +685,8 @@ def main():
         reveal()
     elif args.cmd == "summarise":
         summarise()
+    elif args.cmd == "check-scorecard":
+        check_scorecard(args.path)
 
 
 if __name__ == "__main__":

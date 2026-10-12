@@ -1,5 +1,33 @@
 # Changelog
 
+## V3.2.3 — 先导实验结果与 scorecard 校验
+
+### 修正
+- **修复 `bench_runner.py` 中 `reveal()` 的列错位**：此前把 `config_key` 写进 `case_id` 列，导致公布的 scorecard 丢失真实用例编号（B01–B04）。现 `case_id` 取自 manifest，揭示后的配置名单独存放在 `config` 列。
+- `summarise()` 改为读取 `config` 列，同时兼容旧的 `config_blinded` 格式。
+
+### 评测
+- 公布一次先导实验（用例 B03，每配置 n=1）。**样本量远低于 `RUBRIC.md` 标准，不构成质量对照证据。**
+- 新增 `bench/PILOT_B03.md`，逐条声明局限：样本量不足、评审独立性未经验证、单一用例、满分异常。
+
+### CI
+- 移除「scorecard 必须为空」的断言。该断言只能防住「还没跑实验就填数」，一旦产生真实数据必然误报，且无法识别填错的行。
+- 改为执行 `bench_runner.py check-scorecard`：校验表头、取值域、总分与分项之和一致性、必填字段。
+
+### 文档
+- README 的「当前 scorecard 为空」声明改为与仓库实际数据一致，并明确标注先导实验的局限。
+- README 成熟度声明同步：模型 Provider 接入层列为已实现，多 Agent 运行时调度仍为未实现。
+
+## V3.2.2 — Provider 接入层
+- 新增 `bench/provider.py`：OpenAI 兼容与 Anthropic 兼容两种调用方式。
+- `bench_runner.py` 增加 `render` 与 `execute` 子命令。
+
+## V3.2.1 — 盲评对照实验脚手架
+- 新增 `bench/bench_runner.py`：编号散列、呈现顺序打乱、身份隐藏、评审一致性检查，并拒绝不足两名评审或不完整覆盖。
+- 新增 `bench/HOWTO.md`、`bench/REVIEW_PROTOCOL.md`、`bench/prompts/`。
+- 新增 `tests/test_bench_runner.py`。
+- `.gitignore` 增加 `bench/runs/`（含盐值与未公开的模型输出）。
+
 ## V3.2.0 — Original Decision-Centric OS
 
 ### 方法论

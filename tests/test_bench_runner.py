@@ -106,6 +106,59 @@ class BenchRunnerTests(unittest.TestCase):
             _quiet(bench_runner.import_reviews, str(path))
         self.assertIn("缺少字段", str(ctx.exception))
 
+    # ------------------------------------------------- scorecard 结构校验
+    def _write_scorecard(self, rows):
+        path = self.tmp / "scorecard.csv"
+        with path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=bench_runner.SCORECARD_HEADER)
+            writer.writeheader()
+            writer.writerows(rows)
+        return path
+
+    def _row(self, **overrides):
+        row = {"case_id": "B03", "run_id": "X-1", "config": "A", "reviewer": "评审甲"}
+        for dimension in bench_runner.RUBRIC_DIMENSIONS:
+            row[dimension] = "4"
+        row["total"] = "32"
+        row["critical_failure_count"] = "0"
+        row["notes"] = ""
+        row.update(overrides)
+        return row
+
+    def test_check_scorecard_accepts_consistent_row(self):
+        path = self._write_scorecard([self._row()])
+        rows = _quiet(bench_runner.check_scorecard, str(path))
+        self.assertEqual(len(rows), 1)
+
+    def test_check_scorecard_accepts_empty_scorecard(self):
+        path = self._write_scorecard([])
+        self.assertEqual(_quiet(bench_runner.check_scorecard, str(path)), [])
+
+    def test_check_scorecard_rejects_total_mismatch(self):
+        path = self._write_scorecard([self._row(total="31")])
+        with self.assertRaises(SystemExit):
+            _quiet(bench_runner.check_scorecard, str(path))
+
+    def test_check_scorecard_rejects_dimension_out_of_range(self):
+        path = self._write_scorecard([self._row(problem_definition="9", total="37")])
+        with self.assertRaises(SystemExit):
+            _quiet(bench_runner.check_scorecard, str(path))
+
+    def test_check_scorecard_rejects_unknown_config(self):
+        path = self._write_scorecard([self._row(config="Z")])
+        with self.assertRaises(SystemExit):
+            _quiet(bench_runner.check_scorecard, str(path))
+
+    def test_check_scorecard_rejects_unknown_case(self):
+        path = self._write_scorecard([self._row(case_id="B99")])
+        with self.assertRaises(SystemExit):
+            _quiet(bench_runner.check_scorecard, str(path))
+
+    def test_check_scorecard_rejects_blank_required_field(self):
+        path = self._write_scorecard([self._row(reviewer="")])
+        with self.assertRaises(SystemExit):
+            _quiet(bench_runner.check_scorecard, str(path))
+
     def _write_review(self, name, ids, reviewer, score=3):
         bench_runner.RUNS.mkdir(parents=True, exist_ok=True)
         path = bench_runner.RUNS / name
