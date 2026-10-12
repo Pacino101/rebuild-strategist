@@ -211,6 +211,44 @@ class RenderTests(unittest.TestCase):
         self.assertIn("方案乙", text)
 
 
+class UsageAggregationTests(unittest.TestCase):
+    def _with_usage(self, run_id, tokens, cost, seconds=10.0):
+        report = make_report(run_id)
+        report["usage"] = {"calls": 20, "calls_with_usage": 20,
+                           "total_tokens": tokens, "seconds": seconds}
+        report["cost_estimate"] = {"total": cost, "currency": "USD"}
+        return report
+
+    def test_totals_summed(self):
+        result = C.compare([self._with_usage("r1", 1000, 0.1),
+                            self._with_usage("r2", 2000, 0.2)])
+        total = result["total_usage"]
+        self.assertEqual(total["total_tokens"], 3000)
+        self.assertAlmostEqual(total["cost_total"], 0.3)
+        self.assertEqual(total["calls"], 40)
+
+    def test_incomplete_tokens_are_flagged_not_summed(self):
+        good = self._with_usage("r1", 1000, 0.1)
+        bad = make_report("r2")
+        bad["usage"] = {"calls": 20, "calls_with_usage": 0, "total_tokens": None,
+                        "seconds": 5.0}
+        total = C.compare([good, bad])["total_usage"]
+        self.assertIsNone(total["total_tokens"])
+        self.assertTrue(total["tokens_incomplete"])
+
+    def test_no_pricing_reports_zero_cost_info(self):
+        result = C.compare([make_report("r1"), make_report("r2")])
+        self.assertIsNone(result["total_usage"]["cost_total"])
+        self.assertIn("未提供单价", result["total_usage"]["cost_note"])
+
+    def test_markdown_has_cost_section(self):
+        text = C.render_markdown(C.compare([self._with_usage("r1", 1000, 0.1),
+                                            self._with_usage("r2", 2000, 0.2)]))
+        self.assertIn("成本与耗时", text)
+        self.assertIn("3,000", text)
+        self.assertIn("0.3", text)
+
+
 class NullChoiceRenderTests(unittest.TestCase):
     def test_null_choice_is_distinguished_from_missing_record(self):
         with_null = make_report("r1")

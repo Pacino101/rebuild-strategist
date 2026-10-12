@@ -322,6 +322,9 @@ def cmd_run(args):
         dry_run=args.dry_run,
         max_evidence=args.max_evidence,
         temperature=args.temperature,
+        price_input_per_million=args.price_input,
+        price_output_per_million=args.price_output,
+        currency=args.currency,
     )
     if args.repeat > 1:
         reports = orch.run_repeated(config, args.repeat)
@@ -331,11 +334,21 @@ def cmd_run(args):
                  "gate_grades": [
                      (p.get("gate") or {}).get("evidence_grade")
                      for p in r["phases"] if not p.get("skipped")
-                 ]}
+                 ],
+                 "usage": r.get("usage"),
+                 "cost_estimate": r.get("cost_estimate")}
                 for r in reports
             ],
             ensure_ascii=False, indent=2,
         ))
+        total_calls = sum((r.get("usage") or {}).get("calls", 0) for r in reports)
+        tokens = [(r.get("usage") or {}).get("total_tokens") for r in reports]
+        if all(t is not None for t in tokens):
+            print(f"\n{len(reports)} 次运行合计 {total_calls} 次模型调用，"
+                  f"{sum(tokens):,} tokens", file=sys.stderr)
+        else:
+            print(f"\n{len(reports)} 次运行合计 {total_calls} 次模型调用；"
+                  f"部分运行未取得用量，总数不完整", file=sys.stderr)
         states = {r["final_state"] for r in reports}
         print(f"\n{args.repeat} 次运行完成，终态 {len(states)} 种：{sorted(states)}",
               file=sys.stderr)
@@ -349,6 +362,19 @@ def cmd_run(args):
         {k: v for k, v in report.items() if k != "log"},
         ensure_ascii=False, indent=2,
     ))
+    usage = report.get("usage") or {}
+    if usage:
+        tok = (f"{usage['total_tokens']:,}" if usage.get("total_tokens") is not None
+               else "未取得")
+        print(f"\n模型调用 {usage['calls']} 次（{usage['calls_with_usage']} 次取得用量），"
+              f"合计 {tok} tokens，耗时 {usage['seconds']}s", file=sys.stderr)
+        if usage.get("note"):
+            print(f"  ⚠ {usage['note']}", file=sys.stderr)
+    cost = report.get("cost_estimate")
+    if cost:
+        print(f"  估算费用：{cost['total']} {cost['currency']}"
+              f"（按你提供的单价；不是账单金额）", file=sys.stderr)
+
     print(f"\n产物目录：{report['run_dir']}", file=sys.stderr)
     print(f"初始状态 {report['initial_state']} → 最终状态 {report['final_state']}",
           file=sys.stderr)
@@ -681,6 +707,12 @@ def build_parser():
     r.add_argument("--repeat", type=int, default=1,
                    help="重复运行次数。同一输入多次运行可观察一致性；"
                         "配合 `compare` 子命令使用")
+    r.add_argument("--price-input", type=float, default=None, dest="price_input",
+                   help="输入 token 单价（每百万）。不填则只统计 token，不算费用"
+                        "——本项目不内置任何价格，因为价格会变")
+    r.add_argument("--price-output", type=float, default=None, dest="price_output",
+                   help="输出 token 单价（每百万）")
+    r.add_argument("--currency", default="USD", help="计价货币，仅用于标注")
     r.add_argument("--temperature", type=float, default=0.3,
                    help="采样温度，默认 0.3。设为 0 可提高运行间一致性，"
                         "但多数 API 不保证完全确定，仍需多次运行验证")

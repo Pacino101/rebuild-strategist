@@ -370,6 +370,89 @@ class ProposedEvidenceTests(TempProjectCase):
         self.assertEqual(O.collect_proposed_evidence(report["run_dir"]), [])
 
 
+class UsageAndCostTests(unittest.TestCase):
+    """用量是事实，费用是估算——两者必须分开，且取不到用量时不许估算。"""
+
+    def test_summarize_all_measured(self):
+        log = [
+            {"phase": "DISCOVER", "seconds": 1.5, "available": True,
+             "prompt_tokens": 1000, "completion_tokens": 200, "total_tokens": 1200},
+            {"phase": "EVIDENCE", "seconds": 2.5, "available": True,
+             "prompt_tokens": 3000, "completion_tokens": 400, "total_tokens": 3400},
+        ]
+        u = O.summarize_usage(log)
+        self.assertEqual(u["calls"], 2)
+        self.assertEqual(u["calls_with_usage"], 2)
+        self.assertEqual(u["prompt_tokens"], 4000)
+        self.assertEqual(u["completion_tokens"], 600)
+        self.assertEqual(u["total_tokens"], 4600)
+        self.assertEqual(u["seconds"], 4.0)
+        self.assertNotIn("note", u)
+
+    def test_summarize_marks_incomplete_when_usage_missing(self):
+        log = [
+            {"phase": "A", "seconds": 1, "available": True,
+             "prompt_tokens": 100, "completion_tokens": 10, "total_tokens": 110},
+            {"phase": "B", "seconds": 1, "available": False, "reason": "响应无 usage"},
+        ]
+        u = O.summarize_usage(log)
+        self.assertEqual(u["calls_with_usage"], 1)
+        self.assertIn("note", u)
+        self.assertIn("不完整", u["note"])
+
+    def test_summarize_empty_log(self):
+        u = O.summarize_usage([])
+        self.assertEqual(u["calls"], 0)
+        self.assertIsNone(u["total_tokens"])
+
+    def test_no_pricing_means_no_cost(self):
+        config = O.RunConfig(project_dir=ROOT)
+        usage = {"calls": 1, "calls_with_usage": 1, "prompt_tokens": 1000,
+                 "completion_tokens": 100}
+        self.assertIsNone(O.estimate_cost(usage, config))
+
+    def test_cost_computed_from_supplied_pricing(self):
+        config = O.RunConfig(project_dir=ROOT, price_input_per_million=2.0,
+                             price_output_per_million=8.0)
+        usage = {"calls": 1, "calls_with_usage": 1, "prompt_tokens": 1_000_000,
+                 "completion_tokens": 500_000}
+        cost = O.estimate_cost(usage, config)
+        self.assertAlmostEqual(cost["input"], 2.0)
+        self.assertAlmostEqual(cost["output"], 4.0)
+        self.assertAlmostEqual(cost["total"], 6.0)
+        self.assertIn("不是账单金额", cost["caveat"])
+
+    def test_cost_marks_incomplete_when_some_calls_lack_usage(self):
+        config = O.RunConfig(project_dir=ROOT, price_input_per_million=1.0,
+                             price_output_per_million=1.0)
+        usage = {"calls": 5, "calls_with_usage": 3, "prompt_tokens": 100,
+                 "completion_tokens": 10}
+        self.assertTrue(O.estimate_cost(usage, config)["incomplete"])
+
+    def test_no_cost_when_no_usage_measured_at_all(self):
+        config = O.RunConfig(project_dir=ROOT, price_input_per_million=1.0,
+                             price_output_per_million=1.0)
+        self.assertIsNone(O.estimate_cost(
+            {"calls": 3, "calls_with_usage": 0}, config))
+
+    def test_report_records_usage_even_with_fake_model(self):
+        """假模型没有真实用量，但调用次数与耗时仍应如实记录，
+        并且明确标注「未取得用量」而不是补个数字。"""
+        import shutil, tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            proj = Path(tmp) / "p"
+            shutil.copytree(EXAMPLE, proj)
+            config = O.RunConfig(project_dir=proj, provider_name="fake",
+                                 phases=["DISCOVER"])
+            report = O.Orchestrator(config, completer=make_completer()).run()
+            usage = report["usage"]
+            self.assertGreaterEqual(usage["calls"], 2)      # master + gate
+            self.assertEqual(usage["calls_with_usage"], 0)
+            self.assertIsNone(usage["total_tokens"])
+            self.assertIn("note", usage)
+            self.assertNotIn("cost_estimate", report)       # 无单价则不算费用
+
+
 class ConfigTests(unittest.TestCase):
     def test_unknown_phase_rejected(self):
         with self.assertRaises(O.OrchestratorError):

@@ -160,7 +160,7 @@ def _call_openai_style(config, prompt):
         "max_tokens": config.max_tokens,
     }
     result = _post_json(url, headers, payload, config.timeout)
-    return result["choices"][0]["message"]["content"]
+    return result["choices"][0]["message"]["content"], _extract_usage(result)
 
 
 def _call_anthropic(config, prompt):
@@ -179,7 +179,8 @@ def _call_anthropic(config, prompt):
         "messages": [{"role": "user", "content": prompt}],
     }
     result = _post_json(url, headers, payload, config.timeout)
-    return "".join(block.get("text", "") for block in result["content"])
+    return ("".join(block.get("text", "") for block in result["content"]),
+            _extract_usage(result))
 
 
 CALLERS = {
@@ -189,8 +190,57 @@ CALLERS = {
 }
 
 
+def _extract_usage(result) -> dict:
+    """从 API 响应里取 token 用量。
+
+    **取不到就返回 available=False，绝不估算。** 估出来的 token 数会被当成
+    实际成本写进报告，那比没有数字更糟。
+
+    OpenAI 兼容端点用 prompt_tokens / completion_tokens；
+    Anthropic 用 input_tokens / output_tokens。统一成同一形状。
+    """
+    usage = (result or {}).get("usage")
+    if not isinstance(usage, dict):
+        return {"available": False, "reason": "响应中未包含 usage 字段"}
+
+    prompt_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
+    completion_tokens = usage.get("completion_tokens", usage.get("output_tokens"))
+    total = usage.get("total_tokens")
+    if total is None and isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+        total = prompt_tokens + completion_tokens
+
+    if prompt_tokens is None and completion_tokens is None:
+        return {"available": False, "reason": "usage 字段存在但没有可识别的 token 计数",
+                "raw": usage}
+
+    return {
+        "available": True,
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total,
+        "raw": usage,
+    }
+
+
 def complete(config, prompt):
     """统一调用入口。含指数退避重试。"""
+    if not config.needs_api:
+        raise RuntimeError("manual 模式不调用 API，请使用 render_prompt 流程")
+
+    caller = CALLERS.get(config.api_style)
+    if caller is None:
+        raise ValueError(f"不支持的 api_style: {config.api_style}")
+
+    text, _ = complete_with_usage(config, prompt)
+    return text
+
+
+def complete_with_usage(config, prompt):
+    """与 complete 相同，但额外返回 token 用量：`(文本, usage)`。
+
+    用量取不到时 `usage["available"]` 为 False——调用方应如实记录
+    「本次未取得用量」，而不是补一个估算值。
+    """
     if not config.needs_api:
         raise RuntimeError("manual 模式不调用 API，请使用 render_prompt 流程")
 

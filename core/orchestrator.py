@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -108,6 +109,11 @@ class RunConfig:
     max_documents: int = 10
     temperature: float = 0.3
     max_tokens: int = 4096
+    # 计费参数。**刻意不内置任何价格**——价格会变，写死在代码里就会变成
+    # 一个悄悄过期的数字。token 数如实记录；费用只在用户给出单价时才计算。
+    price_input_per_million: float = None
+    price_output_per_million: float = None
+    currency: str = "USD"
 
     def __post_init__(self):
         self.project_dir = Path(self.project_dir)
@@ -558,6 +564,8 @@ class Orchestrator:
         self.run_dir = self.project_dir / "runs" / self.run_id
         self.state_machine = load_state_machine()
         self.log: list[str] = []
+        #: 每次模型调用的用量与耗时。用量取不到就记 available=False，不估算。
+        self.usage_log: list[dict] = []
 
     # -------------------------------------------------------------- provider
     def _resolve_provider(self):
@@ -582,16 +590,30 @@ class Orchestrator:
             raise OrchestratorError(f"provider 配置不可用：{message}")
         return provider_layer, config
 
-    def _complete(self, prompt: str) -> str:
+    def _complete(self, prompt: str, label: str = "", phase: str = "") -> str:
+        started = time.monotonic()
         if self._completer is not None:
-            return self._completer(prompt)
+            text = self._completer(prompt)
+            self._record_usage(label, phase, None, time.monotonic() - started)
+            return text
         if self.config.provider_name == "manual":
             raise OrchestratorError(
                 "manual 模式不调用模型。请用 `--provider <名称>` 指定模型，"
                 "或使用 `--dry-run` 只生成任务包。"
             )
         provider_layer, config = self._resolve_provider()
-        return provider_layer.complete(config, prompt)
+        text, usage = provider_layer.complete_with_usage(config, prompt)
+        self._record_usage(label, phase, usage, time.monotonic() - started)
+        return text
+
+    def _record_usage(self, label, phase, usage, seconds):
+        entry = {"label": label, "phase": phase,
+                 "seconds": round(seconds, 2)}
+        if usage is None:
+            entry.update({"available": False, "reason": "调用方未提供用量（假模型）"})
+        else:
+            entry.update(usage)
+        self.usage_log.append(entry)
 
     # -------------------------------------------------------------- 落盘
     def _write(self, relative: str, text: str) -> Path:
@@ -692,6 +714,11 @@ class Orchestrator:
             self._note(report["hint"])
 
         report["final_state"] = state
+        report["usage"] = summarize_usage(self.usage_log)
+        report["usage_log"] = self.usage_log
+        cost = estimate_cost(report["usage"], self.config)
+        if cost is not None:
+            report["cost_estimate"] = cost
         report["log"] = self.log
         self._write("run.json", json.dumps(report, ensure_ascii=False, indent=2))
         return report
@@ -710,7 +737,7 @@ class Orchestrator:
                 continue
 
             try:
-                output = self._complete(packet)
+                output = self._complete(packet, label=role, phase=phase)
             except OrchestratorError:
                 raise
             except Exception as exc:  # noqa: BLE001 - 单角色失败不应丢失其他产物
@@ -728,7 +755,7 @@ class Orchestrator:
             packet = build_task_packet("master_agent", phase, context)
             self._write(f"{phase}/master_agent.packet.md", packet)
             try:
-                output = self._complete(packet)
+                output = self._complete(packet, label="master_agent", phase=phase)
                 self._write(f"{phase}/master_agent.md", output)
                 result["role_outputs"]["master_agent"] = output
             except Exception as exc:  # noqa: BLE001
@@ -750,7 +777,7 @@ class Orchestrator:
         packet = build_gate_packet(phase, context, outputs)
         self._write(f"{phase}/gate.packet.md", packet)
         try:
-            raw = self._complete(packet)
+            raw = self._complete(packet, label="gate", phase=phase)
         except Exception as exc:  # noqa: BLE001
             self._note(f"门禁判定调用失败：{exc}")
             return {"event": None, "passed": False, "reason": f"门禁判定失败：{exc}"}
@@ -811,7 +838,7 @@ class Orchestrator:
         packet = build_decision_record_packet(context, phase_outputs)
         self._write("decision_record.packet.md", packet)
         try:
-            raw = self._complete(packet)
+            raw = self._complete(packet, label="decision_record")
         except Exception as exc:  # noqa: BLE001
             self._note(f"决策记录生成失败：{exc}")
             return {"error": str(exc)}
@@ -830,6 +857,98 @@ class Orchestrator:
         if errors:
             self._note(f"决策记录不符合 schema：{len(errors)} 项错误")
         return result
+
+
+# ---------------------------------------------------------------------------
+# 用量与费用
+# ---------------------------------------------------------------------------
+
+def summarize_usage(usage_log) -> dict:
+    """汇总模型调用用量。
+
+    **只汇总实际取得的数字，绝不估算。** 取不到的调用单独计数，
+    并在 note 里说明总数不完整——一个估算出来的 token 数被当成实际用量
+    写进报告，比没有数字更糟。
+    """
+    total_prompt = total_completion = 0
+    have_prompt = have_completion = False
+    measured = 0
+    seconds = 0.0
+    by_phase: dict = {}
+
+    for entry in usage_log:
+        seconds += entry.get("seconds") or 0
+        phase = entry.get("phase") or "（未标注）"
+        bucket = by_phase.setdefault(
+            phase, {"calls": 0, "measured": 0, "total_tokens": 0}
+        )
+        bucket["calls"] += 1
+        if not entry.get("available"):
+            continue
+        measured += 1
+        bucket["measured"] += 1
+        prompt = entry.get("prompt_tokens")
+        completion = entry.get("completion_tokens")
+        if isinstance(prompt, int):
+            total_prompt += prompt
+            have_prompt = True
+        if isinstance(completion, int):
+            total_completion += completion
+            have_completion = True
+        if isinstance(entry.get("total_tokens"), int):
+            bucket["total_tokens"] += entry["total_tokens"]
+
+    complete = have_prompt and have_completion
+    summary = {
+        "calls": len(usage_log),
+        "calls_with_usage": measured,
+        "prompt_tokens": total_prompt if have_prompt else None,
+        "completion_tokens": total_completion if have_completion else None,
+        "total_tokens": (total_prompt + total_completion) if complete else None,
+        "seconds": round(seconds, 1),
+        "by_phase": by_phase,
+    }
+    if measured < len(usage_log):
+        summary["note"] = (
+            f"{len(usage_log) - measured} 次调用未取得 token 用量，"
+            f"因此总 token 数**不完整**，不可当作实际消耗。"
+        )
+    return summary
+
+
+def estimate_cost(usage_summary: dict, config) -> dict | None:
+    """按**用户提供的单价**估算费用。
+
+    未提供单价时返回 None——本项目不内置任何价格。价格会变，
+    把一个会过期的数字写进代码，就是制造一个悄悄失真的结论。
+    """
+    if (config.price_input_per_million is None
+            or config.price_output_per_million is None):
+        return None
+    if not usage_summary.get("calls_with_usage"):
+        return None
+
+    prompt = usage_summary.get("prompt_tokens") or 0
+    completion = usage_summary.get("completion_tokens") or 0
+    input_cost = prompt / 1_000_000 * config.price_input_per_million
+    output_cost = completion / 1_000_000 * config.price_output_per_million
+
+    return {
+        "currency": config.currency,
+        "input": round(input_cost, 6),
+        "output": round(output_cost, 6),
+        "total": round(input_cost + output_cost, 6),
+        "pricing_used": {
+            "input_per_million": config.price_input_per_million,
+            "output_per_million": config.price_output_per_million,
+        },
+        "caveat": (
+            "这是按**用户提供的单价**算出的估算，不是账单金额。"
+            "未含缓存命中折扣、批量折扣，也未扣除失败重试的重复计费。"
+        ),
+        "incomplete": usage_summary.get("calls_with_usage", 0)
+                      < usage_summary.get("calls", 0),
+    }
 
 
 def run_repeated(config: RunConfig, repeats: int, completer=None):

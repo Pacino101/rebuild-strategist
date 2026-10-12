@@ -152,5 +152,38 @@ class FormattingTests(unittest.TestCase):
             self.assertIn(name, text)
 
 
+class ExtractUsageTests(unittest.TestCase):
+    """用量取不到时必须如实返回 available=False，绝不估算。"""
+
+    def test_openai_shape(self):
+        u = provider._extract_usage(
+            {"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}}
+        )
+        self.assertTrue(u["available"])
+        self.assertEqual(u["prompt_tokens"], 10)
+        self.assertEqual(u["total_tokens"], 15)
+
+    def test_anthropic_shape_is_normalised(self):
+        u = provider._extract_usage(
+            {"usage": {"input_tokens": 20, "output_tokens": 7}}
+        )
+        self.assertTrue(u["available"])
+        self.assertEqual(u["prompt_tokens"], 20)
+        self.assertEqual(u["completion_tokens"], 7)
+        self.assertEqual(u["total_tokens"], 27)   # 未给 total 时自行相加
+
+    def test_missing_usage_reports_unavailable(self):
+        u = provider._extract_usage({"choices": []})
+        self.assertFalse(u["available"])
+        self.assertIn("usage", u["reason"])
+
+    def test_unrecognised_usage_reports_unavailable(self):
+        u = provider._extract_usage({"usage": {"something_else": 1}})
+        self.assertFalse(u["available"])
+
+    def test_none_result_is_safe(self):
+        self.assertFalse(provider._extract_usage(None)["available"])
+
+
 if __name__ == "__main__":
     unittest.main()

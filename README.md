@@ -249,6 +249,31 @@ python core/rebuild_cli.py compare projects/my-project --last 3 --judge-with dee
 
 过程不一致时 `compare` 返回非零退出码，可以直接用在脚本里。
 
+## 成本
+
+跑完一次完整的 R→E→B→U→I→D 的实测消耗：
+
+| 规模 | 模型调用 | tokens | 耗时 |
+|---|---|---|---|
+| 两阶段 | 6 次 | 28,671 | 56 s |
+| **完整六阶段** | **16 次** | **91,723** | **~110 s** |
+
+费用需要你自己给单价——**本项目不内置任何价格**，因为价格会变，
+写死在代码里就会变成一个悄悄过期的数字：
+
+```bash
+python core/rebuild_cli.py run projects/my-project --provider deepseek \
+    --price-input 0.28 --price-output 0.42
+```
+
+两条约束：
+
+- **token 是事实，费用是估算。** token 直接读 API 的 `usage` 字段；
+  读不到就注明「总数不完整」，**绝不估算**。
+- 费用结果始终带一句 caveat：这是按你给的单价算的估算，**不是账单金额**。
+
+`compare` 会跨运行合计成本。
+
 ## 决策记录与复盘
 
 方法论里 D（Decision Review）阶段要求「比较预期与实际、区分执行偏差与策略失效、记录下一步如何改变」。**在此之前这一环完全是空的**——`project.json` 里的 `decision_records` 永远是个空数组，决策做完就散了，系统永远学不到自己的决策对不对。

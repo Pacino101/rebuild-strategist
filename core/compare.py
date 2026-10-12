@@ -117,6 +117,20 @@ def _decision_of(report) -> dict:
     }
 
 
+def _usage_of(report) -> dict:
+    usage = report.get("usage") or {}
+    cost = report.get("cost_estimate") or {}
+    return {
+        "calls": usage.get("calls"),
+        "calls_with_usage": usage.get("calls_with_usage"),
+        "total_tokens": usage.get("total_tokens"),
+        "seconds": usage.get("seconds"),
+        "cost_total": cost.get("total"),
+        "currency": cost.get("currency"),
+        "note": usage.get("note"),
+    }
+
+
 def _spread(values):
     values = [v for v in values if isinstance(v, int)]
     if not values:
@@ -175,8 +189,30 @@ def compare(reports) -> dict:
         for key in ("options", "rejected", "falsification", "validation", "assumptions")
     }
 
+    usages = [_usage_of(r) for r in reports]
+    tokens = [u["total_tokens"] for u in usages if u["total_tokens"] is not None]
+    costs = [u["cost_total"] for u in usages if u["cost_total"] is not None]
+    seconds = [u["seconds"] for u in usages if u["seconds"] is not None]
+
+    total_usage = {
+        "calls": sum(u["calls"] or 0 for u in usages),
+        "calls_with_usage": sum(u["calls_with_usage"] or 0 for u in usages),
+        "total_tokens": sum(tokens) if len(tokens) == len(reports) else None,
+        "tokens_incomplete": len(tokens) != len(reports),
+        "seconds": round(sum(seconds), 1) if seconds else None,
+        "cost_total": round(sum(costs), 6) if costs else None,
+        "currency": usages[0]["currency"] if costs else None,
+        "cost_note": (
+            "费用是按用户提供的单价估算的，不是账单金额。"
+            if costs else
+            "未提供单价，因此只统计 token、不计算费用。"
+        ),
+    }
+
     return {
         "runs": len(reports),
+        "per_run_usage": usages,
+        "total_usage": total_usage,
         "run_ids": [r.get("run_id") for r in reports],
         "process_verdict": verdict,
         "final_states": dict(Counter(finals)),
@@ -328,7 +364,36 @@ def render_markdown(result: dict) -> str:
         lines += ["", "### 决策记录生成失败", ""]
         lines += [f"- {e}" for e in result["decision_errors"]]
 
-    lines += ["", "## 二、各次建议（原文）", ""]
+    usage = result.get("total_usage") or {}
+    if usage.get("calls"):
+        lines += [
+            "", "## 二、成本与耗时", "",
+            f"- 模型调用合计：**{usage['calls']}** 次"
+            f"（其中 {usage['calls_with_usage']} 次取得 token 用量）",
+        ]
+        if usage.get("total_tokens") is not None:
+            lines.append(f"- 合计 token：**{usage['total_tokens']:,}**")
+        elif usage.get("tokens_incomplete"):
+            lines.append("- 合计 token：**不完整**（部分运行未取得用量）")
+        if usage.get("seconds") is not None:
+            lines.append(f"- 合计耗时：{usage['seconds']}s")
+        if usage.get("cost_total") is not None:
+            lines.append(
+                f"- 估算费用：**{usage['cost_total']} {usage.get('currency')}**"
+                f"（{usage['cost_note']}）"
+            )
+        else:
+            lines.append(f"- 费用：未计算。{usage.get('cost_note')}")
+
+        lines += ["", "| 运行 | 调用 | token | 耗时 | 估算费用 |", "|---|---|---|---|---|"]
+        for run_id, item in zip(result["run_ids"], result.get("per_run_usage", [])):
+            tokens = f"{item['total_tokens']:,}" if item["total_tokens"] is not None else "—"
+            cost = (f"{item['cost_total']} {item['currency']}"
+                    if item["cost_total"] is not None else "—")
+            lines.append(f"| {run_id} | {item['calls']} | {tokens} | "
+                         f"{item['seconds']}s | {cost} |")
+
+    lines += ["", "## 三、各次建议（原文）", ""]
     for run_id, chosen, state in zip(result["run_ids"], result["chosen_options"],
                                      result.get("decision_status", [])):
         if state == "NOT_PRODUCED":
@@ -342,7 +407,7 @@ def render_markdown(result: dict) -> str:
     lines += [
         "> ⚠️ " + result["caveat"],
         "",
-        "## 三、结论一致性",
+        "## 四、结论一致性",
         "",
         "需要模型判定：`judge_agreement()`。它给出的是**参考信号**，不是事实。",
         "",

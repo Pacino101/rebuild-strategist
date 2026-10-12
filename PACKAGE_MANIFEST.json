@@ -1,6 +1,6 @@
 {
   "name": "REBUILD Strategist Original Decision-Centric Marketing Agent OS",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "external_marketing_project_dependencies": [],
   "python_runtime_dependencies": [],
   "implemented": [
@@ -17,7 +17,7 @@
     "blind-review harness: hashed ids, shuffled order, identity hiding, reviewer agreement check",
     "model provider layer (OpenAI-compatible and Anthropic-compatible)",
     "scorecard structural validation (totals vs dimensions, value ranges, required fields)",
-    "unit tests (277, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
+    "unit tests (294, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
     "a complete real-project case, anonymized, with reproducible analysis scripts (examples/metro_apartment/)",
     "GitHub Actions CI workflow for Python 3.10-3.13, including an end-to-end smoke test",
     "community health files: SECURITY, CODE_OF_CONDUCT, PR and Issue templates",
@@ -26,7 +26,9 @@
     "three-tier gate verdict: SUFFICIENT / DEGRADED (must declare limitations) / INSUFFICIENT",
     "validated end-to-end against a real model (DeepSeek deepseek-chat): forward, rollback and blocking paths all exercised",
     "orchestrator fault-path handling, covered by tests: single role failure, all roles failing, gate exceptions, truncated JSON, decision-record failure, unknown provider failing fast",
-    "multi-run comparison (core/compare.py): deterministic process reproducibility (paths, final states, gate grades, count spread) kept strictly separate from model-judged conclusion agreement"
+    "multi-run comparison (core/compare.py): deterministic process reproducibility (paths, final states, gate grades, count spread) kept strictly separate from model-judged conclusion agreement",
+    "token usage capture per model call (facts only; missing usage is reported as incomplete, never estimated)",
+    "cost estimation from user-supplied unit prices, reported separately from token counts with an explicit 'not a bill' caveat"
   ],
   "not_implemented": [
     "parallel multi-agent dispatch (the orchestrator is strictly sequential: one role, one model call)",
@@ -51,7 +53,8 @@
     "orchestrator behaviour under API faults (429, timeout, truncated or non-JSON responses)",
     "a real commercial project completing the full loop (the real case correctly blocks at R; E-U-I-D were exercised on a constructed test project)",
     "run-to-run stability: same input, temperature 0, three runs all reached a 'validate first' conclusion but differed 2.5x in the number of falsification conditions; temperature 0 does not remove the variance",
-    "whether the model-judged conclusion-agreement verdict is itself reliable (it is a model judgement, not a fact, and is subject to the same variance)"
+    "whether the model-judged conclusion-agreement verdict is itself reliable (it is a model judgement, not a fact, and is subject to the same variance)",
+    "measured cost of a full loop: 16 calls / ~92k tokens / ~2 minutes; the dollar figure depends entirely on the unit price the user supplies"
   ],
   "license": "MIT",
   "license_file": "LICENSE",
