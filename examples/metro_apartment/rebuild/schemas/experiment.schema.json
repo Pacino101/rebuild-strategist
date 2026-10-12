@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "experiment.schema.json",
+  "title": "REBUILD Experiment Card",
+  "description": "One experiment with its comparison, guardrails and decision rule fixed before it runs. Rejects semantically empty cards: a test with no control, no guardrail or an unstated decision rule is not a test.",
+  "type": "object",
+  "properties": {
+    "experiment_id": {
+      "type": "string"
+    },
+    "hypothesis": {
+      "type": "string",
+      "description": "Falsifiable statement, phrased so a result could disprove it."
+    },
+    "evidence_grade": {
+      "$ref": "evidence.schema.json#/$defs/grade",
+      "description": "Grade of the evidence the hypothesis rests on."
+    },
+    "audience": {
+      "type": "string",
+      "description": "Who is exposed, and the eligible population."
+    },
+    "control": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The comparison condition. Required for any causal claim; an empty control means there is none."
+    },
+    "variant": {
+      "type": "string",
+      "description": "What differs from control."
+    },
+    "primary_metric": {
+      "type": "string",
+      "description": "The single decision metric; an outcome or diagnostic measure, never an activity measure such as impressions."
+    },
+    "primary_metric_definition": {
+      "type": "string",
+      "description": "Numerator, denominator, window and source of truth."
+    },
+    "guardrails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Metrics that must not degrade."
+    },
+    "guardrail_thresholds": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "A guardrail without a threshold cannot stop anything; name the level at which the test halts.",
+      "additionalProperties": {
+        "type": "string",
+        "description": "The level at which this guardrail stops the test."
+      }
+    },
+    "minimum_detectable_effect": {
+      "type": "object",
+      "description": "The effect the design can detect. If this cannot be stated the result may only be reported as directional.",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Minimum detectable effect, absolute or relative, with units."
+        },
+        "method": {
+          "type": "string",
+          "description": "How it was derived, e.g. two-proportion z-test at 80% power."
+        },
+        "alpha": {
+          "type": "number",
+          "description": "Significance level, e.g. 0.05."
+        },
+        "power": {
+          "type": "number",
+          "description": "Statistical power, e.g. 0.8."
+        },
+        "baseline": {
+          "type": "string",
+          "description": "Baseline rate or value the MDE is relative to."
+        },
+        "n_per_arm": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Units required per arm."
+        },
+        "available_n": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Units actually available. If below n_per_arm the result is directional only."
+        },
+        "adequate": {
+          "type": "boolean",
+          "description": "True only when available_n >= n_per_arm; false forces a directional-only claim."
+        }
+      },
+      "required": [
+        "value",
+        "method",
+        "n_per_arm",
+        "available_n",
+        "adequate"
+      ],
+      "additionalProperties": false
+    },
+    "sample_logic": {
+      "type": "string",
+      "description": "Required sample or exposure, and the reasoning."
+    },
+    "duration": {
+      "type": "string",
+      "description": "Planned window, with start and end."
+    },
+    "analysis_plan": {
+      "type": "string",
+      "description": "How the result will be computed, including segment cuts decided in advance."
+    },
+    "decision_rule": {
+      "type": "object",
+      "description": "The pre-agreed action for each outcome, fixed BEFORE the test runs.",
+      "properties": {
+        "pass": {
+          "type": "string",
+          "description": "Action if the primary metric meets the threshold."
+        },
+        "fail": {
+          "type": "string",
+          "description": "Action if it does not."
+        },
+        "inconclusive": {
+          "type": "string",
+          "description": "Action if the result cannot separate signal from noise - the most commonly omitted and most commonly needed branch."
+        },
+        "threshold": {
+          "type": "string",
+          "description": "The numeric threshold separating pass from fail, with units."
+        }
+      },
+      "required": [
+        "pass",
+        "fail",
+        "inconclusive",
+        "threshold"
+      ],
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "approved",
+        "running",
+        "complete",
+        "stopped",
+        "rejected"
+      ],
+      "description": "A proposal stays 'proposed' until a human approves it."
+    },
+    "result": {
+      "type": "string",
+      "description": "Observed outcome, with its measurement window."
+    },
+    "claim_strength": {
+      "type": "string",
+      "enum": [
+        "directional",
+        "causal",
+        "none"
+      ],
+      "description": "'causal' requires a control, adequate power and a pre-registered rule; otherwise 'directional'."
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "What the result does not establish."
+    }
+  },
+  "required": [
+    "experiment_id",
+    "hypothesis",
+    "audience",
+    "control",
+    "variant",
+    "primary_metric",
+    "primary_metric_definition",
+    "guardrails",
+    "guardrail_thresholds",
+    "minimum_detectable_effect",
+    "decision_rule",
+    "status",
+    "claim_strength",
+    "limitations"
+  ],
+  "allOf": [
+    {
+      "description": "A running or complete test must state whether its claim is directional or causal.",
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "running",
+              "complete"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "claim_strength": {
+            "enum": [
+              "directional",
+              "causal"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "description": "An empty control cannot support any claim stronger than directional.",
+      "if": {
+        "properties": {
+          "control": {
+            "maxLength": 0
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "claim_strength": {
+            "const": "none"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

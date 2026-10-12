@@ -1,0 +1,551 @@
+{
+  "generated_from": [
+    "D 站片区03_品牌营销全案.txt",
+    "P 路98号公寓项目合作模式研究报告_中立研判版.txt",
+    "P 路98号地块专项研究报告.txt"
+  ],
+  "assumptions": [
+    {
+      "id": "A01",
+      "name": "总建筑面积",
+      "value": 2751.34,
+      "unit": "㎡",
+      "source": "产权交易所预公告 （日期已隐去） [A]",
+      "grade": "A",
+      "note": "文档给定"
+    },
+    {
+      "id": "A02",
+      "name": "房间数",
+      "value": 75,
+      "unit": "间",
+      "source": "三份文档一致 + 用户确认",
+      "grade": "A",
+      "note": "文档给定（硬上限）"
+    },
+    {
+      "id": "A03",
+      "name": "甲方装修出资",
+      "value": 3000000,
+      "unit": "元",
+      "source": "营销全案 1.1",
+      "grade": "A",
+      "note": "文档给定"
+    },
+    {
+      "id": "A04",
+      "name": "乙方履约押金",
+      "value": 1000000,
+      "unit": "元",
+      "source": "营销全案 1.1 / 合作模式报告前置条件",
+      "grade": "A",
+      "note": "文档给定；不计息、期满退还"
+    },
+    {
+      "id": "A05",
+      "name": "月运营杂费",
+      "value": 200,
+      "unit": "元/间·月",
+      "source": "营销全案 1.1；合作模式报告第2章",
+      "grade": "A",
+      "note": "文档给定。★口径冲突：合作模式报告称『按实际在租间数』，地块报告 7.4 按满租 75 间"
+    },
+    {
+      "id": "A06",
+      "name": "阶段一甲方分成（营销全案）",
+      "value": 0.65,
+      "unit": "—",
+      "source": "营销全案 1.3 / 附录",
+      "grade": "E",
+      "note": "文档给定，文件自标[假设]"
+    },
+    {
+      "id": "A07",
+      "name": "阶段B2 甲方分成（合作模式报告）",
+      "value": 0.35,
+      "unit": "—",
+      "source": "合作模式报告 3.1 / 5.1",
+      "grade": "E",
+      "note": "文档给定（推荐结构）"
+    },
+    {
+      "id": "A08",
+      "name": "阶段B1 甲方分成",
+      "value": 0.4,
+      "unit": "—",
+      "source": "合作模式报告 3.1",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A09",
+      "name": "合作期限",
+      "value": 8,
+      "unit": "年 / 96 月",
+      "source": "合作模式报告前置条件",
+      "grade": "A",
+      "note": "文档给定，固定不续约"
+    },
+    {
+      "id": "A10",
+      "name": "甲方 300 万回本硬约束",
+      "value": 48,
+      "unit": "月",
+      "source": "合作模式报告前置条件",
+      "grade": "A",
+      "note": "文档给定"
+    },
+    {
+      "id": "A11",
+      "name": "开业期营销预算",
+      "value": 400000,
+      "unit": "元",
+      "source": "营销全案 5.3",
+      "grade": "E",
+      "note": "文档给定（区间 30-45 万）"
+    },
+    {
+      "id": "A12",
+      "name": "月度运营推广费",
+      "value": 25000,
+      "unit": "元/月",
+      "source": "营销全案 5.3『溢价期起』",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A13",
+      "name": "首年成交间次",
+      "value": 105,
+      "unit": "间次",
+      "source": "营销全案 5.3『90-120 间次』取中值",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A14",
+      "name": "CAC 红线",
+      "value": 4500,
+      "unit": "元/间次",
+      "source": "营销全案 5.3 / 第七章",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A15",
+      "name": "目标出租率 第6月 / 第12月",
+      "value": [
+        0.88,
+        0.93
+      ],
+      "unit": "—",
+      "source": "营销全案 摘要 / 第七章",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A16",
+      "name": "渠道分销佣金池",
+      "value": 100000,
+      "unit": "元",
+      "source": "营销全案 5.3",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A17",
+      "name": "渠道成交目标",
+      "value": 38,
+      "unit": "间",
+      "source": "营销全案 5.3 KPI",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A18",
+      "name": "有效看房目标",
+      "value": 900,
+      "unit": "组",
+      "source": "营销全案 5.3 KPI",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A19",
+      "name": "乙方稳态月运营成本",
+      "value": 57800,
+      "unit": "元/月",
+      "source": "合作模式报告第2章",
+      "grade": "E",
+      "note": "★文档给定但无明细，且与营销全案『人工与运营招商费用由乙方另列』冲突"
+    },
+    {
+      "id": "A20",
+      "name": "乙方爬坡期月运营成本",
+      "value": 85000,
+      "unit": "元/月",
+      "source": "合作模式报告第2章",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "A21",
+      "name": "乙方 8 年分成 / 净收益",
+      "value": [
+        6597000,
+        885000
+      ],
+      "unit": "元",
+      "source": "合作模式报告 5.1 / 7.3",
+      "grade": "D",
+      "note": "文档自报，本次核验为不自洽"
+    },
+    {
+      "id": "A22",
+      "name": "房产税差额（4%→12%）",
+      "value": 1085000,
+      "unit": "元",
+      "source": "合作模式报告 7.2",
+      "grade": "D",
+      "note": "文档给定，占甲方出资 36.2%"
+    },
+    {
+      "id": "A23",
+      "name": "企业批量让价",
+      "value": 0.05,
+      "unit": "—",
+      "source": "地块报告 6.3 P5『5-8%』",
+      "grade": "D",
+      "note": "文档给定区间取低端"
+    },
+    {
+      "id": "A24",
+      "name": "客群权重 P1-P5",
+      "value": [
+        0.35,
+        0.3,
+        0.1,
+        0.15,
+        0.1
+      ],
+      "unit": "—",
+      "source": "地块报告 6.3/6.4",
+      "grade": "D",
+      "note": "文档建议权重，待 n≥100 问卷验证"
+    },
+    {
+      "id": "A25",
+      "name": "预登记问卷样本",
+      "value": 100,
+      "unit": "份",
+      "source": "地块报告 6.5",
+      "grade": "E",
+      "note": "文档给定"
+    },
+    {
+      "id": "B01",
+      "name": "增值税及附加（架构一）",
+      "value": 0.0168,
+      "unit": "占租金收入",
+      "source": "补：合作模式报告 7.1『1.5%×(1+12%附加)』",
+      "grade": "D",
+      "note": "税率文档给定；『按租金全额计征』这一适用判断为补齐。敏感区间 1.68%-6.72%"
+    },
+    {
+      "id": "B02",
+      "name": "房产税",
+      "value": 0.04,
+      "unit": "占租金收入",
+      "source": "补：合作模式报告 7.2『4% 优惠税率』",
+      "grade": "D",
+      "note": "★归属问题：甲方为产权人，基准情景按【甲方承担】。文档另建议『超4%甲方兜底』"
+    },
+    {
+      "id": "B03",
+      "name": "渠道佣金单位成本",
+      "value": 2631.5789473684213,
+      "unit": "元/间次",
+      "source": "补：10 万 ÷ 38 间（均为文档给定）",
+      "grade": "D",
+      "note": "2,632 元/间次"
+    },
+    {
+      "id": "B04",
+      "name": "人力成本",
+      "value": 45000,
+      "unit": "元/月",
+      "source": "补：75 间集中式公寓 5-6 人，本市 2026 薪酬",
+      "grade": "D",
+      "note": "★最大不确定项。敏感区间 32,000-55,000"
+    },
+    {
+      "id": "B05",
+      "name": "公区水电/网络/耗材",
+      "value": 7000,
+      "unit": "元/月",
+      "source": "补：3,000㎡ 以下集中式公寓公区能耗",
+      "grade": "D",
+      "note": "租客套内水电通常自付；此项仅公区。敏感 5,000-9,000"
+    },
+    {
+      "id": "B06",
+      "name": "保洁与消杀",
+      "value": 4500,
+      "unit": "元/月",
+      "source": "补：公区保洁半岗 2 人 + 季度消杀",
+      "grade": "D",
+      "note": "敏感 3,000-6,000"
+    },
+    {
+      "id": "B07",
+      "name": "维修与设备维保",
+      "value": 4500,
+      "unit": "元/月",
+      "source": "补：300 万装修资产 ×1.5%/年 + 日常维修",
+      "grade": "D",
+      "note": "敏感 3,000-7,000"
+    },
+    {
+      "id": "B08",
+      "name": "办公/财税/软件/保险",
+      "value": 3000,
+      "unit": "元/月",
+      "source": "补",
+      "grade": "D",
+      "note": "敏感 2,000-4,000"
+    },
+    {
+      "id": "B09",
+      "name": "押金机会成本率",
+      "value": 0.06,
+      "unit": "年化",
+      "source": "补：乙方资金成本 5-8% 区间取中",
+      "grade": "D",
+      "note": "敏感 4%-8%"
+    },
+    {
+      "id": "B10",
+      "name": "年换租率",
+      "value": 0.3,
+      "unit": "—",
+      "source": "补：青年长租公寓 25-35% 取中",
+      "grade": "D",
+      "note": "敏感 20%-50%"
+    },
+    {
+      "id": "B11",
+      "name": "坏账率",
+      "value": 0.01,
+      "unit": "占租金",
+      "source": "补：合作模式报告只给机制未给比率",
+      "grade": "D",
+      "note": "敏感 0%-3%"
+    },
+    {
+      "id": "B12",
+      "name": "出房节奏（前5月出租率）",
+      "value": [
+        0.35,
+        0.5,
+        0.7,
+        0.82,
+        0.86
+      ],
+      "unit": "—",
+      "source": "补：按营销全案 5.1 节奏（开业月 50%、第3月 80%、第6月 88%）",
+      "grade": "D",
+      "note": "与文档 KPI 对齐"
+    }
+  ],
+  "pricing": {
+    "mix": [
+      [
+        18,
+        15,
+        1620
+      ],
+      [
+        22,
+        20,
+        1980
+      ],
+      [
+        25,
+        22,
+        2250
+      ],
+      [
+        29,
+        12,
+        2610
+      ],
+      [
+        36,
+        6,
+        3150
+      ]
+    ],
+    "rooms": 75,
+    "rentable_sqm": 1824,
+    "gfa": 2751.34,
+    "full_monthly_revenue": 163620,
+    "avg_rent": 2181.6,
+    "sqm_on_rentable": 89.7,
+    "sqm_on_gfa": 59.47
+  },
+  "operator": {
+    "occupancy": 0.9,
+    "occupied_rooms": 67.5,
+    "gross_monthly": 147258.0,
+    "op_fee": 13500.0,
+    "vat": 2473.9343999999996,
+    "distributable": 131284.0656,
+    "a_share": 85334.64264,
+    "b_share": 45949.422959999996,
+    "b_revenue_per_room": 681.0,
+    "opex": {
+      "labor": 45000,
+      "utility": 7000,
+      "clean": 4500,
+      "maint": 4500,
+      "marketing": 25000,
+      "bad_debt": 1472.58,
+      "office": 3000
+    },
+    "opex_total": 90472.58,
+    "opex_per_room": 1206.0,
+    "doc_opex": 57800,
+    "b_monthly_cashflow": -44523.0,
+    "contribution_per_room": -660.0,
+    "deposit_opportunity": 5000.0,
+    "b_monthly_cashflow_econ": -49523.0,
+    "deposit_burn_months": 22.5
+  },
+  "interpretations": [
+    {
+      "label": "口径① 营销全案 1.1：杂费归甲方，乙方另担人工营销（本模型基准）",
+      "b_revenue": 45949.0,
+      "b_opex": 90473.0,
+      "b_monthly_cashflow": -44523.0
+    },
+    {
+      "label": "口径② 合作模式报告 5.1 隐含：杂费归乙方，乙方另担人工营销",
+      "b_revenue": 64174.0,
+      "b_opex": 90473.0,
+      "b_monthly_cashflow": -26298.0
+    },
+    {
+      "label": "口径③ 最乐观：杂费归乙方 + 用文档成本 57,800（已含杂费）",
+      "b_revenue": 64174.0,
+      "b_opex": 57800,
+      "b_monthly_cashflow": 6374.0
+    },
+    {
+      "label": "口径④ 次乐观：杂费归乙方 + 文档自有项 42,800 + 营销 25,000",
+      "b_revenue": 64174.0,
+      "b_opex": 67800,
+      "b_monthly_cashflow": -3626.0
+    }
+  ],
+  "required_a_rate_for_b_breakeven": 0.3109,
+  "a_share_rate_doc": 0.65,
+  "b_share_rate_doc": 0.35,
+  "cac": {
+    "all_in": 3810.0,
+    "cash": 2857.0,
+    "media_only": 1714.0,
+    "incl_commission": 4762.0,
+    "ceiling": 4500,
+    "unit_commission": 2632.0,
+    "denominator_signings": 105
+  },
+  "payback": {
+    "a_party_months": 37,
+    "a_party_years": 3.08,
+    "claimed_years": 1.9,
+    "doc_section_1_3": "2.4-2.8",
+    "doc_kpi_months": 30,
+    "b_party": "negative cash flow; no payback within 8-year term"
+  },
+  "occupancy_sensitivity": [
+    {
+      "occupancy": 0.6,
+      "rooms": 45.0,
+      "gross": 98172.0,
+      "fee": 9000.0,
+      "vat": 1649.2895999999998,
+      "distributable": 87522.7104,
+      "a_month": 56889.76176,
+      "a_year": 682677.14112,
+      "a_payback_years": 4.416666666666667,
+      "b_revenue": 30632.948639999995,
+      "b_opex": 90472.58,
+      "b_cf": -59839.63136000001,
+      "b_year": -718075.5763200001,
+      "b_revenue_per_room": 680.7321919999999,
+      "b_opex_per_room": 1206.3010666666667,
+      "b_contribution_per_room": -1329.7695857777778
+    },
+    {
+      "occupancy": 0.75,
+      "rooms": 56.25,
+      "gross": 122715.0,
+      "fee": 11250.0,
+      "vat": 2061.612,
+      "distributable": 109403.388,
+      "a_month": 71112.2022,
+      "a_year": 853346.4264,
+      "a_payback_years": 3.5833333333333335,
+      "b_revenue": 38291.1858,
+      "b_opex": 90472.58,
+      "b_cf": -52181.3942,
+      "b_year": -626176.7304,
+      "b_revenue_per_room": 680.7321919999999,
+      "b_opex_per_room": 1206.3010666666667,
+      "b_contribution_per_room": -927.6692302222223
+    },
+    {
+      "occupancy": 0.88,
+      "rooms": 66.0,
+      "gross": 143985.6,
+      "fee": 13200.0,
+      "vat": 2418.95808,
+      "distributable": 128366.64192000001,
+      "a_month": 83438.317248,
+      "a_year": 1001259.8069760001,
+      "a_payback_years": 3.1666666666666665,
+      "b_revenue": 44928.324672,
+      "b_opex": 90472.58,
+      "b_cf": -45544.255328,
+      "b_year": -546531.063936,
+      "b_revenue_per_room": 680.732192,
+      "b_opex_per_room": 1206.3010666666667,
+      "b_contribution_per_room": -690.0644746666667
+    },
+    {
+      "occupancy": 0.93,
+      "rooms": 69.75,
+      "gross": 152166.6,
+      "fee": 13950.0,
+      "vat": 2556.3988799999997,
+      "distributable": 135660.20112,
+      "a_month": 88179.13072800002,
+      "a_year": 1058149.5687360002,
+      "a_payback_years": 3.0,
+      "b_revenue": 47481.070392,
+      "b_opex": 90472.58,
+      "b_cf": -42991.509608,
+      "b_year": -515898.11529600003,
+      "b_revenue_per_room": 680.732192,
+      "b_opex_per_room": 1206.3010666666667,
+      "b_contribution_per_room": -616.3657291469534
+    }
+  ],
+  "leaseup": {
+    "cumulative_budget_needed_6m": 313875.0,
+    "available_for_acquisition": 300000,
+    "gap": 13875.0,
+    "cac_if_30w_for_66": 4545.0,
+    "coverage_at_88pct": 0.8889
+  }
+}

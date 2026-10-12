@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kpi_tree.schema.json",
+  "title": "REBUILD KPI Tree",
+  "description": "A single KPI tree. Provide one root, or a list of top-level nodes; either may nest children. Sibling file to project_state.schema.json, stored at .rebuild/kpi/kpi_tree.json under the split-files convention.",
+  "type": "object",
+  "properties": {
+    "tree_id": {
+      "type": "string"
+    },
+    "objective": {
+      "type": "string",
+      "description": "The business outcome the tree decomposes."
+    },
+    "instrumentation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Events to instrument, with the system that emits each one."
+    },
+    "attribution_assumption": {
+      "type": "string",
+      "description": "The attribution model and window, stated explicitly."
+    },
+    "root": {
+      "$ref": "#/$defs/node_tight"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node_tight"
+      }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "description": "One node of the KPI tree. Nest children to express outcome → driver → diagnostic.",
+      "properties": {
+        "metric_name": {
+          "type": "string"
+        },
+        "metric_type": {
+          "type": "string",
+          "enum": [
+            "outcome",
+            "driver",
+            "diagnostic",
+            "activity",
+            "guardrail"
+          ],
+          "description": "outcome = revenue/contribution/pipeline; driver = qualified demand, conversion, AOV; diagnostic = CTR, CVR, lead quality; activity = impressions, clicks; guardrail = refunds, complaints, margin, frequency, runway."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Exactly what is counted, including numerator and denominator."
+        },
+        "formula": {
+          "type": "string",
+          "description": "Where computable, the expression and its units."
+        },
+        "unit": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string",
+          "description": "Reporting window, e.g. monthly, or 28-day rolling."
+        },
+        "cohort": {
+          "type": "string",
+          "description": "Cohort definition, when the metric is cohort-based."
+        },
+        "source_of_truth": {
+          "type": "string",
+          "description": "The system whose number wins when systems disagree."
+        },
+        "owner": {
+          "type": "string",
+          "description": "Accountable role."
+        },
+        "baseline": {
+          "type": "string",
+          "description": "Current value, with as-of date."
+        },
+        "target": {
+          "type": "string",
+          "description": "Target value, with horizon."
+        },
+        "guardrail_threshold": {
+          "type": "string",
+          "description": "The level at which this metric stops the plan, when it is a guardrail."
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "description": "Subordinate nodes."
+        }
+      },
+      "required": [
+        "metric_name",
+        "metric_type",
+        "definition",
+        "unit",
+        "period",
+        "source_of_truth",
+        "owner"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "A guardrail without a threshold cannot stop anything.",
+          "if": {
+            "properties": {
+              "metric_type": {
+                "const": "guardrail"
+              }
+            },
+            "required": [
+              "metric_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "guardrail_threshold"
+            ]
+          }
+        },
+        {
+          "description": "An outcome or driver metric must state a target; a metric without a target cannot be managed.",
+          "if": {
+            "properties": {
+              "metric_type": {
+                "enum": [
+                  "outcome",
+                  "driver"
+                ]
+              }
+            },
+            "required": [
+              "metric_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "target"
+            ]
+          }
+        }
+      ]
+    },
+    "node_tight": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/node"
+        },
+        {
+          "description": "A guardrail without a threshold cannot stop anything.",
+          "if": {
+            "properties": {
+              "metric_type": {
+                "const": "guardrail"
+              }
+            },
+            "required": [
+              "metric_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "guardrail_threshold"
+            ]
+          }
+        },
+        {
+          "description": "An outcome or driver metric must state a target.",
+          "if": {
+            "properties": {
+              "metric_type": {
+                "enum": [
+                  "outcome",
+                  "driver"
+                ]
+              }
+            },
+            "required": [
+              "metric_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "target"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "root"
+      ]
+    },
+    {
+      "required": [
+        "nodes"
+      ]
+    }
+  ],
+  "additionalProperties": false
+}

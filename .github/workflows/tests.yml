@@ -103,3 +103,14 @@ jobs:
             exit 1
           fi
           echo "工作区干净"
+
+      # 真实项目案例必须保持可复现：脚本跑不通，案例就退化成一份静态文档。
+      # 脱敏的完整性由 tests/test_example_anonymization.py 守卫。
+      - name: Reproduce the real-project case
+        run: |
+          set -e
+          python core/rebuild_cli.py validate examples/metro_apartment/project.json
+          cd examples/metro_apartment/rebuild
+          python3 scripts/run_all.py
+          test -s KEY_FINDINGS.md
+          grep -q "交集为空" KEY_FINDINGS.md

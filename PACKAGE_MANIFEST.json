@@ -1,6 +1,6 @@
 {
   "name": "REBUILD Strategist Original Decision-Centric Marketing Agent OS",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "external_marketing_project_dependencies": [],
   "python_runtime_dependencies": [],
   "implemented": [
@@ -17,10 +17,11 @@
     "blind-review harness: hashed ids, shuffled order, identity hiding, reviewer agreement check",
     "model provider layer (OpenAI-compatible and Anthropic-compatible)",
     "scorecard structural validation (totals vs dimensions, value ranges, required fields)",
-    "unit tests (211, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
-    "benchmark rubric and 4 fixed cases",
+    "unit tests (232, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
+    "a complete real-project case, anonymized, with reproducible analysis scripts (examples/metro_apartment/)",
     "GitHub Actions CI workflow for Python 3.10-3.13, including an end-to-end smoke test",
-    "community health files: SECURITY, CODE_OF_CONDUCT, PR and Issue templates"
+    "community health files: SECURITY, CODE_OF_CONDUCT, PR and Issue templates",
+    "anonymization guard in CI: generic leak patterns (company names, street numbers, transit stations, policy numbers, local paths) for the published real-project case"
   ],
   "not_implemented": [
     "parallel multi-agent dispatch (the orchestrator is strictly sequential: one role, one model call)",
@@ -30,14 +31,15 @@
     "DeepSeek Harness end-to-end validation"
   ],
   "partial": [
-    "benchmark experiment: one pilot run only (case B03, n=1 per config, 1 of 4 cases). Sample size is far below the standard set by bench/RUBRIC.md and does NOT constitute comparative evidence. See bench/PILOT_B03.md."
+    "benchmark experiment: one pilot run only (case B03, n=1 per config, 1 of 4 cases). Sample size is far below the standard set by bench/RUBRIC.md and does NOT constitute comparative evidence. See bench/PILOT_B03.md.",
+    "the published real-project case ran against an earlier, wider schema lineage (archived on legacy/v3.1); a schema snapshot ships with the case. Reconciling the current schemas with what the real run actually needed is pending."
   ],
   "unverified": [
     "end-to-end quality in any host environment",
     "orchestrator output quality against a real model (all automated tests inject a fake model)",
     "comparative quality against plain prompts or single-skill setups",
     "independence and provenance of the two pilot reviewers (no record kept)",
-    "a complete R-E-B-U-I-D run on real client data",
+    "whether the method generalises beyond one real project (a single anonymised case now exists; one case is not a sample)",
     "whether decision reviews actually happen on schedule in a real project (the mechanism exists; nobody has used it yet)",
     "commercial value hypotheses: consulting delivery, corporate training, evaluation layer",
     "real-world ROI impact in commercial projects"
