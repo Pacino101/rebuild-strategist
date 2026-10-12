@@ -553,6 +553,28 @@ class Orchestrator:
         self.log: list[str] = []
 
     # -------------------------------------------------------------- provider
+    def _resolve_provider(self):
+        """加载并校验 provider 配置。未知名称要**尽早**报错。
+
+        此前未知 provider 会在每个角色调用里各失败一次，被记成一串
+        「角色失败」——使用者看到的是 6 个角色都挂了，而不是「你把 provider
+        名字写错了」。前者会让人去查网络，后者才是真正的原因。
+        """
+        try:
+            import provider as provider_layer  # bench/provider.py
+        except ImportError as exc:
+            raise OrchestratorError(f"无法加载 bench/provider.py：{exc}") from exc
+        try:
+            config = provider_layer.ProviderConfig.from_preset(self.config.provider_name)
+        except ValueError as exc:
+            raise OrchestratorError(str(exc)) from exc
+        config.temperature = self.config.temperature
+        config.max_tokens = self.config.max_tokens
+        ok, message = provider_layer.check_available(config)
+        if not ok:
+            raise OrchestratorError(f"provider 配置不可用：{message}")
+        return provider_layer, config
+
     def _complete(self, prompt: str) -> str:
         if self._completer is not None:
             return self._completer(prompt)
@@ -561,18 +583,7 @@ class Orchestrator:
                 "manual 模式不调用模型。请用 `--provider <名称>` 指定模型，"
                 "或使用 `--dry-run` 只生成任务包。"
             )
-        try:
-            import provider as provider_layer  # bench/provider.py
-        except ImportError as exc:
-            raise OrchestratorError(
-                f"无法加载 bench/provider.py：{exc}"
-            ) from exc
-        config = provider_layer.ProviderConfig.from_preset(self.config.provider_name)
-        config.temperature = self.config.temperature
-        config.max_tokens = self.config.max_tokens
-        ok, message = provider_layer.check_available(config)
-        if not ok:
-            raise OrchestratorError(f"provider 配置不可用：{message}")
+        provider_layer, config = self._resolve_provider()
         return provider_layer.complete(config, prompt)
 
     # -------------------------------------------------------------- 落盘
@@ -597,6 +608,11 @@ class Orchestrator:
             raise OrchestratorError(f"项目状态非法：{current_state}")
 
         manual = self.config.provider_name == "manual" and self._completer is None
+
+        # 尽早失败：provider 名称写错、密钥缺失之类的问题，应该在写任何产物之前
+        # 就报出来，而不是等 6 个角色各失败一次。
+        if not self.config.dry_run and not manual and self._completer is None:
+            self._resolve_provider()
 
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self._note(f"run_id={self.run_id} provider={self.config.provider_name} "
@@ -717,9 +733,12 @@ class Orchestrator:
 
     # -------------------------------------------------------------- 门禁
     def _run_gate(self, phase: str, context: dict, outputs: dict) -> dict:
-        if not outputs:
+        # 角色全部调用失败时，role_outputs 里是一串空字符串——字典本身仍然为真。
+        # 若不做内容检查，就会拿着空输入再去调一次模型，白花一次调用。
+        if not outputs or not any(str(v).strip() for v in outputs.values()):
             return {"event": None, "passed": False,
-                    "reason": "本阶段没有任何角色输出，无法判定门禁"}
+                    "reason": "本阶段没有任何有效角色输出，无法判定门禁——"
+                              "可能是所有角色调用都失败了，请查看 errors 字段"}
 
         packet = build_gate_packet(phase, context, outputs)
         self._write(f"{phase}/gate.packet.md", packet)

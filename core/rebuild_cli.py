@@ -321,6 +321,7 @@ def cmd_run(args):
         phases=phases,
         dry_run=args.dry_run,
         max_evidence=args.max_evidence,
+        temperature=args.temperature,
     )
     report = orch.Orchestrator(config).run()
 
@@ -599,6 +600,9 @@ def build_parser():
     r.add_argument("--phase", action="append", help="只跑指定阶段，可重复")
     r.add_argument("--dry-run", action="store_true", help="只生成任务包")
     r.add_argument("--max-evidence", type=int, default=60)
+    r.add_argument("--temperature", type=float, default=0.3,
+                   help="采样温度，默认 0.3。设为 0 可提高运行间一致性，"
+                        "但多数 API 不保证完全确定，仍需多次运行验证")
     r.add_argument("--mode", default=None, help=argparse.SUPPRESS)
 
     return parser

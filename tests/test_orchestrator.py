@@ -67,7 +67,7 @@ def make_completer(events=None, record=None, role_body="# 角色输出\n\n| 主�
                     return json.dumps(
                         {"event": event, "passed": True, "reason": "输出满足门禁"}
                     )
-        if "决策记录" in prompt:
+        if "各阶段输出摘要" in prompt:
             return json.dumps(record or valid_decision_record(), ensure_ascii=False)
         return role_body
 
@@ -267,7 +267,7 @@ class ModelRunTests(TempProjectCase):
         def completer(prompt):
             if "门禁判定" in prompt:
                 return "我觉得还行，但没有 JSON"
-            if "决策记录" in prompt:
+            if "各阶段输出摘要" in prompt:
                 return "{}"
             return "# 输出"
 
@@ -490,6 +490,112 @@ class DecisionRecordSchemaTests(unittest.TestCase):
         record = dict(self.base, key_assumptions=[{"assumption": "a", "typo": 1}])
         errors, _ = self.sv.validate(record, self.schema)
         self.assertTrue(errors)
+
+
+class FaultPathTests(TempProjectCase):
+    """故障路径。
+
+    真实 API 会返回 429、超时、被截断的响应、以及各种非 JSON 内容。
+    这些路径此前完全没有测试——单元测试跑的都是顺利路径。
+    """
+
+    def test_all_roles_failing_does_not_call_the_gate(self):
+        """角色全挂时不应再拿空输入去调一次门禁——那是纯浪费。"""
+        calls = []
+
+        def completer(prompt):
+            calls.append(prompt)
+            if "门禁判定" in prompt:
+                raise AssertionError("角色全部失败时不应调用门禁")
+            raise RuntimeError("模拟 API 故障")
+
+        config = self.config(provider_name="fake", phases=["DISCOVER", "EVIDENCE"])
+        # DISCOVER 需要放行才能进入 EVIDENCE
+        report = O.Orchestrator(config, completer=completer).run()
+        evidence = [p for p in report["phases"] if p["phase"] == "EVIDENCE"]
+        # EVIDENCE 的两个角色都失败 → 门禁不应被调用
+        self.assertFalse(
+            any("门禁判定" in c and "EVIDENCE" in c for c in calls),
+            "角色全失败时仍然调用了门禁",
+        )
+
+    def test_gate_call_exception_does_not_advance(self):
+        def completer(prompt):
+            if "门禁判定" in prompt:
+                raise RuntimeError("429 Too Many Requests")
+            return "# 输出"
+
+        config = self.config(provider_name="fake", phases=["DISCOVER"])
+        report = O.Orchestrator(config, completer=completer).run()
+        self.assertEqual(report["final_state"], "DISCOVER")
+        gate = report["phases"][0]["gate"]
+        self.assertFalse(gate["passed"])
+        self.assertIn("429", gate["reason"])
+
+    def test_decision_record_failure_does_not_crash_the_run(self):
+        def completer(prompt):
+            if "门禁判定" in prompt:
+                return json.dumps({"event": "evidence_ready", "passed": True,
+                                   "reason": "ok"})
+            if "各阶段输出摘要" in prompt:
+                raise RuntimeError("连接被重置")
+            return "# 输出"
+
+        config = self.config(provider_name="fake", phases=["DISCOVER"])
+        report = O.Orchestrator(config, completer=completer).run()
+        self.assertIn("error", report["decision_record"])
+        self.assertIn("连接被重置", report["decision_record"]["error"])
+        # 运行本身仍然正常收尾，状态迁移照样生效
+        self.assertEqual(report["final_state"], "EVIDENCE")
+
+    def test_truncated_json_in_decision_record_is_reported_not_raised(self):
+        def completer(prompt):
+            if "门禁判定" in prompt:
+                return json.dumps({"event": "evidence_ready", "passed": True,
+                                   "reason": "ok"})
+            if "各阶段输出摘要" in prompt:
+                # 响应被截断：JSON 未闭合
+                return '{"decision_id": "DR-001", "question": "被截断的响应'
+            return "# 输出"
+
+        config = self.config(provider_name="fake", phases=["DISCOVER"])
+        report = O.Orchestrator(config, completer=completer).run()
+        self.assertIn("error", report["decision_record"])
+        self.assertIn("无法解析为 JSON", report["decision_record"]["error"])
+
+    def test_truncated_json_in_gate_does_not_advance(self):
+        def completer(prompt):
+            if "门禁判定" in prompt:
+                return '{"event": "evidence_ready", "passed": tru'   # 截断
+            return "# 输出"
+
+        config = self.config(provider_name="fake", phases=["DISCOVER"])
+        report = O.Orchestrator(config, completer=completer).run()
+        self.assertEqual(report["final_state"], "DISCOVER")
+
+    def test_manual_mode_with_provider_configured_still_offline(self):
+        """provider_name 非 manual 但没有注入 completer 时，
+        manual 判定应为 False；若 provider 层不可用应给出清晰错误。"""
+        config = self.config(provider_name="nonexistent-provider", phases=["DISCOVER"])
+        with self.assertRaises(O.OrchestratorError) as ctx:
+            O.Orchestrator(config).run()      # 不注入 completer
+        self.assertIn("nonexistent-provider", str(ctx.exception))
+
+    def test_error_records_which_role_failed(self):
+        def completer(prompt):
+            if "门禁判定" in prompt:
+                return json.dumps({"event": "evidence_ready", "passed": True,
+                                   "reason": "ok"})
+            if "客户证据 Agent" in prompt:
+                raise RuntimeError("该角色专属故障")
+            return "# 市场结构输出"
+
+        config = self.config(provider_name="fake", phases=["DISCOVER", "EVIDENCE"])
+        report = O.Orchestrator(config, completer=completer).run()
+        errors = [e for p in report["phases"] for e in p.get("errors", [])]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["role"], "customer_evidence")
+        self.assertIn("该角色专属故障", errors[0]["error"])
 
 
 if __name__ == "__main__":

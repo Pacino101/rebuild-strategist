@@ -202,7 +202,15 @@ python core/rebuild_cli.py run projects/my-project --dry-run
 # 接上你自己的模型跑完整循环
 export DEEPSEEK_API_KEY=sk-xxx
 python core/rebuild_cli.py run projects/my-project --provider deepseek
+
+# 提高运行间一致性（但多数 API 在 0 下也不保证完全确定）
+python core/rebuild_cli.py run projects/my-project --provider deepseek --temperature 0
 ```
+
+> ⚠️ **单次运行的输出不是「答案」，只是起点。** 实测同一输入跑三次，
+> 决策方向一致但细节差异可达 2.5 倍（反证条件 6/10/15 条）。
+> 系统**没有**内建多次运行比对——这是待补能力。
+> 详见 [`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md)。
 
 编排器做四件事：按阶段调度角色 → 注入证据与材料 → 请模型判定门禁 → **由状态机裁决迁移**。
 
