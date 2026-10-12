@@ -301,13 +301,79 @@ def build_task_packet(role: str, phase: str, context: dict) -> str:
     return "\n".join(lines)
 
 
+#: 每个阶段有**各自不同**的门禁标准，直接取自 core/REBUILD_METHOD.md。
+#:
+#: 这一点此前被写错了：早期版本对所有阶段套用同一套「证据是否充足」的标准，
+#: 结果 DISCOVER 永远无法通过——因为 R 阶段本来就发生在补证之前，
+#: 它要求的是「问题有没有界定清楚」，不是「证据够不够」。
+#: 这个缺陷是接真实模型跑出来的，单元测试完全没发现。
+PHASE_GATES = {
+    "DISCOVER": {
+        "title": "R 界定现实",
+        "criteria": [
+            "业务目标与观察到的症状**分开写**；两者混为一谈即不通过。",
+            "缺少基线时必须标记为未知，**不得伪造基准**——但只要未知被如实标记，本阶段即可通过。",
+            "说清楚「现在真正需要决定什么」、决策期限与约束。",
+        ],
+        "note": "本阶段**不要求证据充足**。它发生在补证之前，要求的是问题界定质量。"
+                "把未知项如实列出来，就是通过。",
+    },
+    "EVIDENCE": {
+        "title": "E 建立证据",
+        "criteria": [
+            "关键结论必须可追溯——能指出来源或明确指出没有来源。",
+            "推断不得伪装成事实（`INFERENCE` 不得写成 `FACT`）。",
+            "未知项要给出**补证路径**，而不是留空。",
+        ],
+        "note": "本阶段不要求未知全部消除，要求的是「知道自己在不知道什么」。",
+    },
+    "STRATEGY": {
+        "title": "B 战略下注",
+        "criteria": [
+            "必须能回答「为什么选 A 而不是 B」。",
+            "选项之间必须有**实质差异**；若本质相同，退回重构。",
+            "写出放弃项与代价。",
+        ],
+        "note": "本阶段的失败模式是「给了选项但选项没有区别」，不是「证据不够」。",
+    },
+    "ECONOMICS": {
+        "title": "U 商业成立性",
+        "criteria": [
+            "关键财务指标必须写明公式、分子分母、时间范围、数据来源。",
+            "数据缺失时输出**区间或待验证假设**，不得给单一精确值。",
+            "不得混淆收入/毛利/贡献利润/ROAS。",
+        ],
+        "note": "本阶段允许带假设推进——只要每个假设都被标注且给出区间。"
+                "「数据不全」本身不是阻断理由，「用点估计掩盖数据不全」才是。",
+    },
+    "EXECUTION": {
+        "title": "I 执行与观测",
+        "criteria": [
+            "没有测量设计的行动**不得称为实验**。",
+            "每项行动绑定负责人、成本、截止时间、领先指标、结果指标与停止条件。",
+        ],
+        "note": "本阶段的失败模式是「把行动写成了愿望」。",
+    },
+    "REVIEW": {
+        "title": "D 决策复盘",
+        "criteria": [
+            "复盘不能只写「效果良好」。",
+            "必须比较**预期与实际**，并区分执行偏差、策略失效与假设错误。",
+            "记录下一步如何改变。",
+        ],
+        "note": "本阶段的失败模式是「用印象代替数据」。没有数据时须写明「未采集到数据」。",
+    },
+}
+
+
 def build_gate_packet(phase: str, context: dict, outputs: dict) -> str:
     """请主 Agent 判定阶段门禁。"""
     machine = load_state_machine()
     transitions = machine["transitions"].get(phase, {})
+    gate = PHASE_GATES.get(phase, {"title": phase, "criteria": [], "note": ""})
 
     lines = [
-        f"# 门禁判定 — 阶段 {phase}",
+        f"# 门禁判定 — 阶段 {phase}（{gate['title']}）",
         "",
         "你是 REBUILD 主 Agent。下面是本阶段各角色的输出，请判定阶段门禁是否通过，",
         "并选择一个迁移事件。",
@@ -319,13 +385,16 @@ def build_gate_packet(phase: str, context: dict, outputs: dict) -> str:
         lines.append(f"- `{event}` → {target}")
     lines += [
         "",
-        "## 门禁标准（来自 core/REBUILD_METHOD.md）",
+        f"## 本阶段门禁标准（{gate['title']}，来自 core/REBUILD_METHOD.md）",
         "",
-        "- 证据不足：输出未知项与补证计划，**不得**进入战略定案。",
-        "- 方案无实质差异：退回证据与问题定义。",
-        "- 单位经济不成立：重新设计商业方案，不得用营销话术掩盖。",
-        "- 行动无测量方式：不得称为实验。",
-        "- 关键假设被反证：回退到受影响的决策阶段。",
+    ]
+    lines += [f"{i}. {c}" for i, c in enumerate(gate["criteria"], 1)]
+    if gate["note"]:
+        lines += ["", f"> **注意**：{gate['note']}"]
+    lines += [
+        "",
+        "**只按本阶段的标准判定。** 不要用其他阶段的标准——每个阶段要求的东西不同，",
+        "拿后一阶段的标准卡前一阶段，会让流程永远无法推进。",
         "",
         "## 证据账本现状",
         "",
@@ -347,13 +416,36 @@ def build_gate_packet(phase: str, context: dict, outputs: dict) -> str:
         "{",
         '  "event": "上面列表中的某个事件名",',
         '  "passed": true 或 false,',
+        '  "evidence_grade": "SUFFICIENT | DEGRADED | INSUFFICIENT",',
         '  "reason": "判定理由，需引用具体输出内容",',
+        '  "limitations": ["若降级放行，逐条写明本次结论在哪些方面不成立或未验证"],',
         '  "blocking_gaps": ["仍然缺失、必须补证的具体项"]',
         "}",
         "```",
         "",
-        "若证据不足以支撑本阶段结论，选择表示回退或需要澄清的事件，",
-        "而不是勉强放行。放行一个证据不足的阶段，是本系统最严重的失败。",
+        "## 三种合法结果（必须选其一，不要默认选最保守的那个）",
+        "",
+        "**① `SUFFICIENT` —— 放行。** 证据足以支撑本阶段结论，正常推进。",
+        "",
+        "**② `DEGRADED` —— 降级放行。** 证据不完整，但**决策本身仍可做出**，只要：",
+        "   - 逐条写明 `limitations`：哪些结论不成立、哪些是假设、哪些未经实测；",
+        "   - 结论按证据强度降级表述（「在 X 假设成立的前提下成立」，而不是「成立」）；",
+        "   - `blocking_gaps` 列出在下一阶段之前必须补齐的项。",
+        "   方法论明确允许「停留、补证或**降级输出**」。真实项目几乎不可能等到证据齐全才决策，",
+        "   降级放行往往是正确选择——只要局限被写清楚，而不是被隐藏。",
+        "",
+        "**③ `INSUFFICIENT` —— 回退或需要澄清。** 适用于：决策**根本无法做出**，",
+        "   而不只是证据不够漂亮。例如存在 P0 级一票否决项未核（命中即推翻全部结论）、",
+        "   关键条款口径互相冲突且无法裁决、或所需数据只有决策者本人能提供。",
+        "",
+        "**判定要点：**",
+        "",
+        "- 本系统最严重的失败**不是**「带着不完整的证据推进」，",
+        "  而是**「推进时假装证据是完整的」**。前者靠 `limitations` 解决，后者不可接受。",
+        "- 如果你发现自己在列很多 gap 但仍然能够写出一个有条件的结论——那应该选 `DEGRADED`，",
+        "  而不是 `INSUFFICIENT`。",
+        "- 只有当**存在一票否决项未核**、或**结论方向会因缺失信息而反转**时，才选 `INSUFFICIENT`。",
+        "- 不要因为「还不够完美」而阻断。阻断的代价是决策被无限期推迟，这本身也是一种损失。",
         "",
     ]
     return "\n".join(lines)
@@ -573,12 +665,7 @@ class Orchestrator:
 
         ran = [p for p in report["phases"] if not p.get("skipped")]
         if not ran and not self.config.dry_run:
-            remaining = PHASES[PHASES.index(current_state):] if current_state in PHASES else []
-            report["hint"] = (
-                f"请求的阶段全部被跳过：项目当前状态是 {current_state}，"
-                f"只能从该阶段起按顺序执行。要跑完整流程请从 {current_state} 开始，"
-                f"可用序列：{remaining}"
-            )
+            report["hint"] = self._skip_hint(current_state)
             self._note(report["hint"])
 
         report["final_state"] = state
@@ -660,6 +747,29 @@ class Orchestrator:
             )
         return {"from": state, "event": event, "to": transitions[event],
                 "reason": reason}
+
+    def _skip_hint(self, state: str) -> str:
+        """所有请求的阶段都被跳过时，给出一条**可操作**的说明。
+
+        BLOCKED 是特例：它不在 PHASES 里，此前会输出「可用序列：[]」，
+        对使用者毫无帮助——而且它恰恰是最需要指引的状态。
+        这个问题是真实运行暴露出来的，不是单元测试发现的。
+        """
+        if state == "BLOCKED":
+            exits = sorted(self.state_machine["transitions"].get("BLOCKED", {}))
+            return (
+                "项目当前处于 BLOCKED（等待澄清），因此不执行任何阶段。"
+                "BLOCKED 不是阶段序列中的一环：需先解除阻塞，"
+                f"触发 {exits} 之一才能回到 DISCOVER 重新开始。"
+                "若阻塞来自门禁判定的证据不足，请先补齐证据再修改 project.json 的 current_state。"
+            )
+        if state not in PHASES:
+            return f"项目当前状态 {state} 不在阶段序列中，无法执行。"
+        remaining = PHASES[PHASES.index(state):]
+        return (
+            f"请求的阶段全部被跳过：项目当前状态是 {state}，"
+            f"只能从该阶段起按顺序执行。可用序列：{remaining}"
+        )
 
     def _persist_state(self, state: str):
         path = self.project_dir / "project.json"

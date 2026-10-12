@@ -325,6 +325,24 @@ class ModelRunTests(TempProjectCase):
         self.assertEqual(report["final_state"], "DISCOVER")
         self.assertTrue(report["phases"][1].get("skipped"))
 
+    def test_blocked_state_gives_actionable_hint(self):
+        """BLOCKED 不在 PHASES 里，此前会输出「可用序列：[]」——毫无帮助。
+
+        这个问题是接真实模型运行时暴露的，不是单元测试发现的。
+        """
+        project = json.loads((self.dir / "project.json").read_text(encoding="utf-8"))
+        project["current_state"] = "BLOCKED"
+        (self.dir / "project.json").write_text(
+            json.dumps(project, ensure_ascii=False), encoding="utf-8"
+        )
+        report = O.Orchestrator(
+            self.config(provider_name="fake"), completer=make_completer()
+        ).run()
+        hint = report.get("hint", "")
+        self.assertIn("BLOCKED", hint)
+        self.assertIn("clarification_received", hint)
+        self.assertNotIn("[]", hint, "不应再出现空列表式的无用提示")
+
     def test_run_json_written(self):
         config = self.config(provider_name="fake", phases=["DISCOVER"])
         report = O.Orchestrator(config, completer=make_completer()).run()
@@ -365,6 +383,113 @@ class ConfigTests(unittest.TestCase):
         for roles in O.PHASE_ROLES.values():
             for role in roles:
                 self.assertTrue((ROOT / "agents" / f"{role}.md").exists(), role)
+
+
+class PhaseGateTests(unittest.TestCase):
+    """门禁必须**逐阶段不同**。
+
+    早期版本对六个阶段套用同一套「证据是否充足」的标准，结果 DISCOVER 永远
+    无法通过——R 阶段本来就发生在补证之前，它要求的是问题界定质量。
+    这个缺陷是接真实模型跑出来的：连续 4 次运行全部卡死在 DISCOVER。
+    """
+
+    def setUp(self):
+        self.context = {
+            "project": {"decision_question": "q", "current_state": "DISCOVER",
+                        "goals": [], "constraints": []},
+            "evidence": [], "evidence_total": 0, "documents": [],
+            "evidence_truncated": False,
+        }
+
+    def test_every_phase_has_criteria(self):
+        for phase in O.PHASES:
+            self.assertIn(phase, O.PHASE_GATES, f"{phase} 缺少门禁定义")
+            gate = O.PHASE_GATES[phase]
+            self.assertTrue(gate["criteria"], f"{phase} 门禁标准为空")
+            self.assertTrue(gate.get("note"), f"{phase} 缺少门禁说明")
+
+    def test_gate_packet_carries_phase_specific_text(self):
+        pairs = {
+            "DISCOVER": "症状",
+            "EVIDENCE": "补证路径",
+            "STRATEGY": "为什么选 A 而不是 B",
+            "ECONOMICS": "分子分母",
+            "EXECUTION": "不得称为实验",
+            "REVIEW": "预期与实际",
+        }
+        for phase, token in pairs.items():
+            packet = O.build_gate_packet(phase, self.context, {"master_agent": "x"})
+            self.assertIn(token, packet, f"{phase} 门禁未包含其专属标准「{token}」")
+
+    def test_gate_packet_forbids_using_other_phases_criteria(self):
+        packet = O.build_gate_packet("DISCOVER", self.context, {"master_agent": "x"})
+        self.assertIn("只按本阶段的标准判定", packet)
+
+    def test_discover_gate_does_not_demand_sufficient_evidence(self):
+        # R 阶段的要求是「未知被如实标记」，不是「证据充足」
+        note = O.PHASE_GATES["DISCOVER"]["note"]
+        self.assertIn("不要求证据充足", note)
+
+    def test_economics_gate_allows_assumption_driven_progress(self):
+        # U 阶段允许带假设推进：数据不全本身不是阻断理由
+        note = O.PHASE_GATES["ECONOMICS"]["note"]
+        self.assertIn("数据不全", note)
+
+    def test_gate_offers_a_graded_path(self):
+        """必须提供 DEGRADED（降级放行），否则流程只有「放行/阻断」两种选择，
+        而真实项目几乎不可能等到证据齐全——结果就是永远阻断。"""
+        packet = O.build_gate_packet("EVIDENCE", self.context, {"master_agent": "x"})
+        self.assertIn("DEGRADED", packet)
+        self.assertIn("降级放行", packet)
+        self.assertIn("limitations", packet)
+
+    def test_gate_states_that_hiding_gaps_is_the_real_failure(self):
+        packet = O.build_gate_packet("EVIDENCE", self.context, {"master_agent": "x"})
+        self.assertIn("假装证据是完整的", packet)
+
+
+class DecisionRecordSchemaTests(unittest.TestCase):
+    """真实模型把每条假设与它的反证条件配成对，比 schema 允许的纯字符串更有用。
+
+    这是接真实模型跑出来的第二个缺陷：模型的产出被自己的 schema 判为非法。
+    修法是放宽 schema，而不是压制模型的合理结构。
+    """
+
+    def setUp(self):
+        import schema_validator as sv
+        self.sv = sv
+        self.schema = sv.load_schema(ROOT / "schemas" / "decision_record.schema.json")
+        self.base = {
+            "decision_id": "DR-1", "question": "q",
+            "options": [{"name": "a", "rationale": "r"}, {"name": "b", "rationale": "r"}],
+            "chosen_option": "a", "rejected_options": [], "tradeoffs": [],
+            "falsification_conditions": [], "validation_actions": [],
+            "review_date": "2026-01-01",
+        }
+
+    def test_plain_string_assumptions_still_valid(self):
+        record = dict(self.base, key_assumptions=["纯字符串假设"])
+        errors, _ = self.sv.validate(record, self.schema)
+        self.assertEqual(errors, [])
+
+    def test_structured_assumptions_valid(self):
+        record = dict(self.base, key_assumptions=[
+            {"assumption": "转化率 ≥15%",
+             "falsification_condition": "实测 <5% 则推翻",
+             "confidence": "LOW"},
+        ])
+        errors, _ = self.sv.validate(record, self.schema)
+        self.assertEqual(errors, [])
+
+    def test_structured_assumption_requires_the_assumption_field(self):
+        record = dict(self.base, key_assumptions=[{"falsification_condition": "x"}])
+        errors, _ = self.sv.validate(record, self.schema)
+        self.assertTrue(errors)
+
+    def test_structured_assumption_rejects_unknown_field(self):
+        record = dict(self.base, key_assumptions=[{"assumption": "a", "typo": 1}])
+        errors, _ = self.sv.validate(record, self.schema)
+        self.assertTrue(errors)
 
 
 if __name__ == "__main__":

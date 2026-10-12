@@ -1,13 +1,66 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"REBUILD Decision Record",
-  "type":"object",
-  "required":["decision_id","question","options","chosen_option","rejected_options","tradeoffs","key_assumptions","falsification_conditions","validation_actions","review_date"],
-  "properties":{
-    "decision_id":{"type":"string"},"question":{"type":"string"},"deadline":{"type":["string","null"]},
-    "options":{"type":"array","minItems":2,"items":{"type":"object","required":["name","rationale"],"properties":{"name":{"type":"string"},"rationale":{"type":"string"},"risks":{"type":"array","items":{"type":"string"}}}}},
-    "chosen_option":{"type":"string"},"rejected_options":{"type":"array","items":{"type":"object","required":["name","reason"],"properties":{"name":{"type":"string"},"reason":{"type":"string"}}}},
-    "tradeoffs":{"type":"array","items":{"type":"string"}},"key_assumptions":{"type":"array","items":{"type":"string"}},
-    "falsification_conditions":{"type":"array","items":{"type":"string"}},"validation_actions":{"type":"array","items":{"type":"string"}},"review_date":{"type":"string"}
-  },"additionalProperties":false
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REBUILD Decision Record",
+  "description": "决策记录。key_assumptions 允许两种写法：纯字符串，或「假设 + 反证条件」的结构化对象。后者是接真实模型运行时模型自发采用的写法——它把每条假设与能推翻它的条件配成对，比纯字符串更有用，因此纳入 schema 而不是压制它。",
+  "type": "object",
+  "required": [
+    "decision_id", "question", "options", "chosen_option", "rejected_options",
+    "tradeoffs", "key_assumptions", "falsification_conditions",
+    "validation_actions", "review_date"
+  ],
+  "properties": {
+    "decision_id": {"type": "string"},
+    "question": {"type": "string"},
+    "deadline": {"type": ["string", "null"]},
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["name", "rationale"],
+        "properties": {
+          "name": {"type": "string"},
+          "rationale": {"type": "string"},
+          "risks": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "chosen_option": {"type": "string"},
+    "rejected_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "reason"],
+        "properties": {
+          "name": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "tradeoffs": {"type": "array", "items": {"type": "string"}},
+    "key_assumptions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "string"},
+          {
+            "type": "object",
+            "required": ["assumption"],
+            "properties": {
+              "assumption": {"type": "string", "minLength": 1},
+              "falsification_condition": {"type": ["string", "null"]},
+              "confidence": {"enum": ["HIGH", "MEDIUM", "LOW"]},
+              "evidence_ids": {"type": "array", "items": {"type": "string"}},
+              "note": {"type": ["string", "null"]}
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "falsification_conditions": {"type": "array", "items": {"type": "string"}},
+    "validation_actions": {"type": "array", "items": {"type": "string"}},
+    "review_date": {"type": "string"}
+  },
+  "additionalProperties": false
 }

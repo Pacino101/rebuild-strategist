@@ -281,7 +281,7 @@ python core/rebuild_cli.py evidence provenance projects/my-project   # 可核验
 - **JSON Schema 校验器**（纯标准库）：type / required / properties / additionalProperties / items / enum / 范围与长度 / anyOf / oneOf / allOf。**未实现的关键字会报警而不是静默通过**
 - **证据账本**：JSONL 追加存储、写入前强制 schema 校验、语义质量检查、缺口分析、来源可核验比例、Markdown 导出
 - **数据源层**：本地文件（CSV / TSV / JSON / JSONL / TXT / MD / XLSX，含中文编码兜底）+ 自建 HTTP 端点（密钥只走环境变量）+ 内容哈希校验
-- **运行时编排器**：按阶段顺序调度角色、注入证据与材料、模型判定门禁、**状态机裁决迁移**（模型的非法事件会被拒绝）、产出经 schema 校验的决策记录
+- **运行时编排器**：按阶段顺序调度角色、注入证据与材料、**逐阶段门禁**（三档：充足 / 降级放行 / 不足）、模型判定门禁、**状态机裁决迁移**（模型的非法事件会被拒绝）、产出经 schema 校验的决策记录。**已在真实模型上跑通**，见 [`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md)
 - **决策记录与复盘**：决策入库、复审到期主动提醒、结果回填并强制区分执行偏差 / 策略失效 / 假设错误、写回 `project.json`
 - 6 份数据 Schema：项目、证据、决策、决策结果、实验、KPI 树
 - 8 个角色的完整契约
@@ -386,7 +386,7 @@ bench/           基准用例、评分量表、盲评脚手架、评审规程
 examples/        案例：nanjiang_tea 为空白框架；metro_apartment 为真实项目脱敏版
 harness/         宿主接入说明与可安装的 DeepSeek Harness Skill
 tests/           单元测试与静态检查清单
-docs/            状态与路线图
+docs/            状态与路线图、首次真实模型验证记录
 ```
 
 ## 贡献

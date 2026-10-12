@@ -1,6 +1,6 @@
 {
   "name": "REBUILD Strategist Original Decision-Centric Marketing Agent OS",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "external_marketing_project_dependencies": [],
   "python_runtime_dependencies": [],
   "implemented": [
@@ -17,11 +17,14 @@
     "blind-review harness: hashed ids, shuffled order, identity hiding, reviewer agreement check",
     "model provider layer (OpenAI-compatible and Anthropic-compatible)",
     "scorecard structural validation (totals vs dimensions, value ranges, required fields)",
-    "unit tests (232, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
+    "unit tests (244, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
     "a complete real-project case, anonymized, with reproducible analysis scripts (examples/metro_apartment/)",
     "GitHub Actions CI workflow for Python 3.10-3.13, including an end-to-end smoke test",
     "community health files: SECURITY, CODE_OF_CONDUCT, PR and Issue templates",
-    "anonymization guard in CI: generic leak patterns (company names, street numbers, transit stations, policy numbers, local paths) for the published real-project case"
+    "anonymization guard in CI: generic leak patterns (company names, street numbers, transit stations, policy numbers, local paths) for the published real-project case",
+    "per-phase gate criteria (each REBUILD phase judged against its own standard from REBUILD_METHOD.md)",
+    "three-tier gate verdict: SUFFICIENT / DEGRADED (must declare limitations) / INSUFFICIENT",
+    "validated end-to-end against a real model (DeepSeek deepseek-chat): forward, rollback and blocking paths all exercised"
   ],
   "not_implemented": [
     "parallel multi-agent dispatch (the orchestrator is strictly sequential: one role, one model call)",
@@ -36,13 +39,16 @@
   ],
   "unverified": [
     "end-to-end quality in any host environment",
-    "orchestrator output quality against a real model (all automated tests inject a fake model)",
     "comparative quality against plain prompts or single-skill setups",
     "independence and provenance of the two pilot reviewers (no record kept)",
     "whether the method generalises beyond one real project (a single anonymised case now exists; one case is not a sample)",
     "whether decision reviews actually happen on schedule in a real project (the mechanism exists; nobody has used it yet)",
     "commercial value hypotheses: consulting delivery, corporate training, evaluation layer",
-    "real-world ROI impact in commercial projects"
+    "real-world ROI impact in commercial projects",
+    "the absolute quality of orchestrator output against a real model (it runs end-to-end; whether the analysis is good needs independent review)",
+    "orchestrator behaviour under API faults (429, timeout, truncated or non-JSON responses)",
+    "run-to-run stability: the same input produced a forward run once and a rollback run once at temperature 0.3",
+    "a real commercial project completing the full loop (the real case correctly blocks at R; E-U-I-D were exercised on a constructed test project)"
   ],
   "license": "MIT",
   "license_file": "LICENSE",
