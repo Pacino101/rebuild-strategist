@@ -33,6 +33,7 @@ DECISION_SCHEMA = "decision_record.schema.json"
 OUTCOME_SCHEMA = "outcome.schema.json"
 
 DEVIATION_LABELS = {
+    "AS_EXPECTED": "预期兑现（无需归因）",
     "EXECUTION": "执行偏差（方向对、力度不足）",
     "STRATEGY": "策略失效（方向本身错了）",
     "ASSUMPTION": "关键假设错误",

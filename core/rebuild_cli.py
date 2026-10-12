@@ -470,12 +470,31 @@ def cmd_decision(args):
     if args.action == "outcome":
         if not args.id:
             raise ValueError("decision outcome 需要 --id")
+        # --assumption-update "假设文本|CONFIRMED|简短说明"
+        updates = []
+        for raw in args.assumption_update or []:
+            parts = [p.strip() for p in str(raw).split("|")]
+            if len(parts) < 2:
+                raise ValueError(
+                    'assumption-update 格式应为 "假设文本|CONFIRMED|说明"，'
+                    f"收到：{raw!r}"
+                )
+            status = parts[1].upper()
+            if status not in ("CONFIRMED", "REFUTED", "STILL_UNKNOWN"):
+                raise ValueError(
+                    f"assumption-update 的状态必须是 CONFIRMED / REFUTED / "
+                    f"STILL_UNKNOWN，收到：{parts[1]!r}"
+                )
+            updates.append({"assumption": parts[0], "status": status,
+                            "note": parts[2] if len(parts) > 2 else None})
+
         outcome = {
             "decision_id": args.id,
             "expected": args.expected,
             "actual": args.actual,
             "deviation_type": args.deviation,
             "evidence_ids": args.evidence or [],
+            "assumption_updates": updates,
             "next_action": args.next_action,
             "notes": args.notes,
         }
@@ -664,10 +683,14 @@ def build_parser():
     d.add_argument("--expected", default=None)
     d.add_argument("--actual", default=None)
     d.add_argument("--deviation", default=None,
-                   choices=["EXECUTION", "STRATEGY", "ASSUMPTION", "MIXED", "UNKNOWN"])
+                   choices=["AS_EXPECTED", "EXECUTION", "STRATEGY",
+                            "ASSUMPTION", "MIXED", "UNKNOWN"])
     d.add_argument("--next-action", default=None, dest="next_action",
                    choices=["CONTINUE", "ADJUST", "STOP", "ROLLBACK"])
     d.add_argument("--evidence", action="append")
+    d.add_argument("--assumption-update", action="append", dest="assumption_update",
+                   help='复盘时更新关键假设，形如 "假设文本|CONFIRMED|说明"；'
+                        '状态可为 CONFIRMED / REFUTED / STILL_UNKNOWN')
     d.add_argument("--notes", default=None)
     d.add_argument("--out", default=None)
     d.add_argument("--from", default=None, dest="from_path",

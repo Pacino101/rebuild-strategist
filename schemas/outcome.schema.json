@@ -4,47 +4,94 @@
   "description": "决策的实际结果回填。方法论要求复盘必须比较预期与实际、区分执行偏差与策略失效，并记录下一步如何改变——只有填了这个，决策循环才算闭合。",
   "type": "object",
   "required": [
-    "decision_id", "recorded_at", "expected", "actual",
-    "deviation_type", "next_action"
+    "decision_id",
+    "recorded_at",
+    "expected",
+    "actual",
+    "deviation_type",
+    "next_action"
   ],
   "properties": {
-    "decision_id": {"type": "string", "minLength": 1},
-    "recorded_at": {"type": "string", "minLength": 1},
+    "decision_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "recorded_at": {
+      "type": "string",
+      "minLength": 1
+    },
     "expected": {
-      "type": "string", "minLength": 1,
+      "type": "string",
+      "minLength": 1,
       "description": "当初预期的结果，须与决策记录中的验证动作对应"
     },
     "actual": {
-      "type": "string", "minLength": 1,
+      "type": "string",
+      "minLength": 1,
       "description": "实际观察到的结果。没有数据时须写明「未采集到数据」，不得用印象代替"
     },
     "deviation_type": {
-      "enum": ["EXECUTION", "STRATEGY", "ASSUMPTION", "MIXED", "UNKNOWN"],
-      "description": "EXECUTION=执行偏差（方向对、力度不足）；STRATEGY=策略失效；ASSUMPTION=关键假设错误；MIXED=多重；UNKNOWN=无法归因"
+      "enum": [
+        "AS_EXPECTED",
+        "EXECUTION",
+        "STRATEGY",
+        "ASSUMPTION",
+        "MIXED",
+        "UNKNOWN"
+      ],
+      "description": "AS_EXPECTED=预期兑现（无需归因）；EXECUTION=执行偏差（方向对、力度不足）；STRATEGY=策略失效（方向本身错了）；ASSUMPTION=关键假设错误；MIXED=多重原因；UNKNOWN=无法归因。**注意 AS_EXPECTED 是合法且重要的取值**——不是每次复盘都能找到偏差，「按预期发生了」本身就是一个结论。此前枚举里没有这一项，导致预期兑现时只能勉强归到 UNKNOWN，等于把「一切正常」说成「无法归因」。"
     },
     "evidence_ids": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": {
+        "type": "string"
+      },
       "description": "支撑本次复盘判断的证据账本编号"
     },
     "assumption_updates": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["assumption", "status"],
+        "required": [
+          "assumption",
+          "status"
+        ],
         "properties": {
-          "assumption": {"type": "string"},
-          "status": {"enum": ["CONFIRMED", "REFUTED", "STILL_UNKNOWN"]},
-          "note": {"type": ["string", "null"]}
+          "assumption": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "CONFIRMED",
+              "REFUTED",
+              "STILL_UNKNOWN"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         },
         "additionalProperties": false
       }
     },
     "next_action": {
-      "enum": ["CONTINUE", "ADJUST", "STOP", "ROLLBACK"],
+      "enum": [
+        "CONTINUE",
+        "ADJUST",
+        "STOP",
+        "ROLLBACK"
+      ],
       "description": "继续 / 调整 / 停止 / 回退到受影响的决策阶段"
     },
-    "notes": {"type": ["string", "null"]}
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
   },
   "additionalProperties": false
 }

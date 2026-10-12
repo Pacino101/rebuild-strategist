@@ -1,0 +1,27 @@
+{
+  "decision_id": "DR-001",
+  "expected": "若按现条款 65:35 签约，乙方月现金流为负、押金约 22 个月烧穿；应先做条款压力测试再签约",
+  "actual": "甲方采纳建议，未按现条款签约，分成结构已调整；乙方未签约，双方正在重谈。截至记录时点尚无签约、无经营数据",
+  "deviation_type": "AS_EXPECTED",
+  "evidence_ids": [],
+  "assumption_updates": [
+    {
+      "assumption": "乙方会接受 65:35 的分成结构",
+      "status": "REFUTED",
+      "note": "乙方未签约，正在重谈——与分析预测的『必然拒签或违约退出』一致"
+    },
+    {
+      "assumption": "稳态出租率可达 93%",
+      "status": "STILL_UNKNOWN",
+      "note": "尚未开业，无经营数据"
+    },
+    {
+      "assumption": "甲方回本约束与乙方保本约束交集为空",
+      "status": "CONFIRMED",
+      "note": "双方确实未能在原条款上达成一致"
+    }
+  ],
+  "next_action": "CONTINUE",
+  "notes": "预测的阻塞点（乙方不接受现分成）在现实中出现了。但**新的分成结构尚未测算**——若甲方分成仍高于 31.1%，新条款可能依然不成立，只是不那么明显。",
+  "recorded_at": "2026-10-12T19:33:25+00:00"
+}

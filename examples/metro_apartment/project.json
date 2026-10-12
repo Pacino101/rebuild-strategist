@@ -36,6 +36,19 @@
     "乙方真实运营成本的完整明细（文档仅给出总额，无拆分）",
     "预登记问卷 n≥100 的实际客群结构"
   ],
-  "decision_records": [],
-  "last_updated": null
+  "decision_records": [
+    {
+      "decision_id": "DR-001",
+      "question": "在「甲方出 300 万装修 / 乙方出 100 万履约押金 / 65:35 分成」的条款下，是否承接该公寓项目的品牌运营？",
+      "chosen_option": "先做条款压力测试、重谈分成结构后再签",
+      "review_date": "2026-06-30",
+      "status": "REVIEWED",
+      "outcome": {
+        "deviation_type": "AS_EXPECTED",
+        "next_action": "CONTINUE",
+        "recorded_at": "2026-10-12T19:33:25+00:00"
+      }
+    }
+  ],
+  "last_updated": "2026-10-12T19:33:25+00:00"
 }

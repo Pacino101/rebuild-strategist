@@ -1,6 +1,6 @@
 {
   "name": "REBUILD Strategist Original Decision-Centric Marketing Agent OS",
-  "version": "3.8.0",
+  "version": "3.9.0",
   "external_marketing_project_dependencies": [],
   "python_runtime_dependencies": [],
   "implemented": [
@@ -17,7 +17,7 @@
     "blind-review harness: hashed ids, shuffled order, identity hiding, reviewer agreement check",
     "model provider layer (OpenAI-compatible and Anthropic-compatible)",
     "scorecard structural validation (totals vs dimensions, value ranges, required fields)",
-    "unit tests (294, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
+    "unit tests (297, passing on Python 3.10-3.13; 2 provider tests require >=3.10)",
     "a complete real-project case, anonymized, with reproducible analysis scripts (examples/metro_apartment/)",
     "GitHub Actions CI workflow for Python 3.10-3.13, including an end-to-end smoke test",
     "community health files: SECURITY, CODE_OF_CONDUCT, PR and Issue templates",
@@ -28,7 +28,9 @@
     "orchestrator fault-path handling, covered by tests: single role failure, all roles failing, gate exceptions, truncated JSON, decision-record failure, unknown provider failing fast",
     "multi-run comparison (core/compare.py): deterministic process reproducibility (paths, final states, gate grades, count spread) kept strictly separate from model-judged conclusion agreement",
     "token usage capture per model call (facts only; missing usage is reported as incomplete, never estimated)",
-    "cost estimation from user-supplied unit prices, reported separately from token counts with an explicit 'not a bill' caveat"
+    "cost estimation from user-supplied unit prices, reported separately from token counts with an explicit 'not a bill' caveat",
+    "decision outcome back-fill used on a real project for the first time (examples/metro_apartment/decisions/)",
+    "AS_EXPECTED deviation type: a review that finds no deviation is a legitimate conclusion, not UNKNOWN"
   ],
   "not_implemented": [
     "parallel multi-agent dispatch (the orchestrator is strictly sequential: one role, one model call)",
@@ -39,7 +41,7 @@
   ],
   "partial": [
     "benchmark experiment: one pilot run only (case B03, n=1 per config, 1 of 4 cases). Sample size is far below the standard set by bench/RUBRIC.md and does NOT constitute comparative evidence. See bench/PILOT_B03.md.",
-    "the published real-project case ran against an earlier, wider schema lineage (archived on legacy/v3.1); a schema snapshot ships with the case. Reconciling the current schemas with what the real run actually needed is pending."
+    "real-world outcome of the published case: the recommendation was adopted and the predicted blocker (the operator refusing the 65/35 split) materialised, but the REVISED split has not been modelled and no operating data exists yet. Adoption is not validation."
   ],
   "unverified": [
     "end-to-end quality in any host environment",

@@ -187,6 +187,34 @@ class OutcomeTests(Base):
             )
         self.assertIn("无法归因", str(ctx.exception))
 
+    def test_as_expected_is_a_valid_deviation_type(self):
+        """第四个同类 schema 缺陷：枚举里预设了「一定存在偏差」，
+        但「预期兑现」是合法且重要的结论。此前它无处安放，
+        只能勉强归到 UNKNOWN——等于把「一切正常」说成「无法归因」。
+        这个缺陷是第一次真正回填真实结果时发现的。"""
+        self.store.add(good_record())
+        saved = self.store.record_outcome(good_outcome(
+            deviation_type="AS_EXPECTED",
+            actual="建议被采纳，预测的阻塞点在现实中出现了",
+        ))
+        self.assertEqual(saved["deviation_type"], "AS_EXPECTED")
+
+    def test_assumption_updates_can_be_recorded(self):
+        self.store.add(good_record())
+        saved = self.store.record_outcome(good_outcome(assumption_updates=[
+            {"assumption": "乙方会接受 65:35", "status": "REFUTED",
+             "note": "乙方未签约"},
+            {"assumption": "出租率 93%", "status": "STILL_UNKNOWN", "note": "未开业"},
+        ]))
+        self.assertEqual(len(saved["assumption_updates"]), 2)
+
+    def test_assumption_update_status_is_constrained(self):
+        self.store.add(good_record())
+        with self.assertRaises(D.DecisionError):
+            self.store.record_outcome(good_outcome(assumption_updates=[
+                {"assumption": "x", "status": "MAYBE"},
+            ]))
+
     def test_rejects_invalid_deviation_type(self):
         self.store.add(good_record())
         with self.assertRaises(D.DecisionError):
