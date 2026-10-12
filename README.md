@@ -12,6 +12,22 @@ REBUILD 解决的是另一个问题：**你怎么知道这份报告里的结论�
 3. 为此放弃了什么，代价是什么？
 4. 什么证据出现时，应当推翻这个决定？
 
+## 这个项目不是什么
+
+在说它能做什么之前，先划清边界。一个把「不夸大」当卖点的项目，最不该在自我介绍里含糊。
+
+| 它不是 | 原因 |
+|---|---|
+| **不是投放 / CRM / 分析工具** | 不连接任何营销数据平台，不发送广告，不管理客户，不采集用户行为。这些事请继续用你现有的平台做。 |
+| **不是自动化执行系统** | 它不替你执行任何营销动作。产出是决策与验证方案，落地仍然靠人。 |
+| **不是开箱即用的多 Agent 运行时** | `agents/` 下是**方法论契约**（Markdown），不是运行中的 Agent 实例。目前没有编排器把它们真正跑起来。 |
+| **不是数据接入层** | 没有任何数据源连接器。你的证据需要以文本方式自行提供。 |
+| **不保证结论正确** | 它约束的是论证过程是否诚实、可追溯、可证伪，不是结论本身是否正确。 |
+
+**它的商业价值目前是假设，不是结论。** 可能的方向包括咨询交付、企业内训、以及作为评测层（对已有营销方案或 AI 输出做结构化审查）。**这三个方向均未被任何真实项目验证，本仓库不为它们背书。**
+
+目前**已被验证**的只有三件事：方法论自洽、状态机确定性、评测脚手架可端到端运行。其余全部是待验证假设。
+
 ## 六阶段决策循环
 
 ```text
@@ -61,10 +77,10 @@ LTV 不标观察窗口即无效，CAC 不区分渠道/全口径/增量口径即�
 需要 Python 3.10+，**无任何第三方依赖**。
 
 ```bash
-git clone https://github.com/<your-account>/rebuild-strategist.git
+git clone https://github.com/Pacino101/rebuild-strategist.git
 cd rebuild-strategist
 
-# 单元测试（5 项）
+# 单元测试（28 项）
 python -m unittest discover -s tests -v
 
 # 项目状态校验
@@ -77,6 +93,45 @@ python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
 状态机由 7 个状态与明确的回退迁移构成，见 `core/state_machine.json`。
 门禁不通过时，系统允许停留、补证或降级输出——**不以「完成所有表格」为成功标准**。
 
+## 接入你自己的模型
+
+`bench/provider.py` 是一个**可插拔的模型接入层**，纯标准库实现，不需要 `pip install` 任何东西。两种运行方式：
+
+**手动模式（默认）** —— 零配置、**零网络请求**。渲染提示词，你自行粘贴到任意聊天窗口，再把输出贴回来。适合资料不能外发的场景。
+
+**HTTP 模式** —— 直接调用模型 API：
+
+```bash
+python bench/provider.py list                      # 查看所有预设
+python bench/provider.py check deepseek            # 预检 base_url / model / 密钥
+
+export DEEPSEEK_API_KEY=sk-xxx
+python bench/provider.py call deepseek --prompt-file prompt.txt
+```
+
+内置预设：`openai` · `deepseek` · `moonshot` · `qwen` · `anthropic` · `ollama`（本地模型）· `custom`。
+
+**接任意 OpenAI 兼容端点**（自建代理、其他国产模型、本地推理服务都适用）：
+
+```bash
+python bench/provider.py call custom \
+    --base-url https://your-endpoint/v1 \
+    --model your-model \
+    --api-key-env YOUR_KEY
+```
+
+**让盲评实验直接跑在你的模型上**：
+
+```bash
+python bench/bench_runner.py execute --provider deepseek
+```
+
+**如何扩展**：在 `provider.py` 的 `PROVIDER_PRESETS` 里加一条字典即可（字段 `label` / `api_style` / `base_url` / `model` / `api_key_env`）；需要自定义请求头时用 `ProviderConfig.extra_headers`。目前实现两种协议：`openai`（`/chat/completions`）与 `anthropic`（`/messages`）。
+
+> ⚠️ **密钥只从环境变量读取**，不落盘、不进仓库。一旦使用 HTTP 模式，提示词内容会发送到你所指定的端点——涉及客户资料或商业机密时，请改用手动模式或本地模型。
+
+> **注意**：该接入层目前只服务于 `bench/` 评测流程。**REBUILD 方法论本身没有运行时**——`agents/` 下是契约文档，不存在把它们串起来执行的编排器（见上方「这个项目不是什么」）。
+
 ## 成熟度声明
 
 这一节是本项目最重要的部分，请认真读。
@@ -85,7 +140,7 @@ python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
 - 原创方法论与阶段门禁（已文档化）
 - 确定性状态机：7 状态 / 合法与回退迁移
 - 项目 JSON 校验 CLI
-- 5 份数据 Schema：项目、证据、决策、实验、KPI 树
+- 5 份数据 Schema 的规范定义：项目、证据、决策、实验、KPI 树
 - 8 个角色的完整契约
 - 单元测试（28 项，Python 3.10–3.13）
 - 盲评实验脚手架：编号散列、身份隐藏、评审一致性检查、拒绝不足两名评审与不完整覆盖
@@ -95,9 +150,11 @@ python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
 - 一轮先导实验（1/4 用例，样本不足，见 `bench/PILOT_B03.md`）
 
 **未实现**
+- **JSON Schema 的实际校验** —— 5 份 Schema 目前只是规范文件，**没有任何代码读取它们**。CLI 只对 `project.json` 做手写的字段存在性检查。这意味着 Schema 与实际校验之间存在缺口。
+- **证据账本** —— 方法论的核心产物是「可追溯的证据账本」，但目前**没有录入与读取路径**：`evidence.schema.json` 已定义却无人使用，证据只能以自由文本散落在各处。
 - 多 Agent 运行时调度（子 Agent 目前是方法论契约，不是运行实例）
+- **营销数据平台接入** —— 无任何数据源连接器（刻意不包含，非能力缺失）
 - 项目持久化与决策历史版本
-- 营销数据接入
 - DeepSeek Harness 端到端集成
 
 **未验证**
@@ -105,6 +162,8 @@ python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
 - 与单 Agent / 基础提示词的质量对照（先导实验样本不足，**不构成对照证据**）
 - 评审独立性（先导实验的两名评审身份与产生方式无记录）
 - 真实商业项目中的 ROI 改善
+- 商业价值假设：咨询交付 / 企业内训 / 评测层三条路径**均未验证**
+- 在真实客户数据上能否端到端跑完一次完整的 R→E→B→U→I→D
 
 > `agents/*.md` 中的角色是**方法论契约**，不是运行时的 Agent 实例。
 > 提示词里写了子 Agent，不等于运行时创建了子 Agent。
