@@ -22,7 +22,7 @@ class ProviderConfigTests(unittest.TestCase):
     def test_unknown_provider_rejected(self):
         with self.assertRaises(ValueError) as ctx:
             provider.ProviderConfig.from_preset("nonexistent")
-        self.assertIn("可用", str(ctx.exception))
+        self.assertIn("Available", str(ctx.exception))
 
     def test_ollama_needs_no_key(self):
         config = provider.ProviderConfig.from_preset("ollama")
@@ -34,7 +34,7 @@ class ProviderConfigTests(unittest.TestCase):
             with self.assertRaises(RuntimeError) as ctx:
                 config.resolve_api_key()
         self.assertIn("DEEPSEEK_API_KEY", str(ctx.exception))
-        self.assertIn("手动模式", str(ctx.exception))
+        self.assertIn("manual mode", str(ctx.exception))
 
     def test_manual_mode_needs_no_api(self):
         config = provider.ProviderConfig(api_style="manual")

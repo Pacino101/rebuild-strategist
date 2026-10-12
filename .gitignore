@@ -8,16 +8,16 @@ venv/
 .coverage
 htmlcov/
 
-# Bench 运行产物：含未公开的模型回答与盐值，默认不提交。
-# scorecard.csv 是要公开的，不在此列。
+# Bench run artefacts: contain unpublished model answers and salts, not committed by default.
+# scorecard.csv is meant to be public and is not listed here.
 bench/runs/
 
-# 编排器运行产物：含模型输出与项目材料摘录，可能涉及客户信息。
-# 需要公开某次运行结果时，请显式 git add -f 单个文件。
+# Orchestrator run artefacts: contain model outputs and excerpts from project material, which may involve client information.
+# When the result of a run needs to be published, explicitly git add -f the individual file.
 runs/
 
-# 项目材料库与证据账本：通常是客户数据，默认不提交。
-# 示例项目若要提交，请在该目录下单独放 .gitignore 例外。
+# Project material library and evidence ledger: usually client data, not committed by default.
+# If an example project needs to be committed, put a separate .gitignore exception in that directory.
 sources/documents/
 sources/index.jsonl
 sources/specs/

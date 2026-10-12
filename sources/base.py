@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""数据源层：把外部材料变成可追溯的「文档」。
+"""Data source layer: turn external material into traceable "documents".
 
-设计边界
---------
-本层**只读**，且**不内置任何具体平台的连接器**。使用者自己决定从哪里取数：
+Design boundaries
+-----------------
+This layer is **read-only** and **ships no connector for any specific platform**.
+The user decides where data comes from:
 
-- 本地文件（CSV / JSON / JSONL / TXT / MD / XLSX）
-- 使用者自己的 HTTP 端点（URL 与密钥都由使用者提供）
+- Local files (CSV / JSON / JSONL / TXT / MD / XLSX)
+- The user's own HTTP endpoints (both URL and keys are supplied by the user)
 
-为什么每条材料都要存哈希：方法论要求每条证据可追溯到来源。若来源可以
-被悄悄改动而无人察觉，「可追溯」就是空话。哈希让来源可被校验。
+Why every piece of material is hashed: the methodology requires every piece of
+evidence to be traceable to its source. If a source could be quietly modified
+without anyone noticing, "traceable" would be an empty promise. Hashing makes
+sources verifiable.
 
-本层不解析营销语义、不做归因、不写回任何外部系统。
+This layer does not parse marketing semantics, does not do attribution, and does
+not write back to any external system.
 """
 from __future__ import annotations
 
@@ -25,13 +29,14 @@ SOURCES_DIRNAME = "sources"
 INDEX_FILENAME = "index.jsonl"
 DOCUMENTS_DIRNAME = "documents"
 
-#: 单个文档的字符上限，超出则截断并在 meta 中标记。
-#: 目的是避免一次误操作把几百兆文件灌进提示词。
+#: Character limit for a single document; anything longer is truncated and
+#: flagged in meta. The point is to avoid one careless operation pouring a few
+#: hundred megabytes into the prompt.
 MAX_CONTENT_CHARS = 200_000
 
 
 class SourceError(Exception):
-    """取数失败。消息面向使用者，应能直接看懂。"""
+    """Data fetch failed. Messages face the user and must be immediately clear."""
 
 
 def _now() -> str:
@@ -44,7 +49,7 @@ def sha256_of(text: str) -> str:
 
 @dataclass
 class Document:
-    """一份取回来的原始材料。"""
+    """A single piece of source material that was fetched."""
 
     doc_id: str
     origin: str
@@ -68,7 +73,8 @@ class Document:
 
 
 def truncate(content: str, meta: dict) -> str:
-    """超长内容截断并留痕——静默截断会让人以为拿到的是全文。"""
+    """Truncate over-long content and leave a trace — silent truncation makes
+    people believe they got the full text."""
     if len(content) <= MAX_CONTENT_CHARS:
         return content
     meta["truncated"] = True
@@ -78,7 +84,7 @@ def truncate(content: str, meta: dict) -> str:
 
 
 class DocumentStore:
-    """项目的原始材料库。与 project.json 放在同一目录。"""
+    """The project's source material library. Lives beside project.json."""
 
     def __init__(self, project_dir):
         self.project_dir = Path(project_dir)
@@ -95,10 +101,12 @@ class DocumentStore:
     def documents_dir(self) -> Path:
         return self.root / DOCUMENTS_DIRNAME
 
-    # ------------------------------------------------------------------ 写入
+    # ------------------------------------------------------------------ write
     def add(self, origin, content, media_type="text/plain", meta=None) -> Document:
         if not isinstance(content, str):
-            raise SourceError(f"content 必须是字符串，收到 {type(content).__name__}")
+            raise SourceError(
+                f"content must be a string, got {type(content).__name__}"
+            )
         meta = dict(meta or {})
         content = truncate(content, meta)
 
@@ -135,7 +143,7 @@ class DocumentStore:
                 highest = max(highest, int(doc_id[4:]))
         return f"DOC-{highest + 1:03d}"
 
-    # ------------------------------------------------------------------ 读取
+    # ------------------------------------------------------------------- read
     def list(self) -> list[dict]:
         if not self.index_path.exists():
             return []
@@ -150,17 +158,19 @@ class DocumentStore:
                 entries.append(json.loads(line))
             except json.JSONDecodeError as exc:
                 raise SourceError(
-                    f"{self.index_path}:{lineno} 损坏（{exc}）。请人工修复。"
+                    f"{self.index_path}:{lineno} is corrupt ({exc}). "
+                    "Please repair it by hand."
                 ) from exc
         return entries
 
     def get(self, doc_id) -> Document:
         path = self.documents_dir / f"{doc_id}.json"
         if not path.exists():
-            raise SourceError(f"找不到文档 {doc_id}（{path}）")
+            raise SourceError(f"document {doc_id} not found ({path})")
         return Document.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
     def verify(self, doc_id) -> bool:
-        """校验文档内容与记录的哈希是否一致——来源是否被改动过。"""
+        """Check whether document content matches the recorded hash — i.e.
+        whether the source has been modified."""
         document = self.get(doc_id)
         return sha256_of(document.content) == document.sha256

@@ -146,7 +146,7 @@ class JsonTests(TempDirCase):
         path.write_text('{"a": }', encoding="utf-8")
         with self.assertRaises(SourceError) as ctx:
             files.read_file(path)
-        self.assertIn("JSON 解析失败", str(ctx.exception))
+        self.assertIn("JSON parse failed", str(ctx.exception))
 
     def test_jsonl_records(self):
         path = self.dir / "d.jsonl"
@@ -159,7 +159,7 @@ class JsonTests(TempDirCase):
         path.write_text('{"a":1}\nnot json\n', encoding="utf-8")
         with self.assertRaises(SourceError) as ctx:
             files.read_file(path)
-        self.assertIn("第 2 行", str(ctx.exception))
+        self.assertIn("line 2", str(ctx.exception))
 
 
 class XlsxTests(TempDirCase):
@@ -183,7 +183,7 @@ class XlsxTests(TempDirCase):
         path.write_bytes(b"this is not a zip")
         with self.assertRaises(SourceError) as ctx:
             files.read_file(path)
-        self.assertIn("不是有效的 xlsx", str(ctx.exception))
+        self.assertIn("is not a valid xlsx", str(ctx.exception))
 
     def test_empty_cells_are_padded(self):
         path = self.dir / "gap.xlsx"
@@ -198,7 +198,7 @@ class UnsupportedTests(TempDirCase):
         path.write_bytes(b"%PDF")
         with self.assertRaises(SourceError) as ctx:
             files.read_file(path)
-        self.assertIn("不支持的文件类型", str(ctx.exception))
+        self.assertIn("unsupported file type", str(ctx.exception))
 
     def test_missing_file(self):
         with self.assertRaises(SourceError):
@@ -292,7 +292,7 @@ class ExtractRecordsTests(unittest.TestCase):
     def test_missing_key_lists_available(self):
         with self.assertRaises(SourceError) as ctx:
             http_api.extract_records({"data": {}}, "data.items")
-        self.assertIn("可用字段", str(ctx.exception))
+        self.assertIn("Available fields", str(ctx.exception))
 
     def test_scalar_branch_errors(self):
         with self.assertRaises(SourceError):
@@ -322,14 +322,14 @@ class SpecSafetyTests(unittest.TestCase):
             name="s", url="https://e.com",
             headers={"X-Custom": "abcdefghijklmnopqrstuvwxyz123456"},
         )
-        self.assertTrue(any("像是密钥" in w for w in spec.warnings()))
+        self.assertTrue(any("looks like a secret" in w for w in spec.warnings()))
 
     def test_unset_env_var_warns(self):
         spec = http_api.HttpSourceSpec(
             name="s", url="https://e.com",
             header_env={"Authorization": "DEFINITELY_NOT_SET_ENV_XYZ"},
         )
-        self.assertTrue(any("未设置" in w for w in spec.warnings()))
+        self.assertTrue(any("not set" in w for w in spec.warnings()))
 
     def test_env_var_is_resolved_at_runtime(self):
         spec = http_api.HttpSourceSpec(
@@ -344,7 +344,7 @@ class SpecSafetyTests(unittest.TestCase):
             http_api.HttpSourceSpec.from_dict(
                 {"name": "s", "url": "https://e.com", "typo_field": 1}
             )
-        self.assertIn("未知字段", str(ctx.exception))
+        self.assertIn("unknown field", str(ctx.exception))
 
     def test_spec_missing_url_rejected(self):
         with self.assertRaises(SourceError):
@@ -380,7 +380,7 @@ class FetchTests(TempDirCase):
                         side_effect=urllib.error.URLError("dns failure")):
             with self.assertRaises(SourceError) as ctx:
                 http_api.fetch(self._spec())
-        self.assertIn("无法连接", str(ctx.exception))
+        self.assertIn("cannot connect", str(ctx.exception))
 
     def test_non_json_body_becomes_single_document(self):
         with mock.patch("urllib.request.urlopen",

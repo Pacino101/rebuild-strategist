@@ -1,66 +1,66 @@
-# REBUILD 原创方法论 V3.2
+# The REBUILD Methodology, V3.2
 
-## 1. 方法目标
+## 1. What the method is for
 
-REBUILD 不是一份从市场分析一路填到执行计划的静态模板，而是一种将不确定业务问题转化为可验证决策的工作机制。交付物的价值不以页数衡量，而以四个结果衡量：是否明确了决策、是否揭示关键不确定性、是否做出真实取舍、是否建立了能推翻或支持决策的验证方案。
+REBUILD is not a static template you fill in from market analysis all the way down to an execution plan. It is a working mechanism for turning an uncertain business problem into a verifiable decision. The value of a deliverable is not measured in pages but in four outcomes: whether the decision is made explicit, whether the key uncertainties are surfaced, whether a real trade-off was made, and whether a verification plan exists that could overturn or support the decision.
 
-## 2. 六阶段决策循环
+## 2. The six-phase decision loop
 
-### R — Reality：界定现实
-- 产出：问题陈述、目标函数、边界条件、利益相关者、当前基线、决策期限。
-- 必答：现在真正需要决定什么？什么现象只是症状？若不行动会怎样？
-- 门禁：业务目标与观察到的症状分开写；缺少基线时必须标记未知，不得伪造基准。
+### R — Reality: frame the real situation
+- Outputs: problem statement, objective function, boundary conditions, stakeholders, current baseline, decision deadline.
+- Must answer: what actually has to be decided now? Which phenomena are merely symptoms? What happens if we do nothing?
+- Gate: business goals and observed symptoms must be written separately; when a baseline is missing it must be marked unknown — fabricating a baseline is not allowed.
 
-### E — Evidence：建立证据
-- 产出：证据账本、客户/市场/竞品/内部经营信息、反证清单。
-- 每条证据包含：主张、类型、来源、时间、适用范围、可信度、反证、会改变什么决策。
-- 门禁：关键结论必须可追溯；推断不得伪装成事实；未知项要给出补证路径。
+### E — Evidence: build the evidence base
+- Outputs: evidence ledger, customer / market / competitor / internal operating information, falsification list.
+- Every piece of evidence carries: claim, type, source, time, scope of applicability, confidence, falsification, and which decision it would change.
+- Gate: key conclusions must be traceable; inference must not be disguised as fact; unknowns must come with a path to gathering further evidence.
 
-### B — Bet：形成战略下注
-- 产出：2–4 个可比较战略选项、战略选择、放弃项、代价、成立条件。
-- 比较维度：客户价值、差异化、能力匹配、单位经济、速度、风险、可逆性。
-- 门禁：必须回答“为什么选 A 而不是 B”；如果选项本质相同，退回重构。
+### B — Bet: form the strategic bet
+- Outputs: 2–4 comparable strategic options, the strategic choice, rejected options, cost, conditions under which it holds.
+- Comparison dimensions: customer value, differentiation, capability fit, unit economics, speed, risk, reversibility.
+- Gate: must answer "why A and not B"; if the options are essentially the same, go back and rebuild them.
 
-### U — Unit Economics：验证商业成立性
-- 产出：价值链、漏斗、单位经济模型、预算边界、情景假设、现金与回本约束。
-- 必查：收入不是利润；ROAS 不是贡献利润；LTV 必须写清计算口径和观察窗口；CAC 要区分渠道、全口径和增量口径。
-- 门禁：关键财务指标必须标记公式、分子分母、时间范围、数据来源和敏感性；数据缺失则输出区间或待验证假设。
+### U — Unit Economics: verify the business actually works
+- Outputs: value chain, funnel, unit-economics model, budget boundary, scenario assumptions, cash and payback constraints.
+- Must check: revenue is not profit; ROAS is not contribution margin; LTV must state its calculation basis and observation window; CAC must distinguish channel, blended and incremental bases.
+- Gate: key financial metrics must state their formula, numerator and denominator, time range, data source and sensitivity; where data is missing, output a range or a to-be-verified assumption.
 
-### I — Implementation & Instrumentation：执行与观测
-- 产出：优先级路线图、负责人、预算、KPI 树、实验卡、事件/数据需求、风险应对。
-- 每项行动绑定：目标假设、前置条件、负责人、截止日期、成本、领先指标、结果指标、停止条件。
-- 门禁：没有测量设计的行动不得被描述为可验证增长实验。
+### I — Implementation & Instrumentation: execute and observe
+- Outputs: prioritised roadmap, owners, budget, KPI tree, experiment cards, event / data requirements, risk responses.
+- Every action is bound to: target assumption, preconditions, owner, deadline, cost, leading indicator, outcome metric, stop condition.
+- Gate: an action without a measurement design must not be described as a verifiable growth experiment.
 
-### D — Decision Review：决策复盘
-- 产出：结果对照、偏差解释、假设更新、继续/调整/停止决策、方法资产更新。
-- 门禁：复盘不能只写“效果良好”；必须比较预期与实际、区分执行偏差和策略失效，并记录下一步如何改变。
+### D — Decision Review: review the decision
+- Outputs: outcome comparison, explanation of deviation, assumption updates, continue / adjust / stop decision, methodology asset updates.
+- Gate: a review may not simply say "it went well"; it must compare expectation against actual, separate execution failure from strategy failure, and record how the next step changes.
 
-## 3. 决策记录协议 (Decision Record)
+## 3. Decision Record protocol
 
-每个重大决策必须写入：
-1. 决策问题；2. 决策期限；3. 目标与约束；4. 可选方案；5. 采用方案；6. 放弃方案及原因；7. 关键证据；8. 关键假设；9. 最大风险；10. 反证条件；11. 验证动作；12. 复审日期。
+Every material decision must be written up with:
+1. decision question; 2. decision deadline; 3. goals and constraints; 4. options; 5. chosen option; 6. rejected options and why; 7. key evidence; 8. key assumptions; 9. biggest risk; 10. falsification conditions; 11. validation actions; 12. review date.
 
-## 4. 证据类型与政策
+## 4. Evidence types and policy
 
-- `FACT`：有可核验来源的事实。
-- `INFERENCE`：由事实推导的判断，必须显式说明推理桥梁。
-- `ASSUMPTION`：暂时接受但未验证的前提。
-- `UNKNOWN`：当前没有足够信息。
+- `FACT`: a fact with a verifiable source.
+- `INFERENCE`: a judgement derived from facts — the reasoning bridge must be stated explicitly.
+- `ASSUMPTION`: a premise accepted for now but not verified.
+- `UNKNOWN`: insufficient information at present.
 
-可信度采用 `HIGH / MEDIUM / LOW`，不以模型语气作为证据。若一个关键假设被反证，系统必须回到受影响的决策节点，而不是仅在报告末尾增加风险提示。
+Confidence uses `HIGH / MEDIUM / LOW`, and **model tone is never treated as evidence**. If a key assumption is falsified, the system must return to the affected decision node — not merely append a risk note at the end of the report.
 
-## 5. 反证机制
+## 5. The falsification mechanism
 
-Red Team 只攻击高杠杆假设：客户是否真有此需求、差异化是否能被感知、渠道成本是否可承受、交付能力是否真实存在、单位经济是否成立。每条质疑都要给出“可观察信号 + 验证方法 + 触发后果”。纯粹的负面观点不计为有效反证。
+The Red Team attacks only high-leverage assumptions: whether customers really have this need, whether the differentiation is perceptible, whether channel cost is affordable, whether the delivery capability genuinely exists, whether the unit economics hold. Every challenge must give an "observable signal + verification method + triggered consequence". A purely negative opinion does not count as valid falsification.
 
-## 6. 输出质量定义
+## 6. Definition of output quality
 
-合格交付应满足：
-- 决策问题明确；
-- 事实、推断、假设和未知分开；
-- 至少比较两个实质不同选项；
-- 写出放弃项和代价；
-- 财务口径可复算；
-- 每个关键假设有验证动作；
-- 有明确停止/调整条件；
-- 无来源数据不编造，缺失信息不伪装成确定结论。
+A passing deliverable must satisfy:
+- the decision question is explicit;
+- fact, inference, assumption and unknown are kept separate;
+- at least two materially different options are compared;
+- rejected options and their cost are written down;
+- financial bases can be recalculated;
+- every key assumption has a validation action;
+- there are explicit stop / adjust conditions;
+- unsourced data is not fabricated, and missing information is not disguised as a firm conclusion.

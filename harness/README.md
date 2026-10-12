@@ -1,52 +1,55 @@
-# 宿主接入
+# Host integration
 
-## DeepSeek Harness（DSH）
+## DeepSeek Harness (DSH)
 
-`deepseek/SKILL.md` 是一个可直接安装的 DSH Skill。它把 REBUILD 的方法论、
-证据纪律与配套命令压缩成一份模型可读的操作说明。
+`deepseek/SKILL.md` is a directly installable DSH Skill. It compresses the REBUILD
+methodology, evidence discipline and companion commands into a single model-readable
+operating manual.
 
-### 安装
+### Installation
 
-DSH 的技能发现规则是：在若干「扫描根目录」下找 `<名称>/SKILL.md`，**只扫描一层**。
+DSH's skill discovery rule is: look for `<name>/SKILL.md` under a number of "scan roots", and
+**scan only one level deep**.
 
 ```bash
-# 用户级安装（对所有项目生效）
+# User-level installation (applies to all projects)
 mkdir -p ~/.dsh/skills/rebuild-strategist
 cp harness/deepseek/SKILL.md ~/.dsh/skills/rebuild-strategist/SKILL.md
 
-# 或者项目级安装（只对当前项目生效）
+# Or project-level installation (applies only to the current project)
 mkdir -p .dsh/skills/rebuild-strategist
 cp harness/deepseek/SKILL.md .dsh/skills/rebuild-strategist/SKILL.md
 ```
 
-装好后**下一个模型步骤**即可在技能目录中看到 `rebuild-strategist`，无需重启。
+Once installed, **the next model step** will see `rebuild-strategist` in the skill catalog,
+with no restart needed.
 
-### 卸载
+### Uninstallation
 
 ```bash
 rm -rf ~/.dsh/skills/rebuild-strategist
 ```
 
-### 注意
+### Notes
 
-- 文件名必须是 `SKILL.md`，目录名必须与 frontmatter 中的 `name` 一致。
-- frontmatter 的 `name` 必须是 kebab-case，且 `description` 不能为空——
-  这两项任一不合法，技能会被**静默丢弃**。
-- 技能正文会被整体注入模型上下文。本文件已控制在 8 KB 以内，
-  以免在压缩发生时被截断中间部分。
+- The file name must be `SKILL.md`, and the directory name must match the `name` in the frontmatter.
+- The frontmatter `name` must be kebab-case, and `description` must not be empty —
+  if either of these is invalid, the skill is **silently dropped**.
+- The skill body is injected into the model context in full. This file is kept under 8 KB,
+  so that its middle section is not truncated when compaction happens.
 
-### 能力边界
+### Capability boundaries
 
-装上这个 Skill 得到的是**一套工作方法**，不是运行时。具体来说：
+What you get from installing this Skill is **a working method**, not a runtime. Specifically:
 
-- Skill 教模型按 REBUILD 的六个阶段和门禁工作；
-- `core/` 下的命令提供落盘、校验与留痕；
-- `core/orchestrator.py` 可以在**没有宿主**的情况下顺序跑完整个循环；
-- **并行子 Agent 调度由宿主决定**。DSH 提供子 Agent 能力时才有真并行，
-  本仓库不假装具备。
+- The Skill teaches the model to work through REBUILD's six phases and gates;
+- The commands under `core/` provide persistence, validation and an audit trail;
+- `core/orchestrator.py` can run the entire loop sequentially **without a host**;
+- **Parallel sub-agent scheduling is decided by the host.** True parallelism exists only when DSH
+  provides sub-agent capability; this repository does not pretend otherwise.
 
-## 其他宿主
+## Other hosts
 
-REBUILD 的方法论与命令不依赖任何特定宿主。若目标宿主不支持 Skill 机制，
-把 `deepseek/SKILL.md` 的正文作为系统提示词，并在项目根目录运行
-`core/rebuild_cli.py` 即可。
+REBUILD's methodology and commands do not depend on any particular host. If the target host does not
+support the Skill mechanism, use the body of `deepseek/SKILL.md` as the system prompt and run
+`core/rebuild_cli.py` in the project root.

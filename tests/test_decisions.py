@@ -90,7 +90,7 @@ class WriteTests(Base):
         self.store.add(good_record(decision_id="DR-001"))
         with self.assertRaises(D.DecisionError) as ctx:
             self.store.add(good_record(decision_id="DR-001"))
-        self.assertIn("已存在", str(ctx.exception))
+        self.assertIn("already exists", str(ctx.exception))
 
     def test_corrupt_decision_file_raises(self):
         self.store.add(good_record())
@@ -103,22 +103,22 @@ class QualityWarningTests(Base):
     def test_missing_review_date_warns(self):
         self.store.add(good_record(review_date=""))
         _, warnings = self.store.validate()
-        self.assertTrue(any("复审日期" in w for w in warnings), warnings)
+        self.assertTrue(any("no review date" in w for w in warnings), warnings)
 
     def test_missing_falsification_warns(self):
         self.store.add(good_record(falsification_conditions=[]))
         _, warnings = self.store.validate()
-        self.assertTrue(any("反证条件" in w for w in warnings), warnings)
+        self.assertTrue(any("no falsification conditions" in w for w in warnings), warnings)
 
     def test_missing_tradeoffs_warns(self):
         self.store.add(good_record(tradeoffs=[]))
         _, warnings = self.store.validate()
-        self.assertTrue(any("代价" in w for w in warnings), warnings)
+        self.assertTrue(any("no trade-offs" in w for w in warnings), warnings)
 
     def test_chosen_not_among_options_warns(self):
         self.store.add(good_record(chosen_option="第三个方案"))
         _, warnings = self.store.validate()
-        self.assertTrue(any("不在候选方案列表" in w for w in warnings), warnings)
+        self.assertTrue(any("is not in the list of options" in w for w in warnings), warnings)
 
     def test_duplicate_option_names_warn(self):
         self.store.add(good_record(options=[
@@ -126,19 +126,19 @@ class QualityWarningTests(Base):
             {"name": "A", "rationale": "r2"},
         ], chosen_option="A"))
         _, warnings = self.store.validate()
-        self.assertTrue(any("同名选项" in w for w in warnings), warnings)
+        self.assertTrue(any("duplicate option names" in w for w in warnings), warnings)
 
     def test_expired_deadline_warns(self):
         self.store.add(good_record(deadline="2000-01-01"))
         _, warnings = self.store.validate()
-        self.assertTrue(any("已过期" in w for w in warnings), warnings)
+        self.assertTrue(any("has passed" in w for w in warnings), warnings)
 
     def test_null_choice_without_validation_warns(self):
         """真实运行中发现：门禁判证据不足时，模型会诚实地把 chosen_option
         留空。这是对的——但必须写明补什么才能决策，否则等同于没结论。"""
         self.store.add(good_record(chosen_option=None, validation_actions=[]))
         _, warnings = self.store.validate()
-        self.assertTrue(any("未做出选择" in w for w in warnings), warnings)
+        self.assertTrue(any("no choice was made" in w for w in warnings), warnings)
 
     def test_null_choice_with_validation_is_acceptable(self):
         self.store.add(good_record(
@@ -147,7 +147,7 @@ class QualityWarningTests(Base):
         ))
         errors, warnings = self.store.validate()
         self.assertEqual(errors, [])
-        self.assertFalse([w for w in warnings if "未做出选择" in w], warnings)
+        self.assertFalse([w for w in warnings if "no choice was made" in w], warnings)
 
     def test_null_choice_passes_schema(self):
         # schema 允许 null；它曾经要求 string，导致真实运行的产出被判非法
@@ -171,13 +171,13 @@ class OutcomeTests(Base):
     def test_rejects_outcome_for_unknown_decision(self):
         with self.assertRaises(D.DecisionError) as ctx:
             self.store.record_outcome(good_outcome(decision_id="DR-999"))
-        self.assertIn("找不到决策记录", str(ctx.exception))
+        self.assertIn("not found", str(ctx.exception))
 
     def test_rejects_vague_actual(self):
         self.store.add(good_record())
         with self.assertRaises(D.DecisionError) as ctx:
             self.store.record_outcome(good_outcome(actual="不错"))
-        self.assertIn("actual 过短", str(ctx.exception))
+        self.assertIn("actual is too short", str(ctx.exception))
 
     def test_unknown_deviation_requires_notes(self):
         self.store.add(good_record())
@@ -185,7 +185,7 @@ class OutcomeTests(Base):
             self.store.record_outcome(
                 good_outcome(deviation_type="UNKNOWN", notes=None)
             )
-        self.assertIn("无法归因", str(ctx.exception))
+        self.assertIn("cannot be attributed", str(ctx.exception))
 
     def test_as_expected_is_a_valid_deviation_type(self):
         """第四个同类 schema 缺陷：枚举里预设了「一定存在偏差」，
@@ -296,15 +296,15 @@ class ExportTests(Base):
         text = self.store.to_markdown()
         self.assertIn("DR-001", text)
         self.assertIn("春茶季集中投放", text)
-        self.assertIn("执行偏差", text)
-        self.assertIn("调整", text)
+        self.assertIn("Execution failure", text)
+        self.assertIn("Adjust", text)
 
     def test_markdown_marks_unreviewed(self):
         self.store.add(good_record())
-        self.assertIn("尚未复盘", self.store.to_markdown())
+        self.assertIn("Not reviewed yet.", self.store.to_markdown())
 
     def test_empty_store_message(self):
-        self.assertIn("尚无决策记录", self.store.to_markdown())
+        self.assertIn("No decision records yet.", self.store.to_markdown())
 
 
 class SchemaTests(unittest.TestCase):

@@ -1,11 +1,11 @@
 {
   "case_id": "B01",
-  "title": "转化率下降但原因未知",
-  "prompt": "某教育课程的线索到付费转化率下降 20%。请制定诊断与决策方案。没有提供渠道、周期、样本量、价格变化或销售流程数据。",
-  "hidden_evaluation": "合格回答应先澄清相对下降/百分点、时间窗、样本量、渠道结构；拆解流量质量、触达、试听、销售、价格等环节；不应直接断言单一原因；应设计数据核查与小规模实验。",
+  "title": "Conversion rate has dropped but the cause is unknown",
+  "prompt": "The lead-to-paid conversion rate for an education course has dropped by 20%. Please set out a diagnostic and decision plan. No data has been provided on channel, period, sample size, price changes or the sales process.",
+  "hidden_evaluation": "A passing answer should first clarify relative decline versus percentage points, the time window, sample size and channel structure; break the process down into traffic quality, reach, trial lesson, sales and price; should not assert a single cause outright; and should design data checks and a small-scale experiment.",
   "critical_failures": [
-    "编造原因或行业基准",
-    "不区分相对下降和百分点",
-    "没有对照/验证设计"
+    "Fabricating causes or industry benchmarks",
+    "Not distinguishing relative decline from percentage points",
+    "No control/validation design"
   ]
 }

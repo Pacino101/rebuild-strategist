@@ -1,33 +1,33 @@
-# REBUILD Bench — 评测规程
+# REBUILD Bench — evaluation protocol
 
-## 目标
-评测系统是否提升决策质量，而不是比谁输出更长、更像咨询报告。V3.2 提供基准框架，不声称已完成模型对照实验。
+## Goal
+To evaluate whether the system improves decision quality, rather than comparing who produces longer output that looks more like a consulting report. V3.2 provides a benchmark framework and does not claim to have completed a model comparison experiment.
 
-## 评分（每项 0–4 分）
-1. 问题定义：是否区分症状、目标和决策。
-2. 证据纪律：是否标记来源、事实/推断/假设/未知。
-3. 战略取舍：是否比较实质不同方案并说明放弃项。
-4. 商业闭环：是否检查单位经济、预算和约束。
-5. 验证设计：是否有指标、样本/窗口、停止条件。
-6. 反证能力：是否提出能改变决策的反证条件。
-7. 可执行性：是否有负责人、顺序、成本和时间。
-8. 诚实性：是否避免编造数字、引用或结果。
+## Scoring (0–4 points per item)
+1. Problem definition: does it distinguish symptoms, goals and decisions.
+2. Evidence discipline: does it label sources and FACT/INFERENCE/ASSUMPTION/UNKNOWN.
+3. Strategic trade-offs: does it compare substantively different options and state the rejected options.
+4. Business loop: does it check unit economics, budget and constraints.
+5. Validation design: are there metrics, sample/window, and stop conditions.
+6. Falsification capability: does it propose falsification conditions that could change the decision.
+7. Executability: are there owners, sequence, cost and time.
+8. Honesty: does it avoid fabricating numbers, citations or results.
 
-满分 32。诚实性得 0 分时，该样本判定为失败，不以总分抵消。
+Maximum 32. If honesty scores 0, the sample is judged a failure and the total score does not offset it.
 
-## 对照实验
-对同一案例、同一模型版本、同一可用资料，至少运行：A. 普通任务提示词；B. 单 Agent REBUILD Skill；C. REBUILD 主 Agent + 子 Agent（仅在真实可运行时）。每种配置至少 3 次独立运行；隐藏配置名称后由两位评审按量表评分，记录评分差异。
+## Controlled experiment
+For the same case, the same model version and the same available materials, run at least: A. a plain task prompt; B. a single-agent REBUILD Skill; C. REBUILD master agent + sub-agents (only when genuinely runnable). At least 3 independent runs per configuration; after hiding the configuration names, two reviewers score against the rubric and the score differences are recorded.
 
-## 必须报告
-- 模型/版本、提示词版本、运行日期、温度或可用参数
-- 输入资料与缺失信息
-- 每项分数、总分、编造事实错误数、不可复算数字数
-- 运行耗时、token/成本（若可取得）
-- 失败样本与复现方法
+## Must be reported
+- model/version, prompt version, run date, temperature or available parameters
+- input materials and missing information
+- per-item scores, total score, count of fabricated-fact errors, count of non-recomputable numbers
+- run duration, token/cost (if obtainable)
+- failure samples and reproduction method
 
-## 通过门槛（初始假设，后续应依据数据调整）
-- 平均分不低于 24/32；
-- 诚实性无致命失败；
-- 对照普通提示词平均提升至少 15%；
-- 关键数字可复算率不低于 90%。
-这些是预设门槛，不是当前已取得的成绩。
+## Pass thresholds (initial assumptions, to be adjusted later based on data)
+- average score at least 24/32;
+- no critical honesty failure;
+- at least a 15% average improvement over the plain prompt;
+- at least 90% of key numbers recomputable.
+These are pre-set thresholds, not results already achieved.

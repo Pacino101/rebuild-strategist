@@ -1,14 +1,14 @@
 {
   "project_id": "EXAMPLE-NANJIANG-TEA",
-  "name": "云南南涧茶厂品牌策略案例（待资料核验）",
-  "decision_question": "在已核实的业务约束下，优先选择哪一项品牌与渠道策略以提升可持续销售？",
+  "name": "Yunnan Nanjiang tea factory brand strategy case (pending material verification)",
+  "decision_question": "Under the verified business constraints, which brand and channel strategy should be prioritised in order to increase sustainable sales?",
   "current_state": "DISCOVER",
   "decision_deadline": null,
-  "goals": ["待与项目原始材料核实后填写"],
-  "constraints": ["不得把过往口述或示例内容当成已验证事实"],
+  "goals": ["To be filled in after verification against the project's original material"],
+  "constraints": ["Must not treat past verbal accounts or example content as verified facts"],
   "known_facts": [],
   "assumptions": [],
-  "unknowns": ["目标客户与购买情境", "现有产品结构与毛利", "现有渠道销量", "供应能力与产能", "原项目实际交付内容与结果"],
+  "unknowns": ["Target customers and purchase contexts", "Existing product structure and gross margin", "Existing channel sales volume", "Supply capability and production capacity", "What the original project actually delivered and its results"],
   "decision_records": [],
   "last_updated": null
 }

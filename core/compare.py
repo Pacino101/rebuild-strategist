@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
-"""多次运行的比对。
+"""Comparison across multiple runs.
 
-为什么需要它
-------------
-实测同一输入、同一证据、**temperature=0**，跑三次会得到方向一致但细节差异
-达 2.5 倍的输出（反证条件 6/10/15 条）。因此**单次运行的输出不是「答案」，
-只是起点**。
+Why it is needed
+----------------
+Measured with the same input, the same evidence and **temperature=0**, three
+runs produced outputs pointing the same way but differing in detail by a factor
+of 2.5 (6/10/15 falsification conditions). So **the output of a single run is
+not "the answer", only a starting point**.
 
-这个模块把「多跑几次看看稳不稳」从手工动作变成可用工具。
+This module turns "run it a few times and see whether it is stable" from a
+manual chore into a usable tool.
 
-两类结论必须分开，不能混为一谈
-------------------------------
-1. **过程可复现性**（本模块确定性计算）：终态、迁移路径、门禁档位、条目数量。
-   这些直接可比。
-2. **结论是否一致**（需要模型判定）：几份建议在**方向上**是否一致。
-   这是自由文本，机械比对做不了。用 `judge_agreement()` 单独判，
-   并明确标注它是模型判定，不是事实。
+Two kinds of conclusion must be kept apart, never conflated
+-----------------------------------------------------------
+1. **Process reproducibility** (computed deterministically by this module):
+   final state, transition path, gate grade, item counts. These are directly
+   comparable.
+2. **Whether the conclusions agree** (needs a model judgement): whether the
+   several recommendations point in the **same direction**. That is free text
+   and mechanical comparison cannot do it. Judge it separately with
+   `judge_agreement()`, and label it explicitly as a model judgement, not a
+   fact.
 
-把第 1 类说成第 2 类，是这类工具最容易犯的错——「路径相同」不等于
-「建议相同」。
+Presenting the first kind as the second is the easiest mistake for a tool like
+this to make — "the same path" does not equal "the same recommendation".
 """
 from __future__ import annotations
 
@@ -34,50 +39,52 @@ for _extra in (_HERE, _HERE.parent, _HERE.parent / "bench"):
 
 from orchestrator import extract_json_block  # noqa: E402
 
-#: 路径完全一致
+#: The paths are exactly identical
 PATH_IDENTICAL = "PATH_IDENTICAL"
-#: 终态一致但路径不同
+#: Same final state but different paths
 OUTCOME_IDENTICAL = "OUTCOME_IDENTICAL"
-#: 终态就不一致
+#: The final states themselves differ
 OUTCOME_DIVERGENT = "OUTCOME_DIVERGENT"
 
 
 class CompareError(Exception):
-    """比对无法进行。"""
+    """The comparison cannot proceed."""
 
 
 # ---------------------------------------------------------------------------
-# 读取
+# Load
 # ---------------------------------------------------------------------------
 
 def load_run(run_dir) -> dict:
     path = Path(run_dir) / "run.json"
     if not path.exists():
-        raise CompareError(f"{run_dir} 不是一次运行产物（缺少 run.json）")
+        raise CompareError(f"{run_dir} is not a run artefact (run.json is missing)")
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def collect_runs(project_dir, last=None) -> list[dict]:
-    """取项目下的运行产物，按 run_id 升序。`last` 只取最近 N 次。"""
+    """Collect the run artefacts under a project, ascending by run_id. `last`
+    takes only the most recent N."""
     runs_root = Path(project_dir) / "runs"
     if not runs_root.is_dir():
         raise CompareError(
-            f"{runs_root} 不存在。请先用 `run` 生成至少两次运行。"
+            f"{runs_root} does not exist. Use `run` to produce at least two runs first."
         )
     dirs = sorted(d for d in runs_root.iterdir() if (d / "run.json").exists())
     if not dirs:
-        raise CompareError(f"{runs_root} 下没有可比的运行产物")
+        raise CompareError(f"{runs_root} holds no run artefacts to compare")
     if last:
         dirs = dirs[-last:]
     return [load_run(d) for d in dirs]
 
 
 # ---------------------------------------------------------------------------
-# 抽取可比字段
+# Extract comparable fields
 # ---------------------------------------------------------------------------
 
 def _path_of(report) -> list:
-    """迁移路径：(阶段, 事件, 目标状态) 序列。跳过被跳过的阶段。"""
+    """Transition path: a sequence of (phase, event, target state). Skipped
+    phases are skipped."""
     path = []
     for phase in report.get("phases", []):
         if phase.get("skipped"):
@@ -141,13 +148,14 @@ def _spread(values):
 
 
 # ---------------------------------------------------------------------------
-# 比对
+# Comparison
 # ---------------------------------------------------------------------------
 
 def compare(reports) -> dict:
-    """确定性比对。**只回答过程可复现性，不回答结论是否一致。**"""
+    """Deterministic comparison. **Answers process reproducibility only; it does
+    not answer whether the conclusions agree.**"""
     if len(reports) < 2:
-        raise CompareError(f"至少需要 2 次运行才能比对，当前 {len(reports)} 次")
+        raise CompareError(f"at least 2 runs are needed to compare; currently {len(reports)}")
 
     paths = [_path_of(r) for r in reports]
     finals = [r.get("final_state") for r in reports]
@@ -161,7 +169,7 @@ def compare(reports) -> dict:
     else:
         verdict = OUTCOME_DIVERGENT
 
-    # 逐阶段门禁档位一致性
+    # Consistency of gate grades, phase by phase
     all_phases = []
     for report in reports:
         for phase in report.get("phases", []):
@@ -170,15 +178,16 @@ def compare(reports) -> dict:
 
     grade_table = {}
     for phase in all_phases:
-        seen = Counter(g.get(phase, "（未执行）") for g in grades)
+        seen = Counter(g.get(phase, "(not executed)") for g in grades)
         grade_table[phase] = {
             "distribution": dict(seen),
             "consistent": len(seen) == 1,
         }
 
     chosen = [d["chosen_option"] for d in decisions]
-    # 「未产出决策记录」与「产出了但本轮未做选择」是两回事，必须分开表达，
-    # 否则「没跑出结论」会被误读成「结论是不决策」。
+    # "No decision record produced" and "produced but no choice was made this
+    # run" are two different things and must be expressed separately, otherwise
+    # "no conclusion came out" is misread as "the conclusion is not to decide".
     status = [
         "NOT_PRODUCED" if not d["produced"]
         else ("NULL_CHOICE" if d["chosen_option"] is None else "CHOSEN")
@@ -203,9 +212,9 @@ def compare(reports) -> dict:
         "cost_total": round(sum(costs), 6) if costs else None,
         "currency": usages[0]["currency"] if costs else None,
         "cost_note": (
-            "费用是按用户提供的单价估算的，不是账单金额。"
+            "the cost is estimated from the unit price the user supplied; it is not a bill amount."
             if costs else
-            "未提供单价，因此只统计 token、不计算费用。"
+            "no unit price was provided, so only tokens are counted and no cost is computed."
         ),
     }
 
@@ -218,7 +227,7 @@ def compare(reports) -> dict:
         "final_states": dict(Counter(finals)),
         "final_state_consistent": len(set(finals)) == 1,
         "paths": [
-            " → ".join(f"{p[0]}:{p[1]}" for p in path) or "（无迁移）"
+            " → ".join(f"{p[0]}:{p[1]}" for p in path) or "(no transitions)"
             for path in paths
         ],
         "path_consistent": all(p == paths[0] for p in paths),
@@ -230,44 +239,45 @@ def compare(reports) -> dict:
         "chosen_options": chosen,
         "decision_status": status,
         "caveat": (
-            "以上全部是**过程**指标。「迁移路径相同」不等于「建议相同」——"
-            "结论是否一致需要模型判定，请用 judge_agreement()。"
+            "Everything above is a **process** metric. \"The transition path is the "
+            "same\" does not equal \"the recommendations are the same\" — whether the "
+            "conclusions agree needs a model judgement; use judge_agreement()."
         ),
     }
 
 
 # ---------------------------------------------------------------------------
-# 结论一致性（模型判定，不是事实）
+# Agreement of conclusions (a model judgement, not a fact)
 # ---------------------------------------------------------------------------
 
-JUDGE_HEADER = """你是评审。下面是同一个问题、同一批证据下，同一个系统独立跑出的 N 份建议。
-请判断它们在**方向上**是否一致——即：决策者照着其中任何一份执行，会不会走到不同的路。
+JUDGE_HEADER = """You are the reviewer. Below are N recommendations that the same system produced independently, for the same question and the same body of evidence.
+Judge whether they agree in **direction** — that is, whether a decision maker following any one of them would end up on a different path.
 
-只比较**方向**（做 / 不做 / 先验证 / 换方案……），不要因为措辞、条目数量、
-详略程度不同就判为不一致。
+Compare **direction** only (do it / do not do it / verify first / switch options ...). Do not call them inconsistent merely because the wording, the number of items or the level of detail differs.
 
-## 各次运行的建议
+## The recommendations from each run
 
 """
 
 JUDGE_FOOTER = """
 
-## 输出格式
+## Output format
 
-只输出一个 JSON 对象：
+Output a single JSON object:
 
 ```json
 {
-  "agree": true 或 false,
-  "direction": "用一句话概括这些建议的共同方向；若不一致则写明有哪几个方向",
-  "groups": [["第几次运行的编号，例如 r1"], ["r3"]],
-  "why": "判定理由，需引用具体措辞",
+  "agree": true or false,
+  "direction": "summarise in one sentence the shared direction of these recommendations; if they disagree, state which directions there are",
+  "groups": [["the identifier of a run, e.g. r1"], ["r3"]],
+  "why": "the reason for the judgement; cite specific wording",
   "confidence": "HIGH | MEDIUM | LOW"
 }
 ```
 
-`groups` 是把方向相同的运行归到一组。若全部一致，就只有一组。
-不确定时把 `confidence` 标低，不要为了给出结论而勉强归类。
+`groups` groups runs that point in the same direction. If they all agree, there
+is only one group. When unsure, mark `confidence` LOW; do not force a grouping
+just to produce a conclusion.
 """
 
 
@@ -275,17 +285,17 @@ def build_judge_packet(reports) -> str:
     lines = [JUDGE_HEADER]
     for index, report in enumerate(reports, 1):
         decision = _decision_of(report)
-        lines.append(f"### r{index}（run_id {report.get('run_id')}）")
+        lines.append(f"### r{index} (run_id {report.get('run_id')})")
         lines.append("")
         if not decision["produced"]:
-            lines.append(f"（未产出决策记录：{decision['error'] or '未知原因'}）")
+            lines.append(f"(no decision record produced: {decision['error'] or 'unknown reason'})")
         else:
-            lines.append(f"**选择**：{decision['chosen_option']}")
+            lines.append(f"**Choice**: {decision['chosen_option']}")
             record = (report.get("decision_record") or {}).get("record") or {}
             rejected = record.get("rejected_options") or []
             if rejected:
                 lines.append("")
-                lines.append("**放弃**：" + "；".join(
+                lines.append("**Rejected**: " + "; ".join(
                     str(r.get("name")) for r in rejected[:4]
                 ))
         lines.append("")
@@ -294,64 +304,66 @@ def build_judge_packet(reports) -> str:
 
 
 def judge_agreement(reports, completions):
-    """用模型判定 N 份建议在方向上是否一致。
+    """Use a model to judge whether N recommendations agree in direction.
 
-    `completions` 是一个 `callable(prompt) -> str`，由调用方提供——
-    本模块不直接碰网络，便于测试与替换。
+    `completions` is a `callable(prompt) -> str` supplied by the caller — this
+    module never touches the network itself, which makes it easy to test and to
+    swap out.
 
-    返回的结论带 `judged_by_model: True` 标记：它是**模型判定**，不是事实。
+    The returned verdict carries `judged_by_model: True`: it is a **model
+    judgement**, not a fact.
     """
     if len(reports) < 2:
-        raise CompareError("至少需要 2 次运行才能判定一致性")
+        raise CompareError("at least 2 runs are needed to judge agreement")
     packet = build_judge_packet(reports)
     raw = completions(packet)
     verdict = extract_json_block(raw)
     if not isinstance(verdict, dict):
         return {
             "judged_by_model": True,
-            "error": "模型输出无法解析为 JSON",
+            "error": "the model output cannot be parsed as JSON",
             "raw": raw[:2000],
         }
     verdict["judged_by_model"] = True
     verdict["caveat"] = (
-        "这是**模型判定**，不是事实。它本身也可能出错，也会受温度影响。"
-        "把它当作一个参考信号，不要当作结论。"
+        "This is a **model judgement**, not a fact. It can itself be wrong and is "
+        "affected by temperature. Treat it as a reference signal, not a conclusion."
     )
     return verdict
 
 
 # ---------------------------------------------------------------------------
-# 渲染
+# Rendering
 # ---------------------------------------------------------------------------
 
 def render_markdown(result: dict) -> str:
     lines = [
-        "# 多次运行比对",
+        "# Comparison across multiple runs",
         "",
-        f"运行次数：**{result['runs']}**　"
-        f"run_id：{', '.join(str(r) for r in result['run_ids'])}",
+        f"Runs: **{result['runs']}**　"
+        f"run_id: {', '.join(str(r) for r in result['run_ids'])}",
         "",
-        "## 一、过程可复现性（确定性计算）",
+        "## 1. Process reproducibility (deterministic computation)",
         "",
-        f"**判定：`{result['process_verdict']}`**",
+        f"**Verdict: `{result['process_verdict']}`**",
         "",
-        f"- 终态分布：{json.dumps(result['final_states'], ensure_ascii=False)}",
-        f"- 迁移路径一致：{'是' if result['path_consistent'] else '否'}",
+        f"- Final state distribution: {json.dumps(result['final_states'], ensure_ascii=False)}",
+        f"- Transition paths consistent: {'yes' if result['path_consistent'] else 'no'}",
         "",
-        "| 运行 | 迁移路径 |",
+        "| Run | Transition path |",
         "|---|---|",
     ]
     for run_id, path in zip(result["run_ids"], result["paths"]):
         lines.append(f"| {run_id} | {path} |")
 
-    lines += ["", "### 逐阶段门禁档位", "",
-              "| 阶段 | 分布 | 一致 |", "|---|---|---|"]
+    lines += ["", "### Gate grade by phase", "",
+              "| Phase | Distribution | Consistent |", "|---|---|---|"]
     for phase, info in result["gate_grades"].items():
-        dist = "、".join(f"{k}×{v}" for k, v in info["distribution"].items())
+        dist = ", ".join(f"{k}×{v}" for k, v in info["distribution"].items())
         lines.append(f"| {phase} | {dist} | {'✅' if info['consistent'] else '❌'} |")
 
-    lines += ["", "### 决策条目数量", "",
-              "| 项 | 最小 | 最大 | 极差 | 均值 |", "|---|---|---|---|---|"]
+    lines += ["", "### Number of decision items", "",
+              "| Item | Min | Max | Range | Mean |", "|---|---|---|---|---|"]
     for key, spread in result["counts"].items():
         if spread is None:
             continue
@@ -361,31 +373,31 @@ def render_markdown(result: dict) -> str:
         )
 
     if result["decision_errors"]:
-        lines += ["", "### 决策记录生成失败", ""]
+        lines += ["", "### Decision record generation failed", ""]
         lines += [f"- {e}" for e in result["decision_errors"]]
 
     usage = result.get("total_usage") or {}
     if usage.get("calls"):
         lines += [
-            "", "## 二、成本与耗时", "",
-            f"- 模型调用合计：**{usage['calls']}** 次"
-            f"（其中 {usage['calls_with_usage']} 次取得 token 用量）",
+            "", "## 2. Cost and elapsed time", "",
+            f"- Total model calls: **{usage['calls']}**"
+            f" (of which {usage['calls_with_usage']} returned token usage)",
         ]
         if usage.get("total_tokens") is not None:
-            lines.append(f"- 合计 token：**{usage['total_tokens']:,}**")
+            lines.append(f"- Total tokens: **{usage['total_tokens']:,}**")
         elif usage.get("tokens_incomplete"):
-            lines.append("- 合计 token：**不完整**（部分运行未取得用量）")
+            lines.append("- Total tokens: **incomplete** (some runs returned no usage)")
         if usage.get("seconds") is not None:
-            lines.append(f"- 合计耗时：{usage['seconds']}s")
+            lines.append(f"- Total elapsed: {usage['seconds']}s")
         if usage.get("cost_total") is not None:
             lines.append(
-                f"- 估算费用：**{usage['cost_total']} {usage.get('currency')}**"
-                f"（{usage['cost_note']}）"
+                f"- Estimated cost: **{usage['cost_total']} {usage.get('currency')}**"
+                f" ({usage['cost_note']})"
             )
         else:
-            lines.append(f"- 费用：未计算。{usage.get('cost_note')}")
+            lines.append(f"- Cost: not computed. {usage.get('cost_note')}")
 
-        lines += ["", "| 运行 | 调用 | token | 耗时 | 估算费用 |", "|---|---|---|---|---|"]
+        lines += ["", "| Run | Calls | Tokens | Elapsed | Estimated cost |", "|---|---|---|---|---|"]
         for run_id, item in zip(result["run_ids"], result.get("per_run_usage", [])):
             tokens = f"{item['total_tokens']:,}" if item["total_tokens"] is not None else "—"
             cost = (f"{item['cost_total']} {item['currency']}"
@@ -393,23 +405,23 @@ def render_markdown(result: dict) -> str:
             lines.append(f"| {run_id} | {item['calls']} | {tokens} | "
                          f"{item['seconds']}s | {cost} |")
 
-    lines += ["", "## 三、各次建议（原文）", ""]
+    lines += ["", "## 3. Recommendations per run (verbatim)", ""]
     for run_id, chosen, state in zip(result["run_ids"], result["chosen_options"],
                                      result.get("decision_status", [])):
         if state == "NOT_PRODUCED":
-            shown = "（未产出决策记录）"
+            shown = "(no decision record produced)"
         elif state == "NULL_CHOICE":
-            shown = f"（本轮未做出选择——chosen_option 为 null）{chosen or ''}"
+            shown = f"(no choice was made this run — chosen_option is null) {chosen or ''}"
         else:
             shown = chosen
-        lines += [f"**{run_id}**：{shown}", ""]
+        lines += [f"**{run_id}**: {shown}", ""]
 
     lines += [
         "> ⚠️ " + result["caveat"],
         "",
-        "## 四、结论一致性",
+        "## 4. Agreement of conclusions",
         "",
-        "需要模型判定：`judge_agreement()`。它给出的是**参考信号**，不是事实。",
+        "Requires a model judgement: `judge_agreement()`. What it gives is a **reference signal**, not a fact.",
         "",
     ]
     return "\n".join(lines)

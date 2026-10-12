@@ -1,5 +1,5 @@
-# 南涧茶厂示例：验证框架，不是虚构案例
+# Nanjiang tea factory example: validating the framework, not a fictional case
 
-本目录仅提供结构化项目起点。此前用户提及该项目涉及市场研究、竞品分析、品牌定位、产品结构和渠道规划，但这并不意味着这些材料或结果已在本仓库中完成核验。
+This directory provides only a structured project starting point. A user previously mentioned that this project involves market research, competitor analysis, brand positioning, product structure and channel planning, but that does not mean those materials or results have been verified in this repository.
 
-开始使用前，请导入原始访谈、市场数据、产品/价格信息、渠道资料、客户反馈和最终交付件；对每项材料标记来源与日期。没有材料的结果留空，不编造增长率、销售额、市场份额、投资回报或执行效果。
+Before you start, import the original interviews, market data, product/price information, channel material, customer feedback and final deliverables; mark the source and date for each item. Leave results blank where there is no material; do not fabricate growth rates, sales, market share, return on investment or execution outcomes.

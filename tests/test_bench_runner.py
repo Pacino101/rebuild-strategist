@@ -70,7 +70,7 @@ class BenchRunnerTests(unittest.TestCase):
         _quiet(bench_runner.import_reviews, str(bench_runner.RUNS / "review_1.csv"))
         with self.assertRaises(SystemExit) as ctx:
             _quiet(bench_runner.reveal)
-        self.assertIn("2 名独立评审", str(ctx.exception))
+        self.assertIn("at least 2 independent reviewers", str(ctx.exception))
 
     def test_reveal_rejects_incomplete_coverage(self):
         manifest = self._manifest(runs=1)
@@ -82,7 +82,7 @@ class BenchRunnerTests(unittest.TestCase):
         )
         with self.assertRaises(SystemExit) as ctx:
             _quiet(bench_runner.reveal)
-        self.assertIn("未评完全部条目", str(ctx.exception))
+        self.assertIn("not scored every item", str(ctx.exception))
 
     def test_reveal_succeeds_with_two_complete_reviewers(self):
         manifest = self._manifest(runs=1)
@@ -104,7 +104,7 @@ class BenchRunnerTests(unittest.TestCase):
         path.write_text("blinded_id,reviewer\nX-1,甲\n", encoding="utf-8")
         with self.assertRaises(SystemExit) as ctx:
             _quiet(bench_runner.import_reviews, str(path))
-        self.assertIn("缺少字段", str(ctx.exception))
+        self.assertIn("is missing fields", str(ctx.exception))
 
     # ------------------------------------------------- scorecard 结构校验
     def _write_scorecard(self, rows):

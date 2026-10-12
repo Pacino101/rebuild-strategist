@@ -86,7 +86,7 @@ class SkillFileTests(unittest.TestCase):
         )
 
     def test_body_mentions_core_constraints(self):
-        for token in ("FACT", "ASSUMPTION", "UNKNOWN", "门禁"):
+        for token in ("FACT", "ASSUMPTION", "UNKNOWN", "gate"):
             self.assertIn(token, self.body, f"技能正文未提及 {token}")
 
     def test_body_points_at_real_commands(self):
@@ -98,8 +98,8 @@ class SkillFileTests(unittest.TestCase):
 
     def test_body_states_boundaries(self):
         # 技能是模型的操作说明，必须把「不是什么」写进去，否则模型会越权承诺
-        self.assertIn("不是", self.body)
-        self.assertIn("不保证结论正确", self.body)
+        self.assertIn("is **not**", self.body)
+        self.assertIn("does not guarantee", self.body)
 
 
 class HarnessReadmeTests(unittest.TestCase):
@@ -112,7 +112,7 @@ class HarnessReadmeTests(unittest.TestCase):
 
     def test_no_unverifiable_claims_about_host_parallelism(self):
         text = (ROOT / "harness" / "README.md").read_text(encoding="utf-8")
-        self.assertIn("不假装具备", text)
+        self.assertIn("does not pretend", text)
 
 
 if __name__ == "__main__":

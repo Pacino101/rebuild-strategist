@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""决策记录库：把决策存下来，并把结果回填回去。
+"""Decision record store: keep decisions, and feed outcomes back in.
 
-为什么需要它
-------------
-方法论里 D（Decision Review）阶段的要求是：**比较预期与实际、区分执行偏差与
-策略失效、记录下一步如何改变**。但在此之前，`project.json` 里的
-`decision_records` 只是一个永远为空的数组——决策做完了就散了，没人回头核对。
+Why it is needed
+----------------
+In the methodology, the D (Decision Review) phase requires you to **compare
+expectation with actuals, separate execution failure from strategy failure, and
+record how the next step changes**. But before this, `decision_records` in
+`project.json` was an array that stayed empty forever — decisions were made and
+scattered, and nobody ever looked back.
 
-结果是：系统能产出决策，却**永远学不到自己的决策对不对**。这一层把循环闭上。
+The result: the system could produce decisions but **could never learn whether
+its own decisions were right**. This layer closes the loop.
 
-两条诚实性约束
---------------
-1. **没有复审日期的决策不算决策。** 一个不打算回头核对的决策，无法被证伪，
-   也就无法被学习。写入时会给出警告。
-2. **过期未复盘的决策会被主动列出来。** `due` 命令按复审日期排序，
-   把「该复盘但没复盘」的决策摆到眼前——而不是等你想起来。
+Two honesty constraints
+-----------------------
+1. **A decision without a review date is not a decision.** A decision you do not
+   intend to check back on cannot be falsified, and therefore cannot be learned
+   from. A warning is emitted when it is written.
+2. **Overdue, unreviewed decisions are actively listed.** The `due` command sorts
+   by review date and puts decisions that "should be reviewed but have not been"
+   in front of you — instead of waiting for you to remember.
 """
 from __future__ import annotations
 
@@ -33,24 +38,24 @@ DECISION_SCHEMA = "decision_record.schema.json"
 OUTCOME_SCHEMA = "outcome.schema.json"
 
 DEVIATION_LABELS = {
-    "AS_EXPECTED": "预期兑现（无需归因）",
-    "EXECUTION": "执行偏差（方向对、力度不足）",
-    "STRATEGY": "策略失效（方向本身错了）",
-    "ASSUMPTION": "关键假设错误",
-    "MIXED": "多重原因",
-    "UNKNOWN": "无法归因",
+    "AS_EXPECTED": "As expected (no attribution needed)",
+    "EXECUTION": "Execution failure (right direction, insufficient effort)",
+    "STRATEGY": "Strategy failure (the direction itself was wrong)",
+    "ASSUMPTION": "Key assumption was wrong",
+    "MIXED": "Multiple causes",
+    "UNKNOWN": "Cannot attribute",
 }
 
 NEXT_ACTION_LABELS = {
-    "CONTINUE": "继续",
-    "ADJUST": "调整",
-    "STOP": "停止",
-    "ROLLBACK": "回退到受影响的决策阶段",
+    "CONTINUE": "Continue",
+    "ADJUST": "Adjust",
+    "STOP": "Stop",
+    "ROLLBACK": "Roll back to the affected decision phase",
 }
 
 
 class DecisionError(Exception):
-    """决策记录不合法，拒绝写入。"""
+    """The decision record is invalid; writing is refused."""
 
 
 def schemas_dir() -> Path:
@@ -62,7 +67,7 @@ def _now() -> str:
 
 
 # ---------------------------------------------------------------------------
-# 质量检查（schema 管不到的部分）
+# Quality checks (the part the schema cannot police)
 # ---------------------------------------------------------------------------
 
 def quality_warnings(record) -> list[str]:
@@ -71,44 +76,48 @@ def quality_warnings(record) -> list[str]:
 
     if not record.get("review_date"):
         problems.append(
-            f"{rid}: 没有复审日期——不打算回头核对的决策无法被证伪，也无法被学习"
+            f"{rid}: no review date — a decision you do not intend to check back "
+            f"on cannot be falsified, and cannot be learned from"
         )
 
     if not record.get("falsification_conditions"):
         problems.append(
-            f"{rid}: 没有反证条件——什么证据出现时应当推翻这个决定？"
+            f"{rid}: no falsification conditions — what evidence should overturn "
+            f"this decision?"
         )
 
     if record.get("chosen_option") is None:
         if not record.get("validation_actions"):
             problems.append(
-                f"{rid}: 未做出选择（chosen_option 为 null），且未给出验证动作——"
-                f"「先补证再决策」必须写明补什么才能决策，否则等同于没结论"
+                f"{rid}: no choice was made (chosen_option is null) and no "
+                f"validation actions were given — \"gather further evidence before "
+                f"deciding\" must state what evidence is needed before a decision "
+                f"can be made, otherwise it amounts to no conclusion"
             )
 
     if not record.get("tradeoffs"):
-        problems.append(f"{rid}: 没有写明代价——说不清放弃什么，说明还没想清楚选择")
+        problems.append(f"{rid}: no trade-offs written — if you cannot say what you give up, the choice is not yet thought through")
 
     if not record.get("key_assumptions"):
-        problems.append(f"{rid}: 没有列出关键假设——假设没写出来就无法被检验")
+        problems.append(f"{rid}: no key assumptions listed — an assumption that is not written down cannot be tested")
 
     options = record.get("options") or []
     if len(options) >= 2:
         names = {str(o.get("name", "")).strip() for o in options}
         if len(names) < len(options):
-            problems.append(f"{rid}: 存在同名选项，看起来不是一个真正的比较")
+            problems.append(f"{rid}: duplicate option names exist; this does not look like a real comparison")
     if len(options) == 1:
-        problems.append(f"{rid}: 只有一个选项——这更像是通报而不是决策")
+        problems.append(f"{rid}: only one option — this looks more like an announcement than a decision")
 
     chosen = record.get("chosen_option")
     if chosen and options and chosen not in {o.get("name") for o in options}:
         problems.append(
-            f"{rid}: 选择的方案 {chosen!r} 不在候选方案列表里"
+            f"{rid}: the chosen option {chosen!r} is not in the list of options"
         )
 
     deadline = record.get("deadline") or ""
     if deadline and _parse_date(deadline) and _parse_date(deadline) < date.today():
-        problems.append(f"{rid}: 决策期限 {deadline} 已过期，请更新或说明延期理由")
+        problems.append(f"{rid}: decision deadline {deadline} has passed; update it or explain the delay")
 
     return problems
 
@@ -126,11 +135,11 @@ def _parse_date(text):
 
 
 # ---------------------------------------------------------------------------
-# 决策库
+# Decision store
 # ---------------------------------------------------------------------------
 
 class DecisionStore:
-    """一个项目的决策记录库。与 project.json 放在同一目录。"""
+    """A project's decision record store. Lives beside project.json."""
 
     def __init__(self, project_dir):
         self.project_dir = Path(project_dir)
@@ -145,7 +154,7 @@ class DecisionStore:
     def outcomes_dir(self) -> Path:
         return self.root / OUTCOMES_DIRNAME
 
-    # ------------------------------------------------------------------ 读
+    # ------------------------------------------------------------------ read
     def list(self) -> list[dict]:
         if not self.root.exists():
             return []
@@ -154,13 +163,13 @@ class DecisionStore:
             try:
                 records.append(json.loads(path.read_text(encoding="utf-8")))
             except json.JSONDecodeError as exc:
-                raise DecisionError(f"{path} 损坏（{exc}）。请人工修复。") from exc
+                raise DecisionError(f"{path} is corrupt ({exc}). Please repair it by hand.") from exc
         return records
 
     def load(self, decision_id) -> dict:
         path = self.root / f"{decision_id}.json"
         if not path.exists():
-            raise DecisionError(f"找不到决策记录 {decision_id}（{path}）")
+            raise DecisionError(f"decision record {decision_id} not found ({path})")
         return json.loads(path.read_text(encoding="utf-8"))
 
     def next_id(self) -> str:
@@ -177,19 +186,20 @@ class DecisionStore:
             return None
         return json.loads(path.read_text(encoding="utf-8"))
 
-    # ------------------------------------------------------------------ 写
+    # ----------------------------------------------------------------- write
     def add(self, record) -> dict:
         record = dict(record)
         record.setdefault("decision_id", self.next_id())
         rid = record["decision_id"]
 
         if (self.root / f"{rid}.json").exists():
-            raise DecisionError(f"决策编号 {rid} 已存在，拒绝覆盖")
+            raise DecisionError(f"decision id {rid} already exists; overwriting refused")
 
         errors, warnings = sv.validate(record, self.decision_schema)
         if errors:
             raise DecisionError(
-                "决策记录不符合 decision_record.schema.json，已拒绝写入：\n  "
+                "decision record does not conform to decision_record.schema.json; "
+                "writing refused:\n  "
                 + "\n  ".join(errors)
             )
 
@@ -204,27 +214,30 @@ class DecisionStore:
         outcome = dict(outcome)
         rid = outcome.get("decision_id")
         if not rid:
-            raise DecisionError("outcome 缺少 decision_id")
+            raise DecisionError("outcome is missing decision_id")
         if not (self.root / f"{rid}.json").exists():
-            raise DecisionError(f"找不到决策记录 {rid}，无法回填结果")
+            raise DecisionError(f"decision record {rid} not found; cannot record an outcome")
 
         outcome.setdefault("recorded_at", _now())
         errors, warnings = sv.validate(outcome, self.outcome_schema)
         if errors:
             raise DecisionError(
-                "结果记录不符合 outcome.schema.json，已拒绝写入：\n  "
+                "outcome record does not conform to outcome.schema.json; "
+                "writing refused:\n  "
                 + "\n  ".join(errors)
             )
 
         actual = (outcome.get("actual") or "").strip()
         if len(actual) < 8:
             raise DecisionError(
-                "actual 过短。复盘必须写出实际观察到的结果；"
-                "没有数据时请写「未采集到数据」，不得用印象代替。"
+                "actual is too short. A review must state the outcome actually "
+                "observed; when there is no data, write \"no data collected\" — an "
+                "impression must not stand in for it."
             )
         if outcome.get("deviation_type") == "UNKNOWN" and not outcome.get("notes"):
             raise DecisionError(
-                "deviation_type 为 UNKNOWN 时必须用 notes 说明为什么无法归因"
+                "when deviation_type is UNKNOWN, notes must explain why it cannot "
+                "be attributed"
             )
 
         self.outcomes_dir.mkdir(parents=True, exist_ok=True)
@@ -235,7 +248,8 @@ class DecisionStore:
         return outcome
 
     def _sync_project(self):
-        """把决策摘要写回 project.json，让项目文件反映真实决策历史。"""
+        """Write the decision summary back into project.json so the project file
+        reflects the real decision history."""
         path = self.project_dir / "project.json"
         if not path.exists():
             return
@@ -265,9 +279,10 @@ class DecisionStore:
             json.dumps(project, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
 
-    # ------------------------------------------------------------------ 复盘
+    # ----------------------------------------------------------------- review
     def due_for_review(self, today=None) -> dict:
-        """按复审日期分类：已过期未复盘 / 即将到期 / 已复盘。"""
+        """Classify by review date: overdue and unreviewed / due soon / already
+        reviewed."""
         today = today or date.today()
         overdue, upcoming, reviewed = [], [], []
         for record in self.list():
@@ -286,7 +301,7 @@ class DecisionStore:
                 continue
             review_date = _parse_date(record.get("review_date"))
             if review_date is None:
-                entry["reason"] = "没有可解析的复审日期"
+                entry["reason"] = "no review date that can be parsed"
                 overdue.append(entry)
             elif review_date <= today:
                 entry["days_overdue"] = (today - review_date).days
@@ -316,52 +331,52 @@ class DecisionStore:
                 warnings.extend(f"{rid} outcome: {w}" for w in outcome_warnings)
         return errors, warnings
 
-    # ------------------------------------------------------------------ 导出
+    # ----------------------------------------------------------------- export
     def to_markdown(self) -> str:
         records = self.list()
         if not records:
-            return "# 决策记录\n\n尚无决策记录。\n"
+            return "# Decision records\n\nNo decision records yet.\n"
 
-        lines = ["# 决策记录", ""]
+        lines = ["# Decision records", ""]
         for record in records:
             rid = record.get("decision_id")
             outcome = self.outcome_of(rid)
             lines += [
                 f"## {rid} — {record.get('question', '')}",
                 "",
-                f"- **决定**：{record.get('chosen_option', '')}",
-                f"- **复审日期**：{record.get('review_date') or '（未设定）'}",
-                f"- **期限**：{record.get('deadline') or '（未设定）'}",
+                f"- **Decision**: {record.get('chosen_option', '')}",
+                f"- **Review date**: {record.get('review_date') or '(not set)'}",
+                f"- **Deadline**: {record.get('deadline') or '(not set)'}",
                 "",
             ]
             rejected = record.get("rejected_options") or []
             if rejected:
-                lines.append("**放弃的方案**")
+                lines.append("**Rejected options**")
                 lines.append("")
                 for item in rejected:
-                    lines.append(f"- {item.get('name')}：{item.get('reason')}")
+                    lines.append(f"- {item.get('name')}: {item.get('reason')}")
                 lines.append("")
             tradeoffs = record.get("tradeoffs") or []
             if tradeoffs:
-                lines.append("**代价**：" + "；".join(str(t) for t in tradeoffs))
+                lines.append("**Trade-offs**: " + "; ".join(str(t) for t in tradeoffs))
                 lines.append("")
             conditions = record.get("falsification_conditions") or []
             if conditions:
-                lines.append("**反证条件**")
+                lines.append("**Falsification conditions**")
                 lines.append("")
                 lines += [f"- {c}" for c in conditions]
                 lines.append("")
 
             if outcome:
                 lines += [
-                    "**复盘结果**",
+                    "**Review outcome**",
                     "",
-                    f"- 预期：{outcome.get('expected')}",
-                    f"- 实际：{outcome.get('actual')}",
-                    f"- 偏差类型：{DEVIATION_LABELS.get(outcome.get('deviation_type'), outcome.get('deviation_type'))}",
-                    f"- 下一步：{NEXT_ACTION_LABELS.get(outcome.get('next_action'), outcome.get('next_action'))}",
+                    f"- Expected: {outcome.get('expected')}",
+                    f"- Actual: {outcome.get('actual')}",
+                    f"- Deviation type: {DEVIATION_LABELS.get(outcome.get('deviation_type'), outcome.get('deviation_type'))}",
+                    f"- Next step: {NEXT_ACTION_LABELS.get(outcome.get('next_action'), outcome.get('next_action'))}",
                     "",
                 ]
             else:
-                lines += ["> 尚未复盘。", ""]
+                lines += ["> Not reviewed yet.", ""]
         return "\n".join(lines)

@@ -2,39 +2,39 @@
 
 ## Supported Versions
 
-本项目处于方法论与工具框架阶段，仅维护最新主分支版本。
+This project is at the methodology and tooling framework stage; only the latest main branch version is maintained.
 
 | Version | Supported |
 |---------|-----------|
 | `main` | ✅ |
-| < `main` 的历史提交 | ❌ |
+| Historical commits < `main` | ❌ |
 
 ## Reporting a Vulnerability
 
-如果你发现安全漏洞或本仓库中的内容涉及不应公开的第三方信息（客户隐私、未授权数据、密钥、个人信息），请通过 GitHub 的 **Security → Report a vulnerability** 私下报告，不要公开提交 Issue。
+If you discover a security vulnerability, or content in this repository involves third-party information that should not be public (client privacy, unauthorised data, secrets, personal information), please report it privately through GitHub's **Security → Report a vulnerability**, and do not file a public Issue.
 
-请在报告中说明：
+Please state in your report:
 
-1. 问题所在的具体文件与位置
-2. 复现方式或触发条件
-3. 潜在影响
-4. 你建议的修复方向（如有）
+1. The specific file and location of the problem
+2. How to reproduce it or the trigger conditions
+3. The potential impact
+4. The fix direction you suggest (if any)
 
-我们会尽力在 7 天内确认收到并给出回应。
+We will do our best to acknowledge receipt and respond within 7 days.
 
-## 涉及真实项目的材料
+## Material involving real projects
 
-向本仓库提交案例、研究数据或基准结果时，请遵守 `CONTRIBUTING.md` 的规定：不得提交客户隐私、密钥或未经授权的业务数据。真实项目材料须匿名化，并明确标注真实 / 合成 / 匿名化属性。
+When submitting cases, research data or benchmark results to this repository, please follow the rules in `CONTRIBUTING.md`: do not submit client privacy, secrets or unauthorised business data. Material from real projects must be anonymised, and its real / synthetic / anonymised nature clearly marked.
 
-## 关于本项目不采集的内容
+## What this project does not collect
 
-REBUILD 不连接任何营销数据平台，不采集用户行为数据，不包含遥测、埋点或分析脚本。仓库本身不会向任何服务器回传你的项目内容。
+REBUILD does not connect to any marketing data platform, does not collect user behaviour data, and contains no telemetry, tracking or analytics scripts. The repository itself will not send your project content back to any server.
 
-**但本项目并非完全离线，此前版本的表述有误。** `bench/provider.py` 是一个可选的模型接入层（V3.2.2 引入）。当你显式指定 `--provider` 时，它会向你选定的模型 API 端点发起 HTTP 请求，并把提示词内容发送过去。
+**But this project is not entirely offline; earlier versions of this statement were wrong.** `bench/provider.py` is an optional model access layer (introduced in V3.2.2). When you explicitly specify `--provider`, it makes HTTP requests to the model API endpoint you choose, and sends the prompt content there.
 
-- **默认关闭**：不指定 `--provider` 时不产生任何网络请求，走手动模式（渲染提示词 → 自行粘贴 → 取回输出）。
-- **端点由你决定**：可以是官方 API、自建代理或本地 Ollama。密钥仅从环境变量读取，不落盘、不进仓库。
-- **内容会离开本机**：一旦调用，提示词内容即发送至该端点。若涉及客户资料或商业机密，请改用手动模式或本地模型。
-- **仓库内不含任何凭据**：`.gitignore` 排除 `.env`，代码不硬编码任何 key。
+- **Off by default**: when `--provider` is not specified, no network request is made, and manual mode is used (render the prompt → paste it yourself → retrieve the output).
+- **The endpoint is your decision**: it can be the official API, a self-hosted proxy or a local Ollama. Keys are read from environment variables only, and are not written to disk or into the repository.
+- **Content leaves your machine**: once invoked, the prompt content is sent to that endpoint. If it involves client material or trade secrets, use manual mode or a local model instead.
+- **The repository contains no credentials**: `.gitignore` excludes `.env`, and the code does not hard-code any key.
 
-若你的合规要求是完全离线，请全程使用手动模式，不要使用 `--provider`。
+If your compliance requirements are full offline operation, use manual mode throughout, and do not use `--provider`.

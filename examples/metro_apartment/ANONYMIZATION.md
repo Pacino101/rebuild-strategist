@@ -1,92 +1,92 @@
-# 脱敏说明
+# Anonymisation statement
 
-本目录是真实商业项目的脱敏版本。本文件说明**脱敏了什么、怎么做的、以及残留风险**。
+This directory is an anonymised version of a real commercial project. This document explains **what was anonymised, how it was done, and the residual risk**.
 
-> ⚠️ **本文件刻意不包含原始名称与替换对照表。**
-> 一份写明了「××公司 → 甲方 A」的对照表，等于把脱敏又还原了一遍。
-> 如果你需要核验脱敏是否彻底，请用下面的「如何自查」一节。
+> ⚠️ **This document deliberately does not include the original names or a substitution mapping table.**
+> A table that spells out "XX Company → Owner A" amounts to reversing the anonymisation again.
+> If you need to verify whether the anonymisation is thorough, use the "How to self-check" section below.
 
 ---
 
-## 一、脱敏了哪些类别
+## 1. Which categories were anonymised
 
-| 类别 | 处理方式 | 举例说明（**示例非原文**） |
+| Category | Treatment | Illustrative example (**example, not the original text**) |
 |---|---|---|
-| **甲方（委托方）** | 全部替换为角色代号 | 集团名、股东名、子公司名、企业性质描述 → 「甲方 A（市属国企）」 |
-| **地块信息** | 全部替换为伪地名 | 城市、行政区、街道、道路、门牌号、地铁站名 → 「本市」「L 区」「J 街道」「P 路」「D 站」 |
-| **乙方（运营方）** | 全部替换为角色代号 | 公司名、产品名、团队标识 → 「乙方」/「REBUILD 决策流程」 |
-| **权属与产权信息** | 删除或替换 | 权属单位名、权证登记字号、产权交易所与公告日期 |
-| **竞品主体** | 替换为代号 | 竞品公寓品牌名、其产权方、其园区名 → 「竞品 K1–K4」 |
-| **周边机构** | 替换为代号 | 医院、园区、商圈名 → 「医院 A–C」「园区 1–5」 |
-| **研究数据来源** | 替换为代号 | 研究机构与数据服务商名 → 「研究机构甲/乙」「数据服务商丙」 |
-| **政策文号** | 泛化 | 具体发文字号 → 「该市住房租赁规范性文件（年份已隐去）」 |
-| **文件名** | 中性化 | 含地名与项目名的文件名 → `01_合作模式研究报告.txt` |
-| **本地路径** | 抹除 | 含用户名的绝对路径 → `<本地路径已隐去>` |
-| **项目代号** | 替换 | 内部项目标识 → `metro-apartment` |
+| **The owner (commissioning party)** | All replaced with role codes | Group name, shareholder names, subsidiary names, description of ownership type → "Owner A (municipally-owned state enterprise)" |
+| **Site information** | All replaced with pseudo place names | City, administrative district, subdistrict, road, street number, metro station name → "this city", "District L", "Subdistrict J", "Road P", "Station D" |
+| **The operator (operating party)** | All replaced with role codes | Company name, product name, team identifier → "the operator" / "REBUILD decision process" |
+| **Ownership and title information** | Deleted or replaced | Name of the owning entity, title registration number, property exchange and announcement dates |
+| **Competitor entities** | Replaced with codes | Competitor apartment brand names, their title holders, their park names → "competitors K1–K4" |
+| **Surrounding institutions** | Replaced with codes | Hospital, park and commercial-district names → "Hospitals A–C", "Parks 1–5" |
+| **Research data sources** | Replaced with codes | Research institutions and data service providers → "research institution A/B", "data service provider C" |
+| **Policy document numbers** | Generalised | Specific issuing document numbers → "this city's regulatory document on housing rental (year withheld)" |
+| **File names** | Neutralised | File names containing place names and project names → `01_合作模式研究报告.txt` |
+| **Local paths** | Erased | Absolute paths containing a user name → `<local path withheld>` |
+| **Project code** | Replaced | Internal project identifier → `metro-apartment` |
 
 ---
 
-## 二、刻意保留的内容
+## 2. What is deliberately retained
 
-| 保留项 | 为什么保留 |
+| Retained item | Why it is retained |
 |---|---|
-| **全部金额、面积、间数、租金、比例、周期** | 这些是「用于跑的数据」，去掉就无法复现分析 |
-| **全部计算结果与模型输出** | 案例的价值就在这里 |
-| **客群画像的年龄、收入、租金承受区间** | 区间数据无法定位到具体个人 |
-| **行业宏观数据** | 全市层面的出租率、租金等公开统计 |
-| **合规要求的实质内容** | 保留约束本身（如「租金须低于同地段同品质市场租金」），仅去掉可定位的文号 |
-| **品牌与创意表达** | 主张、Slogan、视觉母题——已随地名一并泛化，保留的是创意逻辑 |
-| **方案自身的缺陷与冲突** | `SKILL_EVALUATION.md` 记录的冲突**未做任何美化**，这是案例可信度的一部分 |
+| **All amounts, areas, room counts, rents, ratios and periods** | These are "the data used to run the analysis"; without them the analysis cannot be reproduced |
+| **All calculation results and model outputs** | This is where the value of the case lies |
+| **Age, income and rent-affordability ranges of the customer personas** | Range data cannot be traced to a specific individual |
+| **Industry macro data** | Public statistics such as city-level occupancy rates and rents |
+| **The substance of the compliance requirements** | The constraint itself is retained (such as "the rent must be lower than the market rent for comparable quality in the same location"); only the locatable document number is removed |
+| **Brand and creative expression** | Proposition, slogan, visual motif — generalised along with the place names; what is retained is the creative logic |
+| **The plan's own defects and conflicts** | The conflicts recorded in `SKILL_EVALUATION.md` **were not glossed over in any way**; this is part of the case's credibility |
 
-**未发现任何具名个人信息**（联系人、负责人、经办人）出现在原始材料中；
-若有遗漏，请按下节方式报告。
+**No named personal information was found** (contacts, persons in charge, case handlers) in the original material;
+if anything was missed, please report it in the manner described in the next section.
 
 ---
 
-## 三、方法与验证
+## 3. Method and verification
 
-采用**确定性替换**而非人工改写，以保证：
+**Deterministic substitution** was used rather than manual rewriting, to guarantee:
 
-1. **可审计**——替换规则是一次性脚本，逐条可查；
-2. **不引入新内容**——不会在改写过程中无意改变数字或结论；
-3. **可复验**——脱敏后的文本仍能通过原有脚本跑出相同结果（见下）。
+1. **Auditability** — the substitution rules are a one-off script, checkable item by item;
+2. **No new content introduced** — numbers or conclusions will not be changed inadvertently in the course of rewriting;
+3. **Re-verifiability** — the anonymised text can still be run through the original scripts to produce identical results (see below).
 
-验证方式：
+Verification method:
 
 ```bash
-# 1. 全部脚本仍可端到端复现，且数字与脱敏前一致
+# 1. All scripts can still reproduce end to end, with figures identical to those before anonymisation
 cd rebuild && python3 scripts/run_all.py
 
-# 2. 通用模式扫描：不应出现公司后缀、具体门牌、地铁站名、政策文号
+# 2. Generic pattern scan: no company suffixes, specific street numbers, metro station names or policy document numbers should appear
 grep -rE "[一-龥]{2,12}(有限公司|集团|研究院|事务所)" .
 grep -rE "[一-龥]{2,6}(路|街|道)[0-9]+号" .
 grep -rE "/Users/" .
 ```
 
-三项均应无输出。
+All three should produce no output.
 
 ---
 
-## 四、残留风险（如实说明）
+## 4. Residual risk (stated honestly)
 
-**脱敏无法做到零风险。以下情况仍可能反推身份：**
+**Anonymisation cannot be made zero-risk. The following could still allow the identity to be inferred:**
 
-1. **数据组合本身可能具有指纹性。** 总建筑面积（保留到小数点后两位）、房间数、出资额、
-   定价档位的组合，对熟悉该片区市场的人可能足以定位项目。**这是保留分析数据必然付出的代价**——
-   把数字改掉，案例就失去了复现价值。
-2. **时间线保留。** 编制日期与开业计划月份未做偏移。
-3. **政策环境可推导。** 「非居住存量房屋改建保障性租赁住房」这条通道并非所有城市都有，
-   保留该约束会缩小城市范围。
-4. **竞品特征仍在。** 代号替换了名称，但「政府合作人才公寓、本科学历门槛、定向分配」
-   这类结构性特征描述未变。
+1. **The data combination may itself be fingerprinting.** The combination of total floor area (retained to two decimal places), room count, capital contribution and
+   price tiers may be enough for someone familiar with that district's market to locate the project. **This is the price necessarily paid for retaining the analysis data** —
+   change the numbers and the case loses its reproduction value.
+2. **The timeline is retained.** The preparation date and the planned opening month were not offset.
+3. **The policy environment can be inferred.** The "conversion of non-residential existing housing into subsidised rental housing" channel does not exist in every city;
+   retaining that constraint narrows the range of cities.
+4. **Competitor characteristics remain.** The codes replaced the names, but structural characteristics such as "government-partnered talent apartments, bachelor's degree threshold, targeted allocation"
+   are unchanged.
 
-**结论：本案例适合用于方法演示与教学，不适合作为完全不可追溯的公开材料。**
-如果你的合规要求更严，请只使用 `project.json`（纯结构化数据，不含叙述性材料）。
+**Conclusion: this case is suitable for method demonstration and teaching, but not as public material that is completely untraceable.**
+If your compliance requirements are stricter, use only `project.json` (purely structured data, containing no narrative material).
 
 ---
 
-## 五、发现遗漏怎么办
+## 5. What to do if you find something missed
 
-如果你在本目录中发现任何可识别信息，请通过仓库的
-**Security → Report a vulnerability** 私下报告，不要公开提单。
-见仓库根目录的 [`SECURITY.md`](../../SECURITY.md)。
+If you find any identifiable information in this directory, please report it privately through the repository's
+**Security → Report a vulnerability**, and do not open a public issue.
+See [`SECURITY.md`](../../SECURITY.md) in the repository root.

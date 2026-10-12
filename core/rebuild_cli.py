@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""REBUILD 命令行入口。
+"""REBUILD command-line entry point.
 
-子命令
-------
-  validate    校验项目状态（含 JSON Schema 校验）
-  transition  查询一次状态机迁移是否合法
-  schema      用指定 schema 校验任意 JSON 文件
-  evidence    证据账本：写入 / 列出 / 校验 / 缺口 / 导出
-  source      数据源：导入本地文件 / 抓取自建端点 / 查看材料
-  run         运行时编排：按阶段调度角色、判定门禁、推进状态
+Subcommands
+-----------
+  validate    validate project state (includes JSON Schema validation)
+  transition  ask whether one state-machine transition is legal
+  schema      validate any JSON file against a given schema
+  evidence    evidence ledger: write / list / validate / gaps / export
+  source      data sources: import local files / fetch from your own endpoint / inspect material
+  run         runtime orchestration: schedule roles by phase, judge gates, advance state
 
-退出码：0 成功；1 校验未通过；2 运行错误。
+Exit codes: 0 success; 1 validation failed; 2 runtime error.
 """
 from __future__ import annotations
 
@@ -32,10 +32,11 @@ SCHEMAS = ROOT / "schemas"
 
 
 def _collect_domain_errors():
-    """收集各模块自定义的异常类型。
+    """Collect the custom exception types of the various modules.
 
-    这些异常的消息是写给使用者看的，应当作为错误信息打印，
-    而不是抛出带堆栈的 traceback——堆栈对使用者没有帮助。
+    The messages of these exceptions are written for the user and should be
+    printed as errors rather than raised as a traceback with a stack — a stack
+    trace is no help to the user.
     """
     found = []
     for module_name, attribute in (
@@ -56,7 +57,7 @@ DOMAIN_ERRORS = _collect_domain_errors()
 
 
 # ---------------------------------------------------------------------------
-# 基础
+# Basics
 # ---------------------------------------------------------------------------
 
 def load_json(path):
@@ -65,49 +66,50 @@ def load_json(path):
 
 
 def project_dir_of(path) -> Path:
-    """接受项目目录或 project.json 路径，统一返回项目目录。"""
+    """Accept a project directory or a project.json path; always return the
+    project directory."""
     path = Path(path)
     if path.is_dir():
         return path
     if path.name == "project.json":
         return path.parent
-    raise ValueError(f"请给出项目目录或其中的 project.json，而不是：{path}")
+    raise ValueError(f"give the project directory or the project.json inside it, not: {path}")
 
 
 def transition(state, event):
     machine = load_json(STATE_FILE)
     if state not in machine["states"]:
-        raise ValueError(f"未知状态：{state}。可用：{machine['states']}")
+        raise ValueError(f"unknown state: {state}. Available: {machine['states']}")
     nxt = machine["transitions"].get(state, {}).get(event)
     if not nxt:
         raise ValueError(
-            f"不允许的迁移：{state} + {event}。"
-            f"该状态可用事件：{sorted(machine['transitions'].get(state, {}))}"
+            f"transition not allowed: {state} + {event}. "
+            f"Events available in that state: {sorted(machine['transitions'].get(state, {}))}"
         )
     return {"from": state, "event": event, "to": nxt}
 
 
 def validate_project(path, use_schema=True):
-    """返回 (errors, warnings)。"""
+    """Returns (errors, warnings)."""
     data = load_json(path)
     errors = []
     machine = load_json(STATE_FILE)
     if data.get("current_state") not in machine["states"]:
         errors.append(
-            f"current_state 不是已知状态：{data.get('current_state')!r}。"
-            f"可用：{machine['states']}"
+            f"current_state is not a known state: {data.get('current_state')!r}. "
+            f"Available: {machine['states']}"
         )
     if not isinstance(data.get("goals", []), list):
-        errors.append("goals 必须是数组")
+        errors.append("goals must be an array")
     if not isinstance(data.get("constraints", []), list):
-        errors.append("constraints 必须是数组")
+        errors.append("constraints must be an array")
 
     warnings = []
     if use_schema:
         schema_path = sv.guess_schema(path, SCHEMAS)
         if schema_path is None:
             warnings.append(
-                f"未找到与 {Path(path).name} 匹配的 schema，已跳过 schema 校验"
+                f"no schema matching {Path(path).name} was found; schema validation skipped"
             )
         else:
             schema_errors, schema_warnings = sv.validate_file(path, schema_path)
@@ -131,7 +133,7 @@ def cmd_evidence(args):
         if args.source_doc:
             from sources import DocumentStore
 
-            DocumentStore(directory).get(args.source_doc)  # 不存在则抛错
+            DocumentStore(directory).get(args.source_doc)  # raises if it is absent
             source = args.source_doc
         record = {
             "claim": args.claim,
@@ -150,7 +152,8 @@ def cmd_evidence(args):
         warnings = ledger_module.quality_warnings(saved)
         print(json.dumps({"added": saved}, ensure_ascii=False, indent=2))
         if warnings:
-            print("\n质量提示（不阻断写入，但请处理）：", file=sys.stderr)
+            print("\nQuality warnings (writing was not blocked, but deal with them):",
+                  file=sys.stderr)
             for warning in warnings:
                 print(f"  ⚠ {warning}", file=sys.stderr)
         return 0
@@ -164,7 +167,7 @@ def cmd_evidence(args):
             print(json.dumps(records, ensure_ascii=False, indent=2))
         else:
             if not records:
-                print(f"证据账本为空（{ledger.path}）")
+                print(f"the evidence ledger is empty ({ledger.path})")
                 return 0
             for record in records:
                 print(
@@ -183,8 +186,8 @@ def cmd_evidence(args):
             return 1
         if warnings:
             print(
-                f"\n{len(warnings)} 条质量提示：这些记录字段合法，"
-                f"但方法学上不足以支撑判断。",
+                f"\n{len(warnings)} quality warnings: the fields of these records are "
+                f"legal, but methodologically they cannot support a judgement.",
                 file=sys.stderr,
             )
         return 0
@@ -204,7 +207,7 @@ def cmd_evidence(args):
         text = ledger_module.to_markdown(directory)
         if args.out:
             Path(args.out).write_text(text, encoding="utf-8")
-            print(f"已导出到 {args.out}")
+            print(f"exported to {args.out}")
         else:
             print(text)
         return 0
@@ -214,20 +217,21 @@ def cmd_evidence(args):
         print(json.dumps(report, ensure_ascii=False, indent=2))
         if report["dangling"]:
             print(
-                f"\n{len(report['dangling'])} 条证据的来源是断链（指向不存在的材料）。",
+                f"\n{len(report['dangling'])} pieces of evidence have dangling sources "
+                f"(they point at material that does not exist).",
                 file=sys.stderr,
             )
             return 1
         if report["total"] and report["verifiable_ratio"] is not None:
             print(
-                f"\n可机器核验比例：{report['verifiable_ratio']:.0%}"
-                f"（{len(report['linked'])}/{report['total']}）。"
-                f"自由文本来源无法自动核验，只能靠人工。",
+                f"\nMachine-verifiable ratio: {report['verifiable_ratio']:.0%}"
+                f" ({len(report['linked'])}/{report['total']})."
+                f" Free-text sources cannot be verified automatically, only by hand.",
                 file=sys.stderr,
             )
         return 0
 
-    raise ValueError(f"未知的 evidence 动作：{args.action}")
+    raise ValueError(f"unknown evidence action: {args.action}")
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +265,7 @@ def cmd_source(args):
         for warning in spec.warnings():
             print(f"  ⚠ {warning}", file=sys.stderr)
         if args.save_spec:
-            print(f"已保存 spec：{http_api.save_spec(directory, spec)}")
+            print(f"spec saved: {http_api.save_spec(directory, spec)}")
         documents = http_api.add_http(store, spec)
         print(json.dumps(
             {"fetched": len(documents),
@@ -273,7 +277,7 @@ def cmd_source(args):
     if args.action == "list":
         entries = store.list()
         if not entries:
-            print("尚未导入任何材料")
+            print("no material has been imported yet")
             return 0
         for entry in entries:
             print(
@@ -295,7 +299,7 @@ def cmd_source(args):
     if args.action == "verify":
         entries = store.list()
         if not entries:
-            print("尚未导入任何材料")
+            print("no material has been imported yet")
             return 0
         bad = [e["doc_id"] for e in entries if not store.verify(e["doc_id"])]
         print(json.dumps(
@@ -303,7 +307,7 @@ def cmd_source(args):
         ))
         return 1 if bad else 0
 
-    raise ValueError(f"未知的 source 动作：{args.action}")
+    raise ValueError(f"unknown source action: {args.action}")
 
 
 # ---------------------------------------------------------------------------
@@ -344,15 +348,16 @@ def cmd_run(args):
         total_calls = sum((r.get("usage") or {}).get("calls", 0) for r in reports)
         tokens = [(r.get("usage") or {}).get("total_tokens") for r in reports]
         if all(t is not None for t in tokens):
-            print(f"\n{len(reports)} 次运行合计 {total_calls} 次模型调用，"
+            print(f"\n{len(reports)} runs totalled {total_calls} model calls, "
                   f"{sum(tokens):,} tokens", file=sys.stderr)
         else:
-            print(f"\n{len(reports)} 次运行合计 {total_calls} 次模型调用；"
-                  f"部分运行未取得用量，总数不完整", file=sys.stderr)
+            print(f"\n{len(reports)} runs totalled {total_calls} model calls; "
+                  f"some runs returned no usage, so the total is incomplete",
+                  file=sys.stderr)
         states = {r["final_state"] for r in reports}
-        print(f"\n{args.repeat} 次运行完成，终态 {len(states)} 种：{sorted(states)}",
-              file=sys.stderr)
-        print(f"比对：python {Path(__file__).name} compare {args.project} "
+        print(f"\n{args.repeat} runs finished, {len(states)} distinct final states: "
+              f"{sorted(states)}", file=sys.stderr)
+        print(f"Compare: python {Path(__file__).name} compare {args.project} "
               f"--last {args.repeat}", file=sys.stderr)
         return 0 if len(states) == 1 else 1
 
@@ -365,32 +370,33 @@ def cmd_run(args):
     usage = report.get("usage") or {}
     if usage:
         tok = (f"{usage['total_tokens']:,}" if usage.get("total_tokens") is not None
-               else "未取得")
-        print(f"\n模型调用 {usage['calls']} 次（{usage['calls_with_usage']} 次取得用量），"
-              f"合计 {tok} tokens，耗时 {usage['seconds']}s", file=sys.stderr)
+               else "not obtained")
+        print(f"\nModel calls: {usage['calls']} ({usage['calls_with_usage']} returned usage), "
+              f"{tok} tokens in total, {usage['seconds']}s elapsed", file=sys.stderr)
         if usage.get("note"):
             print(f"  ⚠ {usage['note']}", file=sys.stderr)
     cost = report.get("cost_estimate")
     if cost:
-        print(f"  估算费用：{cost['total']} {cost['currency']}"
-              f"（按你提供的单价；不是账单金额）", file=sys.stderr)
+        print(f"  Estimated cost: {cost['total']} {cost['currency']}"
+              f" (from the unit price you supplied; not a bill amount)", file=sys.stderr)
 
-    print(f"\n产物目录：{report['run_dir']}", file=sys.stderr)
-    print(f"初始状态 {report['initial_state']} → 最终状态 {report['final_state']}",
+    print(f"\nArtefact directory: {report['run_dir']}", file=sys.stderr)
+    print(f"Initial state {report['initial_state']} → final state {report['final_state']}",
           file=sys.stderr)
     if report.get("hint"):
-        print(f"\n提示：{report['hint']}", file=sys.stderr)
+        print(f"\nHint: {report['hint']}", file=sys.stderr)
     if report.get("gate_rejections"):
-        print("\n被拒绝的迁移（模型给出的非法事件）：", file=sys.stderr)
+        print("\nRejected transitions (illegal events the model produced):", file=sys.stderr)
         for item in report["gate_rejections"]:
             print(f"  ✗ {item['phase']}: {item['event']} — {item['error']}",
                   file=sys.stderr)
 
     if args.mode == "dry-run" or args.provider == "manual":
         print(
-            "\n当前是手动模式：只生成了任务包，没有调用任何模型。\n"
-            f"请打开 {report['run_dir']} 下的 *.packet.md，自行粘贴到模型，"
-            "再把输出保存为同名 .md 文件。",
+            "\nThis is manual mode: only task packets were generated and no model "
+            "was called.\n"
+            f"Open the *.packet.md files under {report['run_dir']}, paste them into "
+            "a model yourself, then save the output as a .md file of the same name.",
             file=sys.stderr,
         )
     return 0
@@ -428,7 +434,7 @@ def cmd_decision(args):
         print(json.dumps({"added": saved}, ensure_ascii=False, indent=2))
         warnings = decisions_module.quality_warnings(saved)
         if warnings:
-            print("\n质量提示（已写入，但请处理）：", file=sys.stderr)
+            print("\nQuality warnings (written, but deal with them):", file=sys.stderr)
             for warning in warnings:
                 print(f"  ⚠ {warning}", file=sys.stderr)
         return 0
@@ -436,27 +442,27 @@ def cmd_decision(args):
     if args.action == "list":
         records = store.list()
         if not records:
-            print("尚无决策记录")
+            print("no decision records yet")
             return 0
         for record in records:
             rid = record.get("decision_id")
             outcome = store.outcome_of(rid)
-            status = "已复盘" if outcome else "待复盘"
+            status = "reviewed" if outcome else "pending review"
             print(
-                f"{rid:<8}{status:<8}{record.get('review_date') or '(无复审日期)':<14}"
+                f"{rid:<8}{status:<8}{record.get('review_date') or '(no review date)':<14}"
                 f"{record.get('chosen_option')}"
             )
         return 0
 
     if args.action == "show":
         if not args.id:
-            raise ValueError("decision show 需要 --id")
+            raise ValueError("decision show requires --id")
         record = store.load(args.id)
         outcome = store.outcome_of(args.id)
         print(json.dumps(record, ensure_ascii=False, indent=2))
-        print("\n--- 复盘结果 ---")
+        print("\n--- Review outcome ---")
         print(json.dumps(outcome, ensure_ascii=False, indent=2) if outcome
-              else "尚未复盘。")
+              else "Not reviewed yet.")
         return 0
 
     if args.action == "validate":
@@ -469,21 +475,21 @@ def cmd_decision(args):
 
     if args.action == "outcome":
         if not args.id:
-            raise ValueError("decision outcome 需要 --id")
-        # --assumption-update "假设文本|CONFIRMED|简短说明"
+            raise ValueError("decision outcome requires --id")
+        # --assumption-update "assumption text|CONFIRMED|short note"
         updates = []
         for raw in args.assumption_update or []:
             parts = [p.strip() for p in str(raw).split("|")]
             if len(parts) < 2:
                 raise ValueError(
-                    'assumption-update 格式应为 "假设文本|CONFIRMED|说明"，'
-                    f"收到：{raw!r}"
+                    'assumption-update must be shaped "assumption text|CONFIRMED|note"; '
+                    f"got: {raw!r}"
                 )
             status = parts[1].upper()
             if status not in ("CONFIRMED", "REFUTED", "STILL_UNKNOWN"):
                 raise ValueError(
-                    f"assumption-update 的状态必须是 CONFIRMED / REFUTED / "
-                    f"STILL_UNKNOWN，收到：{parts[1]!r}"
+                    f"the status in assumption-update must be CONFIRMED / REFUTED / "
+                    f"STILL_UNKNOWN; got: {parts[1]!r}"
                 )
             updates.append({"assumption": parts[0], "status": status,
                             "note": parts[2] if len(parts) > 2 else None})
@@ -507,28 +513,31 @@ def cmd_decision(args):
         print(json.dumps(report, ensure_ascii=False, indent=2))
         if report["overdue"]:
             print(
-                f"\n{len(report['overdue'])} 项决策已过复审日期但尚未复盘。"
-                f"方法论要求 D 阶段闭合——没有复盘就没有学习。",
+                f"\n{len(report['overdue'])} decisions are past their review date and "
+                f"have not been reviewed. The methodology requires the D phase to "
+                f"close — without review there is no learning.",
                 file=sys.stderr,
             )
             return 1
         return 0
 
     if args.action == "import":
-        # 模型产出的决策记录需人工确认后才入账。
-        # 与证据同一条原则：模型输出不等于已成立的决策。
+        # A decision record produced by a model is stored only after human
+        # confirmation. Same principle as evidence: model output does not equal
+        # an established decision.
         if not args.from_path:
-            raise ValueError("decision import 需要 --from <decision_record.json>")
+            raise ValueError("decision import requires --from <decision_record.json>")
         source = Path(args.from_path)
         if not source.exists():
-            raise ValueError(f"找不到文件：{source}")
+            raise ValueError(f"file not found: {source}")
         record = json.loads(source.read_text(encoding="utf-8"))
-        record.pop("decision_id", None)      # 重新编号，避免与现有记录撞号
+        record.pop("decision_id", None)      # renumber, so it cannot clash with an existing record
         saved = store.add(record)
         print(json.dumps({"imported": saved}, ensure_ascii=False, indent=2))
         print(
-            "\n注意：这是模型产出的决策草案，已按原样入库。"
-            "复审日期与反证条件需要你亲自确认后修改。",
+            "\nNote: this is a decision draft produced by a model, stored exactly as "
+            "it stands. The review date and the falsification conditions need your "
+            "own confirmation and edits.",
             file=sys.stderr,
         )
         for warning in decisions_module.quality_warnings(saved):
@@ -539,12 +548,12 @@ def cmd_decision(args):
         text = store.to_markdown()
         if args.out:
             Path(args.out).write_text(text, encoding="utf-8")
-            print(f"已导出到 {args.out}")
+            print(f"exported to {args.out}")
         else:
             print(text)
         return 0
 
-    raise ValueError(f"未知的 decision 动作：{args.action}")
+    raise ValueError(f"unknown decision action: {args.action}")
 
 
 def cmd_compare(args):
@@ -567,13 +576,13 @@ def cmd_compare(args):
 
         try:
             result["agreement"] = compare_module.judge_agreement(reports, call)
-        except Exception as exc:  # noqa: BLE001 - 判定失败不应丢掉比对结果
+        except Exception as exc:  # noqa: BLE001 - a failed judgement must not discard the comparison
             result["agreement"] = {"judged_by_model": True, "error": str(exc)}
 
     text = compare_module.render_markdown(result)
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")
-        print(f"已写入 {args.out}")
+        print(f"written to {args.out}")
 
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -584,15 +593,15 @@ def cmd_compare(args):
         agreement = result["agreement"]
         print("\n" + "=" * 60)
         if agreement.get("error"):
-            print(f"结论一致性判定失败：{agreement['error']}", file=sys.stderr)
+            print(f"agreement judgement failed: {agreement['error']}", file=sys.stderr)
         else:
-            print(f"结论方向一致：{agreement.get('agree')}"
-                  f"（置信度 {agreement.get('confidence')}）")
-            print(f"共同方向：{agreement.get('direction')}")
-            print(f"理由：{agreement.get('why')}")
-        print("\n⚠️ 这是模型判定，不是事实。", file=sys.stderr)
+            print(f"Conclusions agree in direction: {agreement.get('agree')}"
+                  f" (confidence {agreement.get('confidence')})")
+            print(f"Shared direction: {agreement.get('direction')}")
+            print(f"Reason: {agreement.get('why')}")
+        print("\n⚠️ This is a model judgement, not a fact.", file=sys.stderr)
 
-    # 过程不一致时返回非零，便于脚本化使用
+    # Return non-zero when the process is inconsistent, so scripts can rely on it
     return 0 if result["final_state_consistent"] else 1
 
 
@@ -603,7 +612,7 @@ def cmd_schema(args):
     if schema_path is None:
         print(json.dumps(
             {"valid": False,
-             "errors": [f"无法为 {args.file} 推断 schema，请用 --schema-file 指定"]},
+             "errors": [f"cannot infer a schema for {args.file}; specify one with --schema-file"]},
             ensure_ascii=False, indent=2,
         ))
         return 1
@@ -617,29 +626,29 @@ def cmd_schema(args):
 
 
 # ---------------------------------------------------------------------------
-# 入口
+# Entry point
 # ---------------------------------------------------------------------------
 
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="rebuild",
-        description="REBUILD —— 以决策为中心的品牌营销方法论工具集",
+        description="REBUILD — a decision-centric brand marketing methodology toolkit",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    v = sub.add_parser("validate", help="校验项目状态（默认含 schema 校验）")
+    v = sub.add_parser("validate", help="validate project state (includes schema validation by default)")
     v.add_argument("project")
-    v.add_argument("--no-schema", action="store_true", help="跳过 JSON Schema 校验")
+    v.add_argument("--no-schema", action="store_true", help="skip JSON Schema validation")
 
-    t = sub.add_parser("transition", help="查询一次状态机迁移是否合法")
+    t = sub.add_parser("transition", help="ask whether one state-machine transition is legal")
     t.add_argument("--state", required=True)
     t.add_argument("--event", required=True)
 
-    s = sub.add_parser("schema", help="用 schema 校验任意 JSON 文件")
+    s = sub.add_parser("schema", help="validate any JSON file against a schema")
     s.add_argument("file")
     s.add_argument("--schema-file", default=None)
 
-    e = sub.add_parser("evidence", help="证据账本")
+    e = sub.add_parser("evidence", help="evidence ledger")
     e.add_argument("action",
                    choices=["add", "list", "check", "gaps", "export", "provenance"])
     e.add_argument("project")
@@ -648,9 +657,9 @@ def build_parser():
     e.add_argument("--confidence", choices=["HIGH", "MEDIUM", "LOW"])
     e.add_argument("--min-confidence", choices=["HIGH", "MEDIUM", "LOW"])
     e.add_argument("--source", default=None,
-                   help="自由文本来源，无法自动核验")
+                   help="free-text source; cannot be verified automatically")
     e.add_argument("--source-doc", default=None, dest="source_doc",
-                   help="指向材料库的编号（如 DOC-001），可被机器核验")
+                   help="an id pointing into the material library (e.g. DOC-001); machine-verifiable")
     e.add_argument("--observed-at", default=None)
     e.add_argument("--scope", default=None)
     e.add_argument("--decision-impact", default=None)
@@ -660,7 +669,7 @@ def build_parser():
     e.add_argument("--json", action="store_true")
     e.add_argument("--out", default=None)
 
-    d = sub.add_parser("decision", help="决策记录与复盘")
+    d = sub.add_parser("decision", help="decision records and review")
     d.add_argument("action",
                    choices=["add", "list", "show", "validate", "outcome",
                             "due", "export", "import"])
@@ -669,15 +678,15 @@ def build_parser():
     d.add_argument("--question", default=None)
     d.add_argument("--deadline", default=None)
     d.add_argument("--option", action="append",
-                   help='候选方案，形如 "名称|理由"，可重复')
-    d.add_argument("--chosen", default=None, help="采用的方案名称")
+                   help='an option, shaped "name|rationale"; repeatable')
+    d.add_argument("--chosen", default=None, help="name of the option chosen")
     d.add_argument("--rejected", action="append",
-                   help='放弃的方案，形如 "名称|原因"，可重复')
-    d.add_argument("--tradeoff", action="append", help="代价，可重复")
-    d.add_argument("--assumption", action="append", help="关键假设，可重复")
+                   help='a rejected option, shaped "name|reason"; repeatable')
+    d.add_argument("--tradeoff", action="append", help="a trade-off; repeatable")
+    d.add_argument("--assumption", action="append", help="a key assumption; repeatable")
     d.add_argument("--falsification", action="append",
-                   help="反证条件，可重复")
-    d.add_argument("--validation", action="append", help="验证动作，可重复")
+                   help="a falsification condition; repeatable")
+    d.add_argument("--validation", action="append", help="a validation action; repeatable")
     d.add_argument("--review-date", default=None, dest="review_date")
     # outcome
     d.add_argument("--expected", default=None)
@@ -689,56 +698,59 @@ def build_parser():
                    choices=["CONTINUE", "ADJUST", "STOP", "ROLLBACK"])
     d.add_argument("--evidence", action="append")
     d.add_argument("--assumption-update", action="append", dest="assumption_update",
-                   help='复盘时更新关键假设，形如 "假设文本|CONFIRMED|说明"；'
-                        '状态可为 CONFIRMED / REFUTED / STILL_UNKNOWN')
+                   help='update a key assumption during review, shaped '
+                        '"assumption text|CONFIRMED|note"; '
+                        'status may be CONFIRMED / REFUTED / STILL_UNKNOWN')
     d.add_argument("--notes", default=None)
     d.add_argument("--out", default=None)
     d.add_argument("--from", default=None, dest="from_path",
-                   help="import：从运行产物导入决策记录 JSON")
+                   help="import: import a decision record JSON from a run artefact")
 
-    src = sub.add_parser("source", help="数据源")
+    src = sub.add_parser("source", help="data sources")
     src.add_argument("action",
                      choices=["add-file", "add-url", "list", "show", "verify"])
     src.add_argument("project")
-    src.add_argument("path", nargs="?", help="add-file 时的文件路径")
+    src.add_argument("path", nargs="?", help="file path for add-file")
     src.add_argument("--name", default=None)
     src.add_argument("--url", default=None)
     src.add_argument("--method", default="GET")
-    src.add_argument("--header", action="append", help="形如 NAME=VALUE")
-    src.add_argument("--header-env", action="append", help="形如 NAME=ENV_VAR")
+    src.add_argument("--header", action="append", help="shaped NAME=VALUE")
+    src.add_argument("--header-env", action="append", help="shaped NAME=ENV_VAR")
     src.add_argument("--records-path", default=None)
     src.add_argument("--timeout", type=int, default=30)
     src.add_argument("--save-spec", action="store_true")
     src.add_argument("--doc-id", default=None, dest="doc_id")
 
-    c = sub.add_parser("compare", help="比对同一项目的多次运行（过程可复现性 + 可选结论一致性）")
+    c = sub.add_parser("compare", help="compare multiple runs of one project (process reproducibility + optional agreement of conclusions)")
     c.add_argument("project")
-    c.add_argument("--last", type=int, default=None, help="只比最近 N 次")
+    c.add_argument("--last", type=int, default=None, help="compare only the most recent N runs")
     c.add_argument("--judge-with", default=None, dest="judge_with",
-                   help="用指定 provider 判定「结论方向是否一致」。"
-                        "这是模型判定，不是事实")
+                   help="use the given provider to judge whether the conclusions point "
+                        "the same way. This is a model judgement, not a fact")
     c.add_argument("--json", action="store_true")
     c.add_argument("--out", default=None)
 
-    r = sub.add_parser("run", help="运行时编排：调度角色、判定门禁、推进状态")
+    r = sub.add_parser("run", help="runtime orchestration: schedule roles, judge gates, advance state")
     r.add_argument("project")
     r.add_argument("--provider", default="manual",
-                   help="manual（默认，零网络）或 bench/provider.py 中的预设名")
-    r.add_argument("--phase", action="append", help="只跑指定阶段，可重复")
-    r.add_argument("--dry-run", action="store_true", help="只生成任务包")
+                   help="manual (default, zero network) or a preset name from bench/provider.py")
+    r.add_argument("--phase", action="append", help="run only the given phase; repeatable")
+    r.add_argument("--dry-run", action="store_true", help="generate task packets only")
     r.add_argument("--max-evidence", type=int, default=60)
     r.add_argument("--repeat", type=int, default=1,
-                   help="重复运行次数。同一输入多次运行可观察一致性；"
-                        "配合 `compare` 子命令使用")
+                   help="number of repeated runs. Running the same input several times "
+                        "reveals consistency; use together with the `compare` subcommand")
     r.add_argument("--price-input", type=float, default=None, dest="price_input",
-                   help="输入 token 单价（每百万）。不填则只统计 token，不算费用"
-                        "——本项目不内置任何价格，因为价格会变")
+                   help="input token unit price (per million). If omitted, only tokens are "
+                        "counted and no cost is computed — this project hard-codes no "
+                        "prices, because prices change")
     r.add_argument("--price-output", type=float, default=None, dest="price_output",
-                   help="输出 token 单价（每百万）")
-    r.add_argument("--currency", default="USD", help="计价货币，仅用于标注")
+                   help="output token unit price (per million)")
+    r.add_argument("--currency", default="USD", help="pricing currency, used for labelling only")
     r.add_argument("--temperature", type=float, default=0.3,
-                   help="采样温度，默认 0.3。设为 0 可提高运行间一致性，"
-                        "但多数 API 不保证完全确定，仍需多次运行验证")
+                   help="sampling temperature, default 0.3. Setting it to 0 improves "
+                        "consistency across runs, but most APIs do not guarantee full "
+                        "determinism, so repeated runs are still needed to verify")
     r.add_argument("--mode", default=None, help=argparse.SUPPRESS)
 
     return parser
@@ -772,7 +784,7 @@ def main(argv=None):
             return cmd_run(args)
         if args.cmd == "compare":
             return cmd_compare(args)
-        raise ValueError(f"未知子命令：{args.cmd}")
+        raise ValueError(f"unknown subcommand: {args.cmd}")
     except DOMAIN_ERRORS as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False, indent=2),
               file=sys.stderr)
@@ -786,7 +798,7 @@ def main(argv=None):
               file=sys.stderr)
         return 2
     except json.JSONDecodeError as exc:
-        print(json.dumps({"error": f"JSON 解析失败：{exc}"},
+        print(json.dumps({"error": f"JSON parse failed: {exc}"},
                          ensure_ascii=False, indent=2), file=sys.stderr)
         return 2
 

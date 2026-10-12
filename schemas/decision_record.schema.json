@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "REBUILD Decision Record",
-  "description": "决策记录。key_assumptions 允许两种写法：纯字符串，或「假设 + 反证条件」的结构化对象。后者是接真实模型运行时模型自发采用的写法——它把每条假设与能推翻它的条件配成对，比纯字符串更有用，因此纳入 schema 而不是压制它。",
+  "description": "Decision record. key_assumptions accepts two forms: a plain string, or a structured object of \"assumption + falsification condition\". The latter is the form models adopt spontaneously when connected to a real model runtime — it pairs each assumption with the condition that could overturn it, which is more useful than a plain string, so it is admitted into the schema rather than suppressed.",
   "type": "object",
   "required": [
     "decision_id", "question", "options", "chosen_option", "rejected_options",
@@ -27,7 +27,7 @@
     },
     "chosen_option": {
       "type": ["string", "null"],
-      "description": "采用的方案名称。**允许为 null**——当门禁判定证据不足、本轮应当先补证再决策时，null 是诚实且正确的取值，好过编一个方案出来。此时 validation_actions 必须写明补什么才能决策。"
+      "description": "Name of the chosen option. **null is allowed** — when the gate judges the evidence insufficient and this round should gather further evidence before deciding, null is the honest and correct value, better than fabricating an option. In that case validation_actions must state what evidence must be gathered before a decision can be made."
     },
     "rejected_options": {
       "type": "array",

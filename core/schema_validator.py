@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""极简 JSON Schema 校验器（纯标准库实现）。
+"""A minimal JSON Schema validator (pure standard library).
 
-覆盖范围：本仓库 `schemas/` 实际使用的关键字子集，外加若干常用关键字。
+Coverage: the subset of keywords the `schemas/` directory of this repository
+actually uses, plus a handful of common keywords.
 
-设计原则
---------
-**未实现的关键字会被记录为 warning，而不是静默忽略。**
-静默忽略会让「校验通过」变成假象——一个 schema 里写了 `pattern` 却
-没人检查，使用者会以为自己受保护。这正是本项目要避免的那类自欺。
+Design principle
+----------------
+**Unimplemented keywords are recorded as warnings, never silently ignored.**
+Silently ignoring them turns "validation passed" into an illusion — if a schema
+writes `pattern` and nobody checks it, the user believes they are protected.
+That is exactly the kind of self-deception this project exists to avoid.
 
-未实现：`$ref`、`not`、`if/then/else`、`dependentSchemas`、`format`、
-`unevaluatedProperties` 等。用到时会明确报警，不会假装通过。
+Not implemented: `$ref`, `not`, `if/then/else`, `dependentSchemas`, `format`,
+`unevaluatedProperties` and so on. When they are used they raise an explicit
+warning; they never pretend to pass.
 """
 from __future__ import annotations
 
@@ -18,7 +21,7 @@ import json
 import re
 from pathlib import Path
 
-#: 本校验器认识的关键字。列表之外的一律记 warning。
+#: Keywords this validator knows. Anything outside the list is warned about.
 KNOWN_KEYWORDS = {
     "$schema", "$id", "$comment", "title", "description", "default", "examples",
     "type", "enum", "const",
@@ -35,14 +38,15 @@ _TYPE_CHECKS = {
     "string": lambda v: isinstance(v, str),
     "boolean": lambda v: isinstance(v, bool),
     "null": lambda v: v is None,
-    # bool 是 int 的子类，必须显式排除，否则 True 会被当成合法整数
+    # bool is a subclass of int and must be excluded explicitly, otherwise True
+    # would count as a valid integer
     "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
     "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
 }
 
 
 def type_name(value):
-    """返回实例的 JSON 类型名。"""
+    """Return the JSON type name of an instance."""
     if value is None:
         return "null"
     if isinstance(value, bool):
@@ -75,10 +79,11 @@ class _Context:
 
 
 def validate(instance, schema, path="$"):
-    """校验实例。返回 `(errors, warnings)`，均为字符串列表。
+    """Validate an instance. Returns `(errors, warnings)`, both lists of strings.
 
-    errors 为空表示通过；warnings 非空表示有约束**未被检查**，
-    调用方应据此判断「通过」的可信度。
+    Empty errors means it passed; non-empty warnings mean some constraints were
+    **not checked**, and the caller should judge the credibility of that "pass"
+    accordingly.
     """
     ctx = _Context()
     _validate(instance, schema, path, ctx)
@@ -87,14 +92,15 @@ def validate(instance, schema, path="$"):
 
 def _validate(instance, schema, path, ctx):
     if not isinstance(schema, dict):
-        ctx.warn(path, f"schema 不是对象（{type_name(schema)}），已跳过")
+        ctx.warn(path, f"schema is not an object ({type_name(schema)}), skipped")
         return
 
     for keyword in schema:
         if keyword not in KNOWN_KEYWORDS:
             ctx.warn(
                 path,
-                f"schema 使用了未实现的关键字 '{keyword}'，该约束未被检查",
+                f"schema uses the unimplemented keyword '{keyword}'; "
+                "that constraint was not checked",
             )
 
     expected = schema.get("type")
@@ -102,22 +108,23 @@ def _validate(instance, schema, path, ctx):
         options = expected if isinstance(expected, list) else [expected]
         unknown = [o for o in options if o not in _TYPE_CHECKS]
         if unknown:
-            ctx.warn(path, f"未知的 type 取值 {unknown}，已跳过类型检查")
+            ctx.warn(path, f"unknown type value {unknown}; type check skipped")
         elif not any(_TYPE_CHECKS[o](instance) for o in options):
             wanted = "/".join(str(o) for o in options)
             ctx.error(
                 path,
-                f"类型应为 {wanted}，实际为 {type_name(instance)}",
+                f"type should be {wanted}, got {type_name(instance)}",
             )
-            # 类型不符时，后续针对该类型的约束没有意义，直接返回
+            # When the type does not match, later constraints for that type are
+            # meaningless, so return right away
             return
 
     if "const" in schema and instance != schema["const"]:
-        ctx.error(path, f"应等于常量 {schema['const']!r}，实际为 {instance!r}")
+        ctx.error(path, f"should equal the constant {schema['const']!r}, got {instance!r}")
 
     if "enum" in schema and instance not in schema["enum"]:
         allowed = ", ".join(repr(v) for v in schema["enum"])
-        ctx.error(path, f"取值必须属于 [{allowed}]，实际为 {instance!r}")
+        ctx.error(path, f"value must be one of [{allowed}], got {instance!r}")
 
     if isinstance(instance, bool) or instance is None:
         pass
@@ -135,42 +142,42 @@ def _validate(instance, schema, path, ctx):
 
 def _validate_string(instance, schema, path, ctx):
     if "minLength" in schema and len(instance) < schema["minLength"]:
-        ctx.error(path, f"长度应 ≥ {schema['minLength']}，实际为 {len(instance)}")
+        ctx.error(path, f"length should be ≥ {schema['minLength']}, got {len(instance)}")
     if "maxLength" in schema and len(instance) > schema["maxLength"]:
-        ctx.error(path, f"长度应 ≤ {schema['maxLength']}，实际为 {len(instance)}")
+        ctx.error(path, f"length should be ≤ {schema['maxLength']}, got {len(instance)}")
     pattern = schema.get("pattern")
     if pattern is not None:
         try:
             if re.search(pattern, instance) is None:
-                ctx.error(path, f"不匹配 pattern {pattern!r}")
+                ctx.error(path, f"does not match pattern {pattern!r}")
         except re.error as exc:
-            ctx.warn(path, f"schema 中的 pattern 无法编译（{exc}），未检查")
+            ctx.warn(path, f"the pattern in schema cannot be compiled ({exc}); not checked")
 
 
 def _validate_number(instance, schema, path, ctx):
     if "minimum" in schema and instance < schema["minimum"]:
-        ctx.error(path, f"应 ≥ {schema['minimum']}，实际为 {instance}")
+        ctx.error(path, f"should be ≥ {schema['minimum']}, got {instance}")
     if "maximum" in schema and instance > schema["maximum"]:
-        ctx.error(path, f"应 ≤ {schema['maximum']}，实际为 {instance}")
+        ctx.error(path, f"should be ≤ {schema['maximum']}, got {instance}")
     if "exclusiveMinimum" in schema and instance <= schema["exclusiveMinimum"]:
-        ctx.error(path, f"应 > {schema['exclusiveMinimum']}，实际为 {instance}")
+        ctx.error(path, f"should be > {schema['exclusiveMinimum']}, got {instance}")
     if "exclusiveMaximum" in schema and instance >= schema["exclusiveMaximum"]:
-        ctx.error(path, f"应 < {schema['exclusiveMaximum']}，实际为 {instance}")
+        ctx.error(path, f"should be < {schema['exclusiveMaximum']}, got {instance}")
     if "multipleOf" in schema:
         divisor = schema["multipleOf"]
         if divisor and (instance % divisor) != 0:
-            ctx.error(path, f"应为 {divisor} 的倍数，实际为 {instance}")
+            ctx.error(path, f"should be a multiple of {divisor}, got {instance}")
 
 
 def _validate_array(instance, schema, path, ctx):
     if "minItems" in schema and len(instance) < schema["minItems"]:
-        ctx.error(path, f"元素数应 ≥ {schema['minItems']}，实际为 {len(instance)}")
+        ctx.error(path, f"number of items should be ≥ {schema['minItems']}, got {len(instance)}")
     if "maxItems" in schema and len(instance) > schema["maxItems"]:
-        ctx.error(path, f"元素数应 ≤ {schema['maxItems']}，实际为 {len(instance)}")
+        ctx.error(path, f"number of items should be ≤ {schema['maxItems']}, got {len(instance)}")
     if schema.get("uniqueItems") and len(instance) != len(
         {json.dumps(item, sort_keys=True, ensure_ascii=False, default=str) for item in instance}
     ):
-        ctx.error(path, "元素应互不重复")
+        ctx.error(path, "items should be unique")
     item_schema = schema.get("items")
     if item_schema is not None:
         for index, item in enumerate(instance):
@@ -180,7 +187,7 @@ def _validate_array(instance, schema, path, ctx):
 def _validate_object(instance, schema, path, ctx):
     for key in schema.get("required", []):
         if key not in instance:
-            ctx.error(path, f"缺少必填字段 '{key}'")
+            ctx.error(path, f"missing required field '{key}'")
 
     properties = schema.get("properties", {})
     for key, subschema in properties.items():
@@ -191,8 +198,8 @@ def _validate_object(instance, schema, path, ctx):
         extra = [k for k in instance if k not in properties]
         if extra:
             shown = ", ".join(repr(k) for k in sorted(extra)[:5])
-            more = "" if len(extra) <= 5 else f" 等 {len(extra)} 个"
-            ctx.error(path, f"出现未声明的字段：{shown}{more}")
+            more = "" if len(extra) <= 5 else f" and {len(extra)} in total"
+            ctx.error(path, f"undeclared fields present: {shown}{more}")
     elif isinstance(schema.get("additionalProperties"), dict):
         for key in instance:
             if key not in properties:
@@ -207,7 +214,8 @@ def _validate_object(instance, schema, path, ctx):
 
 
 def _subschema_ok(instance, subschema, path):
-    """在隔离的上下文里试跑一个子 schema，返回 (是否通过, 错误列表, 警告列表)。"""
+    """Trial-run one sub-schema in an isolated context. Returns
+    (passed, errors, warnings)."""
     sub = _Context()
     _validate(instance, subschema, path, sub)
     return (not sub.errors), sub.errors, sub.warnings
@@ -218,7 +226,7 @@ def _validate_combinators(instance, schema, path, ctx):
         for index, subschema in enumerate(schema["allOf"]):
             _validate(instance, subschema, path, ctx)
 
-    for keyword, rule in (("anyOf", "至少"), ("oneOf", "恰好")):
+    for keyword, rule in (("anyOf", "at least"), ("oneOf", "exactly")):
         options = schema.get(keyword)
         if not options:
             continue
@@ -227,14 +235,15 @@ def _validate_combinators(instance, schema, path, ctx):
         if keyword == "anyOf":
             if passed == 0:
                 detail = "; ".join(results[0][1][:2]) if results else ""
-                ctx.error(path, f"anyOf：没有任何分支通过。首分支错误：{detail}")
+                ctx.error(path, f"anyOf: no branch passed. First branch error: {detail}")
         else:  # oneOf
             if passed != 1:
                 ctx.error(
                     path,
-                    f"oneOf：应{rule}有 1 个分支通过，实际通过 {passed} 个",
+                    f"oneOf: {rule} 1 branch should pass, but {passed} did",
                 )
-        # 组合器内部用到的关键字也要暴露给调用方，避免"通过"掩盖未检查的约束
+        # Keywords used inside combinators must also be exposed to the caller,
+        # so that a "pass" cannot hide unchecked constraints
         for _, _, warns in results:
             for warning in warns:
                 if warning not in ctx.warnings:
@@ -242,7 +251,7 @@ def _validate_combinators(instance, schema, path, ctx):
 
 
 # ---------------------------------------------------------------------------
-# 文件级便捷接口
+# File-level convenience interface
 # ---------------------------------------------------------------------------
 
 def load_schema(path):
@@ -256,11 +265,12 @@ def load_instance(path):
 
 
 def validate_file(instance_path, schema_path):
-    """校验一个 JSON 文件是否符合给定 schema。返回 (errors, warnings)。"""
+    """Validate one JSON file against the given schema. Returns (errors, warnings)."""
     return validate(load_instance(instance_path), load_schema(schema_path))
 
 
-#: 文件名 → schema 文件的约定映射，供 CLI 自动选 schema。
+#: Conventional mapping from file name → schema file, used by the CLI to pick a
+#: schema automatically.
 DEFAULT_SCHEMA_MAP = {
     "project.json": "project.schema.json",
     "project_state.json": "project.schema.json",
@@ -272,7 +282,7 @@ DEFAULT_SCHEMA_MAP = {
 
 
 def guess_schema(instance_path, schema_dir):
-    """按文件名猜测对应的 schema。猜不到返回 None。"""
+    """Guess the matching schema from the file name. Returns None if it cannot."""
     name = Path(instance_path).name
     candidate = DEFAULT_SCHEMA_MAP.get(name)
     if candidate is None:

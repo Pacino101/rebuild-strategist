@@ -2,51 +2,51 @@
 
 ## Our Pledge
 
-我们承诺让参与本项目的人免受骚扰，无论年龄、体型、可见或不可见特征、民族或族裔、宗教或性别认同及表达、性别取向、教育背景、社会经济地位、国籍、外表、种族、宗教或性取向如何。
+We pledge to make participation in this project free of harassment for everyone, regardless of age, body size, visible or invisible characteristics, ethnicity or national origin, religion or gender identity and expression, sexual orientation, education background, socio-economic status, nationality, appearance, race, religion or sexual orientation.
 
-我们承诺以欢迎他人、尊重不同观点与经历、优雅地接受建设性批评、关注对社区最有利的方式进行互动。
+We pledge to interact in ways that are welcoming to others, respectful of different viewpoints and experiences, gracious in accepting constructive criticism, and focused on what is best for the community.
 
 ## Our Standards
 
-有助于营造积极环境的行为包括：
+Behaviours that help create a positive environment include:
 
-- 使用友善和包容的语言
-- 尊重不同的观点、经验与决策
-- 优雅地接受建设性批评
-- 关注对社区整体最有利的事情
-- 对自己的错误承担责任并虚心学习
+- Using friendly and inclusive language
+- Respecting different viewpoints, experiences and decisions
+- Accepting constructive criticism gracefully
+- Focusing on what is best for the community as a whole
+- Taking responsibility for one's own mistakes and learning from them humbly
 
-不可接受的行为包括：
+Unacceptable behaviours include:
 
-- 使用与性有关的言语或图像，以及不受欢迎的关注或调戏
-- 挑衅、侮辱或贬损的评论，以及人身攻击或政治攻击
-- 公开或私下的骚扰
-- 未经明确许可，发布他人的私人信息
-- 在专业场合被认为不恰当的其他行为
+- The use of sexualised language or imagery, and unwelcome attention or advances
+- Trolling, insulting or derogatory comments, and personal or political attacks
+- Public or private harassment
+- Publishing other people's private information without explicit permission
+- Other behaviour that would be considered inappropriate in a professional setting
 
-## 特别说明：本项目讨论营销方法论
+## Special note: this project discusses marketing methodology
 
-REBUILD 的核心主题是「诚实与证据纪律」。讨论中出现以下情形会被视为违反本准则：
+REBUILD's core theme is "honesty and evidence discipline". The following situations in discussion are treated as a breach of this code:
 
-- 把自己未经验证的数字包装成行业事实
-- 用「行业数据」为不成立的结论背书
-- 在案例分析中编造客户访谈、调研结果或项目成效
-- 对他人的方案做人身评价而非方法论批评
+- Packaging your own unverified numbers as industry facts
+- Using "industry data" to endorse a conclusion that does not hold
+- Fabricating client interviews, research findings or project outcomes in a case analysis
+- Making a personal judgement of someone else's proposal rather than a methodological criticism
 
-方法论上的批评请直接针对**推理、证据与口径**，而不是提出者本人。
+Methodological criticism should be aimed directly at the **reasoning, evidence and basis**, not at the person who proposed it.
 
 ## Enforcement Responsibilities
 
-项目维护者有责任澄清并执行这些标准，并将采取适当的纠正措施。
+Project maintainers are responsible for clarifying and enforcing these standards, and will take appropriate corrective action.
 
 ## Scope
 
-本准则适用于项目所有交互场景，包括仓库、Issue、Pull Request 与任何公开交流渠道。
+This code applies to all project interaction spaces, including the repository, Issues, Pull Requests and any public communication channel.
 
 ## Enforcement
 
-如遇到违反本准则的行为，请通过 GitHub 私信联系项目维护者。所有投诉都将被及时审阅与处理，并尽可能保密。
+If you encounter behaviour that violates this code, please contact the project maintainers by GitHub private message. All complaints will be reviewed and handled promptly, and kept confidential as far as possible.
 
 ## Attribution
 
-本准则改编自 [Contributor Covenant](https://www.contributor-covenant.org)，版本 2.1。
+This code is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1.

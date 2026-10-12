@@ -40,7 +40,7 @@ class TypeCheckTests(unittest.TestCase):
 class ObjectTests(unittest.TestCase):
     def test_required_missing(self):
         errors, _ = sv.validate({}, {"type": "object", "required": ["a"]})
-        self.assertTrue(any("缺少必填字段 'a'" in e for e in errors))
+        self.assertTrue(any("missing required field 'a'" in e for e in errors))
 
     def test_additional_properties_false(self):
         schema = {"type": "object", "properties": {"a": {"type": "string"}},
@@ -101,7 +101,7 @@ class HonestyTests(unittest.TestCase):
 
     def test_unknown_type_value_warns(self):
         errors, warnings = sv.validate("x", {"type": "strin"})
-        self.assertTrue(any("未知的 type" in w for w in warnings), warnings)
+        self.assertTrue(any("unknown type value" in w for w in warnings), warnings)
 
 
 class CombinatorTests(unittest.TestCase):
@@ -167,7 +167,7 @@ class RealSchemaTests(unittest.TestCase):
         errors, _ = sv.validate(
             record, sv.load_schema(ROOT / "schemas/decision_record.schema.json")
         )
-        self.assertTrue(any("minItems" in e or "元素数" in e for e in errors), errors)
+        self.assertTrue(any("minItems" in e or "number of items" in e for e in errors), errors)
 
     def test_no_unknown_keywords_in_repo_schemas(self):
         """仓库自己的 schema 不应触发未实现关键字警告。"""

@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""HTTP 数据源：接使用者自己的端点。
+"""HTTP data source: connect to the user's own endpoints.
 
-定位
-----
-本模块**不内置任何具体平台的连接器**（不预置 PostHog / Mautic / 广告平台
-的 URL 或字段映射）。使用者自己给出 URL、鉴权方式和取值路径。
+Positioning
+-----------
+This module **ships no connector for any specific platform** (it presets no
+URLs or field mappings for PostHog / Mautic / ad platforms). The user supplies
+the URL, the authentication method and the value path.
 
-安全约定
---------
-- **密钥不写进 spec 文件。** spec 里只记录「哪个请求头对应哪个环境变量」
-  （`header_env`），真实值在运行时从环境变量读取，不落盘。
-- 若检测到 `headers` 里像是密钥的字面量，会给出警告——写在文件里的密钥
-  迟早会进 git。
-- 不记录、不回显任何请求头的值。
+Security conventions
+--------------------
+- **Keys are never written into the spec file.** The spec only records "which
+  request header corresponds to which environment variable" (`header_env`); the
+  real values are read from the environment at runtime and never touch disk.
+- If a literal in `headers` looks like a secret, a warning is emitted — a key
+  written into a file ends up in git sooner or later.
+- No request header value is ever logged or echoed.
 """
 from __future__ import annotations
 
@@ -29,13 +31,14 @@ from .base import Document, SourceError
 
 SPECS_DIRNAME = "specs"
 
-#: 一次抓取最多产生多少条文档，防止一个接口返回十万条把项目撑爆。
+#: Maximum number of documents one fetch may produce, so that an endpoint
+#: returning a hundred thousand records cannot blow up the project.
 MAX_RECORDS = 500
 
-#: 看起来像密钥的字面量：长且无空格的随机串。
+#: Literals that look like secrets: long random strings with no spaces.
 _SECRET_LIKE = re.compile(r"^[A-Za-z0-9_\-\.]{20,}$")
 
-#: 这些请求头名基本可以断定是凭据。
+#: These header names can be taken as credentials with near certainty.
 _SENSITIVE_HEADERS = {
     "authorization", "x-api-key", "api-key", "apikey", "x-auth-token",
     "cookie", "x-token", "token", "private-token",
@@ -44,7 +47,7 @@ _SENSITIVE_HEADERS = {
 
 @dataclass
 class HttpSourceSpec:
-    """一个 HTTP 取数配置。"""
+    """One HTTP fetch spec."""
 
     name: str
     url: str
@@ -65,38 +68,40 @@ class HttpSourceSpec:
         unknown = set(data) - known
         if unknown:
             raise SourceError(
-                f"spec 中出现未知字段：{sorted(unknown)}。"
-                f"可用字段：{sorted(known)}"
+                f"unknown field in spec: {sorted(unknown)}. "
+                f"Available fields: {sorted(known)}"
             )
         if not data.get("name"):
-            raise SourceError("spec 缺少 name")
+            raise SourceError("spec is missing name")
         if not data.get("url"):
-            raise SourceError("spec 缺少 url")
+            raise SourceError("spec is missing url")
         return cls(**data)
 
     @classmethod
     def from_file(cls, path) -> "HttpSourceSpec":
         path = Path(path)
         if not path.exists():
-            raise SourceError(f"找不到 spec 文件：{path}")
+            raise SourceError(f"spec file not found: {path}")
         try:
             return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
         except json.JSONDecodeError as exc:
-            raise SourceError(f"{path} 不是合法 JSON：{exc}") from exc
+            raise SourceError(f"{path} is not valid JSON: {exc}") from exc
 
-    # ------------------------------------------------------------- 安全检查
+    # ------------------------------------------------------- security checks
     def warnings(self) -> list[str]:
         problems = []
         for header, value in self.headers.items():
             if header.lower() in _SENSITIVE_HEADERS:
                 problems.append(
-                    f"请求头 '{header}' 是凭据类字段，但直接写在了 spec 里。"
-                    f"请改用 header_env（例如 \"{header}\": \"MY_TOKEN_ENV\"），"
-                    f"避免密钥进入 git 历史。"
+                    f"header '{header}' is a credential-type field but is written "
+                    f"directly into the spec. Use header_env instead "
+                    f"(for example \"{header}\": \"MY_TOKEN_ENV\") so the key does "
+                    f"not enter git history."
                 )
             elif _SECRET_LIKE.match(str(value)):
                 problems.append(
-                    f"请求头 '{header}' 的值像是密钥。若确实是，请改用 header_env。"
+                    f"the value of header '{header}' looks like a secret. "
+                    f"If it is one, use header_env instead."
                 )
         missing = [
             env for env in self.header_env.values()
@@ -104,15 +109,16 @@ class HttpSourceSpec:
         ]
         if missing:
             problems.append(
-                f"以下环境变量当前未设置：{', '.join(sorted(missing))}。"
-                f"取数时对应请求头将为空。"
+                f"these environment variables are not set: {', '.join(sorted(missing))}. "
+                f"The corresponding request headers will be empty when fetching."
             )
         if self.method.upper() not in ("GET", "POST"):
-            problems.append(f"method 为 {self.method}，本模块只实现了 GET 与 POST")
+            problems.append(f"method is {self.method}; this module only implements GET and POST")
         return problems
 
     def resolved_headers(self) -> dict:
-        """合并字面量与来自环境变量的请求头。不记录、不回显值。"""
+        """Merge literal headers with headers taken from environment variables.
+        Values are never logged or echoed."""
         headers = {k: str(v) for k, v in self.headers.items()}
         for header, env_name in self.header_env.items():
             value = os.environ.get(env_name, "")
@@ -122,13 +128,13 @@ class HttpSourceSpec:
 
 
 # ---------------------------------------------------------------------------
-# 取值路径
+# Value path
 # ---------------------------------------------------------------------------
 
 def extract_records(payload, records_path: str):
-    """按点分路径从响应里取出一组记录。
+    """Pull a set of records out of the response along a dot-separated path.
 
-    路径为空时返回 [payload]（整体作为一条文档）。
+    An empty path returns [payload] (the whole response as one document).
     """
     if not records_path:
         return [payload]
@@ -137,8 +143,8 @@ def extract_records(payload, records_path: str):
         if isinstance(node, dict):
             if part not in node:
                 raise SourceError(
-                    f"records_path 中的 '{part}' 不存在。"
-                    f"该层可用字段：{sorted(node)[:10]}"
+                    f"'{part}' in records_path does not exist. "
+                    f"Available fields at this level: {sorted(node)[:10]}"
                 )
             node = node[part]
         elif isinstance(node, list):
@@ -146,20 +152,23 @@ def extract_records(payload, records_path: str):
                 node = node[int(part)]
             except (ValueError, IndexError):
                 raise SourceError(
-                    f"records_path 中的 '{part}' 无法作为列表下标（当前层是列表，"
-                    f"长度 {len(node)}）"
+                    f"'{part}' in records_path cannot be used as a list index "
+                    f"(the current level is a list of length {len(node)})"
                 ) from None
         else:
-            raise SourceError(f"records_path 走到 '{part}' 时已是标量，无法继续下钻")
+            raise SourceError(
+                f"records_path reached a scalar at '{part}' and cannot descend further"
+            )
     return node if isinstance(node, list) else [node]
 
 
 # ---------------------------------------------------------------------------
-# 抓取
+# Fetch
 # ---------------------------------------------------------------------------
 
 def fetch(spec: HttpSourceSpec):
-    """执行一次抓取。返回 (records, meta)。网络或 HTTP 错误抛 SourceError。"""
+    """Perform one fetch. Returns (records, meta). Network or HTTP errors raise
+    SourceError."""
     url = spec.url
     headers = spec.resolved_headers()
     headers.setdefault("Accept", "application/json, text/plain;q=0.9, */*;q=0.5")
@@ -184,20 +193,20 @@ def fetch(spec: HttpSourceSpec):
         snippet = ""
         try:
             snippet = exc.read().decode("utf-8", errors="replace")[:200]
-        except Exception:  # noqa: BLE001 - 读错误响应体失败不应掩盖原始错误
+        except Exception:  # noqa: BLE001 - must not mask the original error
             pass
         raise SourceError(
-            f"HTTP {exc.code}：{exc.reason}\n"
-            f"地址：{_redact(url)}\n"
-            + (f"响应片段：{snippet}\n" if snippet else "")
-            + "请检查 URL、鉴权头与权限范围。"
+            f"HTTP {exc.code}: {exc.reason}\n"
+            f"URL: {_redact(url)}\n"
+            + (f"Response snippet: {snippet}\n" if snippet else "")
+            + "Check the URL, the authentication headers and the permission scope."
         ) from exc
     except urllib.error.URLError as exc:
         raise SourceError(
-            f"无法连接：{_redact(url)}\n原因：{exc.reason}"
+            f"cannot connect: {_redact(url)}\nReason: {exc.reason}"
         ) from exc
     except TimeoutError as exc:
-        raise SourceError(f"请求超时（{spec.timeout}s）：{_redact(url)}") from exc
+        raise SourceError(f"request timed out ({spec.timeout}s): {_redact(url)}") from exc
 
     text = raw.decode("utf-8", errors="replace")
     meta = {
@@ -228,7 +237,8 @@ def fetch(spec: HttpSourceSpec):
 
 
 def _redact(url: str) -> str:
-    """去掉 URL 里的用户信息与敏感查询参数，便于安全打印。"""
+    """Strip userinfo and sensitive query parameters from a URL so it can be
+    printed safely."""
     parts = urllib.parse.urlsplit(url)
     netloc = parts.netloc
     if "@" in netloc:
@@ -246,14 +256,14 @@ def _redact(url: str) -> str:
 
 
 def render(record) -> str:
-    """把一条记录渲染成文档内容。"""
+    """Render one record as document content."""
     if isinstance(record, str):
         return record
     return json.dumps(record, ensure_ascii=False, indent=2)
 
 
 # ---------------------------------------------------------------------------
-# spec 存取
+# spec storage
 # ---------------------------------------------------------------------------
 
 def specs_dir(project_dir) -> Path:
@@ -278,7 +288,7 @@ def load_specs(project_dir) -> list[HttpSourceSpec]:
 
 
 def add_http(store, spec: HttpSourceSpec) -> list[Document]:
-    """执行抓取并把结果存入材料库。"""
+    """Perform the fetch and store the results in the material library."""
     records, meta = fetch(spec)
     documents = []
     for index, record in enumerate(records, 1):

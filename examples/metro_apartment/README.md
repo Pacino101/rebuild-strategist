@@ -1,157 +1,159 @@
-# 案例：地铁公寓项目 —— 一次真实项目的完整运行
+# Case study: the metro apartment project — a complete run on a real project
 
-> **真实性声明**：这是一个**真实商业项目**的脱敏版本。甲方、地块、乙方及所有可识别信息已全部移除，
-> 保留的是**实际用于分析的数据与全部产出**。脱敏方法见 [`ANONYMIZATION.md`](ANONYMIZATION.md)。
-
----
-
-## 为什么把这个案例放进来
-
-README 的成熟度声明里，长期挂着一句 **「未验证：在真实客户数据上能否端到端跑完一次完整的 R→E→B→U→I→D」**。
-
-这个目录就是那个验证。
-
-更重要的是它验证出了什么：**这套流程在真实项目上抓到了一个用营销手段修不好的问题。**
-
-一份写得相当完整的品牌营销全案——定位清晰、客群分层可归因、渠道预算 100% 归一、KPI 带复盘节点——
-在单位经济上是不成立的：**运营方每运营一个月都在烧押金，无论出租率是 60% 还是 93%。**
-
-问题不在营销，在分成条款。
+> **Authenticity statement**: this is an anonymised version of a **real commercial project**. The owner, the site, the consultancy and all identifiable information have been removed entirely;
+> what is retained is **the data actually used for the analysis and the complete set of outputs**. For the anonymisation method see [`ANONYMIZATION.md`](ANONYMIZATION.md).
 
 ---
 
-## 五个关键发现
+## Why this case is included
 
-| # | 发现 | 数值 |
+The README's maturity statement long carried the line **"unverified: whether a complete R→E→B→U→I→D can be run end to end on real client data"**.
+
+This directory is that verification.
+
+More important is what it verified: **on a real project, this process caught a problem that no marketing technique can fix.**
+
+A brand marketing programme written to a fairly complete standard — clear positioning, attributable customer segmentation, channel budget normalised to 100%, KPIs with review checkpoints —
+does not hold on unit economics: **the operator burns through the deposit every month it operates, whether the occupancy rate is 60% or 93%.**
+
+The problem is not marketing; it is the revenue-share clause.
+
+---
+
+## Five key findings
+
+| # | Finding | Figure |
 |---|---|---|
-| 1 | 文档宣称的「1.9 年回本」只有让甲方独占全部分红才能复现 | 按 65% 分成为 **3.08 年** |
-| 2 | 运营方单位经济**结构性为负** | 单间月收入 **681 元** vs 单间月成本 **771–1,206 元** |
-| 3 | **60%–93% 出租率全区间**运营方月现金流均为负 | −59,840 / −52,181 / −45,544 / −42,992 元/月 |
-| 4 | 甲方回本约束与乙方保本约束**交集为空** | 甲方需分成 ≥50%；乙方保本需甲方降至 **31.1%** |
-| 5 | 40 万预算扣掉非获客支出后即超红线 | 实际 CAC **4,545 元** > 4,500 元红线 |
+| 1 | The "1.9-year payback" claimed in the document can only be reproduced if the owner takes all of the profit share | At a 65% share it is **3.08 years** |
+| 2 | The operator's unit economics are **structurally negative** | Revenue per room per month **681 yuan** vs cost per room per month **771–1,206 yuan** |
+| 3 | **Across the entire 60%–93% occupancy range** the operator's monthly cash flow is negative | −59,840 / −52,181 / −45,544 / −42,992 yuan/month |
+| 4 | The owner's payback constraint and the operator's break-even constraint **have an empty intersection** | The owner needs a share ≥50%; the operator's break-even needs the owner to drop to **31.1%** |
+| 5 | Once non-acquisition spending is deducted from the 400,000 budget it exceeds the red line | Actual CAC **4,545 yuan** > the 4,500 yuan red line |
 
-第 4 条是决定性的：**这不是「谁该让一步」的谈判问题，而是在给定均价与成本结构下无解。**
-签约即锁定一份乙方 8 年累计亏损 234–427 万元的合同。
+Item 4 is decisive: **this is not a negotiation question of "who should give ground"; given the average price and the cost structure, it has no solution.**
+Signing locks in a contract under which the operator loses a cumulative 2.34–4.27 million yuan over 8 years.
 
-> 这正是方法论里「U（Unit Economics）」阶段存在的意义——**收入 ≠ 利润，ROAS ≠ 贡献利润**。
-> 营销方案可以写得很漂亮，但算术不会因此改变。
+> This is exactly why the "U (Unit Economics)" phase exists in the methodology — **revenue ≠ profit, ROAS ≠ contribution profit**.
+> A marketing plan can be written beautifully, but the arithmetic will not change because of it.
 
 ---
 
-## 目录
+## Contents
 
 ```text
-project.json          可直接运行的项目状态（用仓库 CLI 跑）
-source/               三份脱敏后的真实输入材料
+project.json          Project state that can be run directly (run it with the repository CLI)
+source/               Three anonymised real input documents
   ├── 01_合作模式研究报告.txt
   ├── 02_地块专项研究报告.txt
   └── 03_品牌营销全案.txt
-rebuild/              该项目的实际产出
-  ├── KEY_FINDINGS.md     关键数字汇总（自动生成）
-  ├── DECISION.md         一页纸决策页
-  ├── SKILL_EVALUATION.md 技能评估报告（含发现的冲突与缺陷）
-  ├── kpi_tree.json       KPI 树
-  ├── experiments.json    实验卡片
-  ├── model_output.json   单位经济模型全部输出
-  ├── power_analysis.json 功效核算
-  ├── scripts/            6 个分析脚本（可复现全部数字）
-  └── schemas/            运行时使用的 schema 快照（见下方「已知偏差」）
+rebuild/              The actual outputs of this project
+  ├── KEY_FINDINGS.md     Summary of key figures (auto-generated)
+  ├── DECISION.md         One-page decision page
+  ├── SKILL_EVALUATION.md Skill evaluation report (including the conflicts and defects found)
+  ├── kpi_tree.json      KPI tree
+  ├── experiments.json   Experiment cards
+  ├── model_output.json  Full output of the unit economics model
+  ├── power_analysis.json Power calculation
+  ├── scripts/            6 analysis scripts (reproduce every figure)
+  └── schemas/            Snapshot of the schemas used at runtime (see "Known deviations" below)
 ```
 
 ---
 
-## 怎么跑
+## How to run it
 
 ```bash
-# 1. 校验项目状态（含 JSON Schema）
+# 1. Validate the project state (including the JSON Schema)
 python core/rebuild_cli.py validate examples/metro_apartment/project.json
 
-# 2. 查看证据缺口：哪些假设还没有证据支撑
+# 2. Inspect evidence gaps: which assumptions have no supporting evidence yet
 python core/rebuild_cli.py evidence gaps examples/metro_apartment
 
-# 3. 生成任务包（零网络请求）
+# 3. Generate task packets (zero network requests)
 python core/rebuild_cli.py run examples/metro_apartment --dry-run
 
-# 4. 复现case里的全部数字
+# 4. Reproduce every figure in the case
 cd examples/metro_apartment/rebuild && python3 scripts/run_all.py
 ```
 
-`scripts/run_all.py` 会依次跑完 6 个脚本并重写 `KEY_FINDINGS.md`。
-**不需要任何第三方依赖**，标准库即可。
+`scripts/run_all.py` runs all 6 scripts in sequence and rewrites `KEY_FINDINGS.md`.
+**No third-party dependencies are needed**; the standard library is enough.
 
 ---
 
-## 已知偏差（请务必读）
+## Known deviations (please read these)
 
-**① 本案例运行时使用的 schema 与当前仓库的不同。**
+**① The schemas used when this case was run differ from those in the current repository.**
 
-本案例跑在一套更早的 schema 上（存档于 `legacy/v3.1` 分支），字段比当前 `schemas/` **更宽**：
-它支持 KPI 树的多棵树结构与 `$ref`，实验卡片也包含 `audience` / `control` / `variant` /
-`minimum_detectable_effect` / `sample_logic` 等字段，而当前仓库的 `experiment.schema.json` 没有这些。
+This case ran on an earlier set of schemas (archived in the `legacy/v3.1` branch); its fields are **wider** than the current `schemas/`:
+it supports a multi-tree KPI structure and `$ref`, and the experiment cards also include fields such as `audience` / `control` / `variant` /
+`minimum_detectable_effect` / `sample_logic`, which the current repository's `experiment.schema.json` does not have.
 
-为了可复现，运行时用的那份 schema 快照放在 `rebuild/schemas/` 里。
+For reproducibility, the schema snapshot used at runtime is kept in `rebuild/schemas/`.
 
-**这个偏差本身是个发现：真实项目需要的字段比当前 schema 提供的多。**
-把当前 schema 收敛到真实用例所需，是待办事项，不是已完成事项。
+**This deviation is itself a finding: a real project needs more fields than the current schema provides.**
+Converging the current schema to what real use cases need is a to-do item, not a completed one.
 
-**② 单位经济模型中的乙方成本是重建的，不是原始数据。**
+**② The operator's costs in the unit economics model are reconstructed, not original data.**
 
-文档只给出「乙方月度自有成本 57,800 元」而无明细。`02_econ_model.py` 按人力、公区、
-维保、营销等科目**重建**了该成本（90,473 元/月），并给出 771–1,206 元/间·月的区间。
-**这是推断，不是事实。** 全部相关结论的可信度受此限制。
+The document gives only "the operator's monthly own costs of 57,800 yuan" with no breakdown. `02_econ_model.py` **reconstructed** that cost
+from line items such as labour, common areas, maintenance and marketing (90,473 yuan/month), and gives a range of 771–1,206 yuan/room·month.
+**This is an inference, not a fact.** The confidence of all related conclusions is limited by this.
 
-**③ 客群占比结构未经问卷验证。**
+**③ The customer segment proportions have not been verified by questionnaire.**
 
-画像权重（35%/30%/15%/10%/10%）为方案建议值，原文自己标注为「待预登记问卷 n≥100 验证」。
-本案例未做该验证。
+The persona weights (35%/30%/15%/10%/10%) are values proposed by the plan; the original text itself labels them "to be verified by a pre-registration questionnaire with n≥100".
+This case did not perform that verification.
 
-**④ 三个实验全部为 `proposed`，无一执行。**
+**④ All three experiments are `proposed`; none was executed.**
 
-`power_analysis.json` 的结论是：要检测渠道相对 +30% 的差异需每臂 2,479 组，
-是全期看房量 KPI（900 组）的 5.5 倍。**即样本量根本不够**，所以三个实验都只能算方向性。
+The conclusion of `power_analysis.json` is: detecting a +30% relative difference between channels requires 2,479 groups per arm,
+which is 5.5 times the full-period viewing-volume KPI (900 groups). **In other words the sample size is simply not sufficient**, so all three experiments can only count as directional.
 
 ---
 
-## 后续：循环闭合了（2026-10 追加）
+## Follow-up: the loop closed (added 2026-10)
 
-这份分析的建议是「**先做条款压力测试、重谈分成结构后再签**」，不是「签约」也不是「放弃」。
+This analysis's recommendation was "**run a clause stress test first, renegotiate the revenue-share structure before signing**", not "sign" and not "abandon".
 
-**实际结果**（已记入 `decisions/DR-001.json` + `decisions/outcomes/DR-001.json`）：
+**Actual outcome** (recorded in `decisions/DR-001.json` + `decisions/outcomes/DR-001.json`):
 
-| 项 | 内容 |
+| Item | Content |
 |---|---|
-| 预期 | 若按现条款 65:35 签约，乙方月现金流为负、押金约 22 个月烧穿 |
-| 实际 | 甲方采纳建议，**未按现条款签约**，分成结构已调整；**乙方未签约**，双方正在重谈 |
-| 偏差类型 | `AS_EXPECTED`（预期兑现） |
-| 下一步 | `CONTINUE` |
+| Expected | If signed under the current 65:35 clause, the operator's monthly cash flow would be negative and the deposit would burn through in about 22 months |
+| Actual | The owner adopted the recommendation and **did not sign under the current clause**; the revenue-share structure has been adjusted; **the operator did not sign**, and the two parties are renegotiating |
+| Deviation type | `AS_EXPECTED` (as expected) |
+| Next step | `CONTINUE` |
 
-关键假设的更新：
+Updates to the key assumptions:
 
-| 假设 | 结果 |
+| Assumption | Result |
 |---|---|
-| 乙方会接受 65:35 | **已推翻** —— 乙方未签约 |
-| 甲方回本与乙方保本交集为空 | **已确认** —— 双方确实未能在原条款上达成一致 |
-| 稳态出租率可达 93% | 仍未知（尚未开业） |
+| The operator would accept 65:35 | **Overturned** — the operator did not sign |
+| The owner's payback and the operator's break-even have an empty intersection | **Confirmed** — the two parties indeed failed to reach agreement on the original clause |
+| Steady-state occupancy can reach 93% | Still unknown (not yet open) |
 
-**这证明了什么、没证明什么：**
+**What this proves, and what it does not prove:**
 
-✅ 分析**改变了一个真实决策**——项目没有按原条款推进；
-✅ 分析预测的阻塞点（乙方不接受该分成）**在现实中出现了**。
+✅ The analysis **changed a real decision** — the project did not proceed under the original clause;
+✅ The blocking point the analysis predicted (the operator would not accept that revenue share) **did occur in reality**.
 
-❌ **没有**证明分析的测算是对的。乙方未签也可能是融资、产能或别的原因；
-❌ **没有**证明新的分成结构成立——**它还没有被测算过**。
-   若甲方分成仍高于反解出的 31.1%，新条款可能依然不成立，只是不那么明显；
-❌ 还没有任何经营数据。这个项目尚未开业。
+❌ It does **not** prove that the analysis's calculations are correct. The operator not signing could also be due to financing, capacity or something else;
+❌ It does **not** prove that the new revenue-share structure holds — **it has not been calculated yet**.
+    If the owner's share is still higher than the 31.1% back-solved from the constraint, the new clause may still not hold, just less obviously;
+❌ There is no operating data yet. This project has not yet opened.
 
-> **「被采纳」不等于「被验证」。** 采纳说明结论有说服力，验证需要时间。
-> 而甲方说「可行」，恰恰是模型预测的结果——模型说的就是「这个条款对甲方成立、
-> 对乙方不成立」，甲方本来就是算得过来的那一方。
+> **"Being adopted" is not the same as "being validated".** Adoption shows the conclusion was persuasive; validation takes time.
+> And the owner saying "feasible" is precisely the result the model predicted — what the model says is "this clause holds for the owner
+> but not for the operator", and the owner was always the party the numbers worked out for.
 
-## 这个案例没有证明什么
+## What this case does not prove
 
-- 没有证明这套方法能提升真实项目的 ROI —— 只证明了它能跑完，并抓到一个算术问题。
-- 没有证明结论被采纳 —— 后续是否重谈条款，本目录没有记录。
-- 没有证明可推广 —— 这是一个案例，不是样本。
+- It does not prove that this method can raise the ROI of a real project — only that it can be run to completion, and catches an arithmetic problem.
+- It does not prove that the analysis was arithmetically right. The operator declining to sign is **consistent with** the prediction, but it could have other causes — financing, capacity, a competing project.
+- It does not prove that the **revised** revenue-share structure works. It has not been modelled.
+- The outcome in the follow-up section is **self-reported by the commissioning side and has not been independently verified**.
+- It does not prove generalisability — this is one case, not a sample.
 
-**它证明的只有一件事：在真实数据上，这套流程确实会把单位经济算到出结论为止，
-而不是停在「建议优化渠道结构」。**
+**The only thing it proves is this: on real data, this process will indeed push the unit economics through to a conclusion,
+rather than stopping at "recommend optimising the channel mix".**

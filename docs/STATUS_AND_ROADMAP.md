@@ -1,72 +1,72 @@
-# 状态与路线图
+# Status and Roadmap
 
-## V3.4 当前状态（本地可验证）
+## V3.4 Current status (locally verifiable)
 
-| 能力 | 状态 | 说明 |
+| Capability | Status | Notes |
 |---|---|---|
-| 原创方法论与阶段门禁 | 已写入文档 | 仍需真实项目验证 |
-| 本地项目字段校验 | 已实现 | CLI 默认同时执行手写检查与 JSON Schema 校验 |
-| JSON Schema 校验器 | 已实现 | 纯标准库；未实现的关键字会报警而非静默通过 |
-| 确定性状态机 | 已实现 | 仅做合法状态迁移，不调用模型 |
-| 证据账本 | 已实现 | JSONL 追加存储、写入前强制校验、语义质量检查、缺口分析、来源可核验比例、Markdown 导出 |
-| 证据来源核验 | 已实现 | `DOC-001` 形式可机器核验；断链报错而非警告；`evidence provenance` 统计可核验比例 |
-| 决策记录与复盘 | 已实现 | 决策入库、复审到期主动提醒、结果回填并强制区分偏差类型、写回 project.json |
-| 数据源层 | 已实现 | 本地文件（CSV/TSV/JSON/JSONL/TXT/MD/XLSX，含中文编码兜底）+ 自建 HTTP 端点；SHA-256 溯源；密钥仅走环境变量 |
-| 运行时编排器 | 已实现 | 按阶段顺序调度角色、注入证据与材料、模型判定门禁、状态机裁决迁移、产出经 schema 校验的决策记录 |
-| 单元测试 | 已实现 | 覆盖状态机、CLI、Schema 校验、证据账本、数据源、编排器、盲评脚手架、Provider |
-| 基准案例与评分规程 | 已建立 | 已跑一轮先导实验（1/4 用例，每配置 n=1），样本不足，见 `bench/PILOT_B03.md` |
-| 盲评实验脚手架 | 已实现 | 编号散列、身份隐藏、评审一致性检查 |
-| 模型 Provider 接入层 | 已实现 | OpenAI 兼容 / Anthropic 兼容两种调用方式 |
-| scorecard 结构校验 | 已实现 | 总分与分项一致性、取值域、必填字段 |
-| DeepSeek Harness Skill | 已提供 | `harness/deepseek/SKILL.md` + 安装说明；CI 校验 frontmatter 合法性；尚未端到端测试 |
-| 并行多 Agent 调度 | 未实现 | 编排器严格顺序执行，一个角色一次模型调用；真并行需宿主支持，不假装具备 |
-| 内置营销平台连接器 | 刻意不包含 | 不依赖 n8n、PostHog、Mautic 等第三方项目 |
-| 子 Agent 角色契约 | 已写入文档 | 8 个角色各有独立使命、输入边界、专属追问清单与失败模式 |
-| 决策历史版本与依赖回退 | 未实现 | 决策可存可复盘，但假设被证伪时还不会自动列出受影响的决策节点 |
-| 营销动作的实际执行 | 未实现 | 产出决策与验证方案，但不投放、不发消息、不写回任何外部系统 |
-| GitHub Actions CI | 已配置 | `.github/workflows/tests.yml`，Python 3.10–3.13 四版本矩阵，含端到端冒烟测试 |
-| 仓库开源发布 | 已完成 | MIT 许可证，含 SECURITY / CODE_OF_CONDUCT / PR 与 Issue 模板 |
-| 单元测试执行结果 | 已通过 | `python -m unittest discover -s tests` 211 项；CI 于 Python 3.10–3.13 四个版本全绿 |
-| 编排器接真实模型的质量 | **未验证** | 现有全部测试注入假模型，不产生网络请求 |
+| Original methodology and phase gates | Documented | Still requires validation on a real project |
+| Local project field validation | Implemented | The CLI runs handwritten checks and JSON Schema validation by default |
+| JSON Schema validator | Implemented | Standard library only; unimplemented keywords raise a warning instead of passing silently |
+| Deterministic state machine | Implemented | Only performs legal state transitions, never calls a model |
+| Evidence ledger | Implemented | JSONL append storage, mandatory validation before write, semantic quality checks, gap analysis, verifiable-source ratio, Markdown export |
+| Evidence source verification | Implemented | The `DOC-001` form is machine-verifiable; dangling links are errors rather than warnings; `evidence provenance` reports the verifiable ratio |
+| Decision records and review | Implemented | Decisions are stored, overdue reviews are proactively surfaced, outcomes are backfilled with a mandatory deviation type, and results are written back to project.json |
+| Data source layer | Implemented | Local files (CSV/TSV/JSON/JSONL/TXT/MD/XLSX, with Chinese-encoding fallbacks) + self-hosted HTTP endpoints; SHA-256 provenance; secrets only via environment variables |
+| Runtime orchestrator | Implemented | Dispatches roles in phase order, injects evidence and materials, has the model decide the gate, lets the state machine adjudicate transitions, and emits schema-validated decision records |
+| Unit tests | Implemented | Cover the state machine, CLI, Schema validation, evidence ledger, data sources, orchestrator, blind-review scaffold, and Provider |
+| Benchmark cases and scoring protocol | Established | One pilot has been run (1/4 cases, n=1 per configuration); the sample is insufficient — see `bench/PILOT_B03.md` |
+| Blind-review experiment scaffold | Implemented | ID hashing, identity concealment, reviewer-consistency checks |
+| Model Provider integration layer | Implemented | Two calling conventions: OpenAI-compatible / Anthropic-compatible |
+| scorecard structural validation | Implemented | Total-vs-component consistency, value ranges, required fields |
+| DeepSeek Harness Skill | Provided | `harness/deepseek/SKILL.md` + installation instructions; CI validates frontmatter; not yet tested end to end |
+| Parallel multi-agent scheduling | Not implemented | The orchestrator runs strictly sequentially, one model call per role; true parallelism needs host support and is not pretended |
+| Built-in marketing platform connectors | Deliberately excluded | Does not depend on third-party projects such as n8n, PostHog or Mautic |
+| Sub-agent role contracts | Documented | Each of the 8 roles has its own mission, input boundary, dedicated question checklist and failure modes |
+| Decision history versioning and dependency rollback | Not implemented | Decisions can be stored and reviewed, but when an assumption is falsified the affected decision nodes are not yet listed automatically |
+| Actual execution of marketing actions | Not implemented | It produces decisions and validation plans, but does not run campaigns, send messages, or write back to any external system |
+| GitHub Actions CI | Configured | `.github/workflows/tests.yml`, a four-version matrix for Python 3.10–3.13, including an end-to-end smoke test |
+| Open-source repository release | Done | MIT license, with SECURITY / CODE_OF_CONDUCT / PR and issue templates |
+| Unit test results | Passing | `python -m unittest discover -s tests` — 211 tests; CI green on all four Python versions 3.10–3.13 |
+| Quality of the orchestrator against a real model | **Unverified** | All existing tests inject fake models and make no network requests |
 
-## 迭代路线
+## Iteration roadmap
 
-### V3.2.1 — 评测可复现
-- ✅ 盲评脚手架已实现（`bench/bench_runner.py`），含身份隐藏与评审一致性检查；
-- 运行四个固定基准案例（**已完成 1/4**：B03 先导实验，每配置 n=1，样本不足，见 `bench/PILOT_B03.md`）；
-- 进行普通提示词、结构化框架、REBUILD 三组对照；
-- 至少两名评审盲评，且至少一名不熟悉本方法论；
-- 发布原始评分和失败样本，不只公布平均分；
-- 未达门槛时如实记录并分析原因。
+### V3.2.1 — Reproducible evaluation
+- ✅ The blind-review scaffold is implemented (`bench/bench_runner.py`), including identity concealment and reviewer-consistency checks;
+- Run the four fixed benchmark cases (**1/4 done**: the B03 pilot, n=1 per configuration, sample insufficient — see `bench/PILOT_B03.md`);
+- Run the three-arm comparison: plain prompt, structured framework, REBUILD;
+- At least two reviewers score blind, and at least one is unfamiliar with this methodology;
+- Publish the raw scores and failure samples, not only the average scores;
+- When the threshold is not met, record it honestly and analyse why.
 
-### V3.3 — 运行时、证据账本与数据源（已完成）
-- ✅ Schema 校验器：未实现的关键字报警而非静默通过；
-- ✅ 证据账本：JSONL 存储、写入前强制校验、语义质量检查、缺口分析、导出；
-- ✅ 数据源层：本地文件 + 自建 HTTP 端点，含中文编码兜底与哈希溯源；
-- ✅ 运行时编排器：顺序调度角色、模型判定门禁、状态机裁决迁移。
+### V3.3 — Runtime, evidence ledger and data sources (done)
+- ✅ Schema validator: unimplemented keywords raise a warning instead of passing silently;
+- ✅ Evidence ledger: JSONL storage, mandatory validation before write, semantic quality checks, gap analysis, export;
+- ✅ Data source layer: local files + self-hosted HTTP endpoints, with Chinese-encoding fallbacks and hash provenance;
+- ✅ Runtime orchestrator: sequential role dispatch, model-decided gates, state-machine-adjudicated transitions.
 
-### V3.4 — 决策复盘闭环（已完成）
-- ✅ 决策记录库：入库、复审到期提醒、结果回填、写回 project.json；
-- ✅ 偏差类型强制区分：执行 / 策略 / 假设 / 多重 / 无法归因；
-- ✅ 证据来源可机器核验（`DOC-###`），断链报错；
-- ✅ 宿主 Skill 重写并补安装说明；
-- ❌ **编排器接真实模型的输出质量仍未验证**——现有测试全部注入假模型；
-- ❌ **复盘机制尚未被任何真实项目使用过**。
+### V3.4 — Decision review loop (done)
+- ✅ Decision record store: storage, review-due reminders, outcome backfill, write-back to project.json;
+- ✅ Mandatory distinction of deviation types: execution / strategy / assumption / multiple / unattributable;
+- ✅ Evidence sources are machine-verifiable (`DOC-###`), and dangling links are errors;
+- ✅ The host Skill was rewritten and installation instructions added;
+- ❌ **The output quality of the orchestrator against a real model remains unverified** — all existing tests inject fake models;
+- ❌ **The review mechanism has not yet been used by any real project.**
 
-### V3.5 — 真机验证与项目记忆
-- **在真实模型上跑通一次完整的 R→E→B→U→I→D**，并公开原始输出与失败样本；
-- 邀请可具名的独立评审重做盲评，或明确标注为模型自评并据此下调结论强度；
-- 项目状态版本与变更日志；
-- 将关键假设与决策依赖关系连接起来：证据变化时自动列出受影响的决策节点；
-- 引入用户确认与人工审批。
+### V3.5 — Real-model validation and project memory
+- **Run one complete R→E→B→U→I→D on a real model**, and publish the raw output and failure samples;
+- Invite nameable independent reviewers to redo the blind review, or explicitly label it as model self-assessment and lower the strength of the conclusions accordingly;
+- Project status versioning and changelog;
+- Connect key assumptions to decision dependencies: when evidence changes, automatically list the affected decision nodes;
+- Introduce user confirmation and human approval.
 
-### V3.6 — Harness 原生执行层
-- 根据用户实际安装的 Harness 版本与能力，开发独立适配器；
-- 借助宿主能力实现真正的并行子 Agent 调度、超时与失败重试；
-- 添加集成测试和安装说明；
-- 任何能力只有通过运行测试后才能标记为「已实现」。
+### V3.6 — Harness-native execution layer
+- Develop a separate adapter based on the Harness version and capabilities the user actually has installed;
+- Use host capabilities to achieve true parallel sub-agent scheduling, timeouts and retries on failure;
+- Add integration tests and installation instructions;
+- No capability may be marked "implemented" until it has passed a test run.
 
-### V4 — 可公开验证的产品
-- 公开基准结果、方法局限与复现脚本；
-- 增加行业案例，但严格区分合成数据与真实客户数据；
-- 形成稳定版本策略、贡献指南、许可证和安全政策。
+### V4 — A publicly verifiable product
+- Publish benchmark results, methodological limitations and reproduction scripts;
+- Add industry cases, but strictly distinguish synthetic data from real client data;
+- Establish a stable versioning policy, contribution guide, license and security policy.

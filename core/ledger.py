@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""REBUILD 证据账本（Evidence Ledger）。
+"""REBUILD evidence ledger.
 
-方法论把「每条关键判断可追溯」当作核心要求，但此前 `evidence.schema.json`
-只是一个没人读的规范文件，证据无处存放。本模块把它变成可用的存储：
+The methodology makes "every key judgement must be traceable" a core
+requirement, but until now `evidence.schema.json` was a specification nobody
+read and evidence had nowhere to live. This module turns it into usable storage:
 
-- **追加写入 JSONL**：每行一条记录。追加友好、可 diff、可人工审阅、
-  不需要数据库、不引入任何第三方依赖。
-- **写入前强制校验**：不符合 schema 的记录不会被写进去，而不是写进去再说。
-- **超出 schema 的质量检查**：schema 只能保证字段齐全与取值合法，
-  保证不了「这条证据有用」。因此额外检查 FACT 是否给了来源、
-  假设是否给了重查条件、`decision_impact` 是否真的说了会改变什么决策。
-  这些以 warning 形式给出，不阻断写入——但会出现在 `validate` 输出里。
+- **Append-only JSONL**: one record per line. Append-friendly, diffable,
+  readable by a human, no database, no third-party dependency.
+- **Validation enforced before writing**: a record that does not conform to the
+  schema is not written, instead of being written and sorted out later.
+- **Quality checks beyond the schema**: the schema can only guarantee that
+  fields are present and values are legal; it cannot guarantee that "this piece
+  of evidence is useful". So extra checks ask whether a FACT has a source,
+  whether an ASSUMPTION has a recheck condition, and whether `decision_impact`
+  really says which decision would change. These surface as warnings and do not
+  block writing — but they do appear in the `validate` output.
 """
 from __future__ import annotations
 
@@ -30,27 +34,30 @@ VALID_TYPES = ("FACT", "INFERENCE", "ASSUMPTION", "UNKNOWN")
 VALID_CONFIDENCE = ("HIGH", "MEDIUM", "LOW")
 CONFIDENCE_ORDER = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
 
-#: 这些措辞等于「没说」——出现即视为未填写决策影响。
+#: These phrasings amount to "saying nothing" — if one appears, the decision
+#: impact counts as unfilled.
 _EMPTY_IMPACT = {"", "无", "n/a", "na", "none", "-", "—", "待定", "tbd"}
 
 
 class EvidenceError(Exception):
-    """记录不合法，拒绝写入。"""
+    """The record is invalid; writing is refused."""
 
 
 def schemas_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "schemas"
 
 
-#: 形如 DOC-001 的来源视为指向材料库的引用，可被机器核验。
+#: A source shaped like DOC-001 is treated as a reference into the material
+#: library and can be verified by machine.
 DOC_REF_PATTERN = re.compile(r"^DOC-\d+$")
 
 
 def document_ref(source):
-    """若来源是材料编号则返回它，否则返回 None。
+    """Return the material id if the source is one, otherwise None.
 
-    这是把「可追溯」从口号变成机制的关键：自由文本来源无法自动核验，
-    材料编号可以。两种都允许，但系统知道自己在处理哪一种。
+    This is what turns "traceable" from a slogan into a mechanism: a free-text
+    source cannot be verified automatically, a material id can. Both are
+    allowed, but the system knows which of the two it is handling.
     """
     text = str(source or "").strip()
     return text if DOC_REF_PATTERN.match(text) else None
@@ -68,12 +75,15 @@ def existing_document_ids(project_dir) -> set:
 
 
 def provenance_report(project_dir) -> dict:
-    """证据来源的可核验程度统计。
+    """How verifiable the evidence sources are.
 
-    区分三档：
-      - linked     来源是材料编号，且材料存在 → **可机器核验**
-      - dangling   来源是材料编号，但材料不存在 → 断链，是错误
-      - free_text  来源是自由文本 → 无法自动核验，只能靠人工
+    Three buckets:
+      - linked     the source is a material id and the material exists
+                   → **machine-verifiable**
+      - dangling   the source is a material id but the material is missing
+                   → dangling link, an error
+      - free_text  the source is free text → cannot be verified automatically,
+                   only by hand
     """
     project_dir = Path(project_dir)
     ledger = Ledger(project_dir)
@@ -109,62 +119,64 @@ def load_evidence_schema() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 无状态的质量检查
+# Stateless quality checks
 # ---------------------------------------------------------------------------
 
 def quality_warnings(record) -> list[str]:
-    """schema 管不到的语义问题。返回 warning 列表（不阻断写入）。"""
+    """Semantic problems the schema cannot police. Returns a warning list (does
+    not block writing)."""
     problems = []
     rid = record.get("id", "?")
     kind = record.get("type")
     claim = (record.get("claim") or "").strip()
 
     if not claim:
-        problems.append(f"{rid}: claim 为空")
+        problems.append(f"{rid}: claim is empty")
 
     impact = (record.get("decision_impact") or "").strip()
     if impact.lower() in _EMPTY_IMPACT:
         problems.append(
-            f"{rid}: 未说明该证据会改变什么决策——"
-            f"方法论要求每条关键证据都指向一个具体决策，否则它不构成证据"
+            f"{rid}: does not say which decision this evidence would change — "
+            f"the methodology requires every key piece of evidence to point at a "
+            f"concrete decision, otherwise it is not evidence"
         )
     elif len(impact) < 6:
-        problems.append(f"{rid}: decision_impact 过短（{impact!r}），可能没有指向具体决策")
+        problems.append(f"{rid}: decision_impact is too short ({impact!r}); it may not point at a concrete decision")
 
     if kind == "FACT" and not (record.get("source") or "").strip():
-        problems.append(f"{rid}: 标为 FACT 但未提供 source——事实必须可核验")
+        problems.append(f"{rid}: labelled FACT but no source was provided — a fact must be verifiable")
 
     if kind == "ASSUMPTION" and not (
         (record.get("recheck_trigger") or "").strip() or record.get("counter_evidence")
     ):
         problems.append(
-            f"{rid}: 标为 ASSUMPTION 但既无 recheck_trigger 也无 counter_evidence——"
-            f"未验证的前提必须写明什么条件下重查"
+            f"{rid}: labelled ASSUMPTION but has neither recheck_trigger nor counter_evidence — "
+            f"an unverified premise must state the conditions under which it will be rechecked"
         )
 
     if kind == "UNKNOWN" and record.get("confidence") != "LOW":
         problems.append(
-            f"{rid}: 标为 UNKNOWN 但可信度为 {record.get('confidence')}——"
-            f"信息不足的记录不应给高可信度"
+            f"{rid}: labelled UNKNOWN but confidence is {record.get('confidence')} — "
+            f"a record with insufficient information should not carry high confidence"
         )
 
     if kind == "FACT" and record.get("confidence") == "LOW":
-        problems.append(f"{rid}: 标为 FACT 却给 LOW 可信度——两者语义冲突，请确认类型标错没有")
+        problems.append(f"{rid}: labelled FACT but given LOW confidence — the two conflict semantically; check whether the type is wrong")
 
     if not (record.get("scope") or "").strip():
-        problems.append(f"{rid}: 未写适用范围（scope），该结论会被过度推广")
+        problems.append(f"{rid}: no scope of applicability was written; the conclusion will be over-generalised")
 
     return problems
 
 
 class Ledger:
-    """一个项目的证据账本。账本文件与 project.json 放在同一目录。"""
+    """A project's evidence ledger. The ledger file lives beside project.json."""
 
     def __init__(self, project_dir, schema=None):
         self.project_dir = Path(project_dir)
         self.schema = schema if schema is not None else load_evidence_schema()
 
-    # ------------------------------------------------------------------ 路径
+    # ------------------------------------------------------------------ path
     @property
     def path(self) -> Path:
         return self.project_dir / EVIDENCE_FILENAME
@@ -173,9 +185,10 @@ class Ledger:
     def exists(self) -> bool:
         return self.path.exists()
 
-    # ------------------------------------------------------------------ 读写
+    # ------------------------------------------------------------- read/write
     def load(self) -> list[dict]:
-        """读取全部记录。遇到坏行会抛出 EvidenceError，而不是静默跳过。"""
+        """Read every record. A corrupt line raises EvidenceError instead of
+        being silently skipped."""
         if not self.exists:
             return []
         records = []
@@ -187,13 +200,14 @@ class Ledger:
                 records.append(json.loads(line))
             except json.JSONDecodeError as exc:
                 raise EvidenceError(
-                    f"{self.path}:{lineno} 不是合法 JSON（{exc}）。"
-                    f"账本已损坏，请先人工修复——静默跳过坏行会让证据悄悄消失。"
+                    f"{self.path}:{lineno} is not valid JSON ({exc}). "
+                    f"The ledger is corrupt; repair it by hand first — silently "
+                    f"skipping bad lines would make evidence vanish unnoticed."
                 ) from exc
         return records
 
     def next_id(self) -> str:
-        """生成下一个编号，形如 E-001。"""
+        """Generate the next id, shaped like E-001."""
         highest = 0
         for record in self.load():
             rid = str(record.get("id", ""))
@@ -202,32 +216,34 @@ class Ledger:
         return f"E-{highest + 1:03d}"
 
     def add(self, record) -> dict:
-        """校验并追加一条记录。校验不通过则拒绝写入。"""
+        """Validate and append one record. If validation fails, writing is
+        refused."""
         record = dict(record)
         record.setdefault("id", self.next_id())
 
         errors, warnings = sv.validate(record, self.schema)
         if errors:
             raise EvidenceError(
-                "记录不符合 evidence.schema.json，已拒绝写入：\n  "
+                "record does not conform to evidence.schema.json; writing refused:\n  "
                 + "\n  ".join(errors)
             )
 
         existing = {r.get("id") for r in self.load()}
         if record["id"] in existing:
-            raise EvidenceError(f"编号 {record['id']} 已存在，拒绝重复写入")
+            raise EvidenceError(f"id {record['id']} already exists; duplicate writing refused")
 
         self.project_dir.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
         return record
 
-    # ------------------------------------------------------------------ 校验
+    # -------------------------------------------------------------- validate
     def validate(self):
-        """全量校验。返回 (errors, warnings)。
+        """Full validation. Returns (errors, warnings).
 
-        errors  = 不符合 schema，或账本损坏
-        warnings = 符合 schema 但方法学上不成立（见 quality_warnings）
+        errors   = does not conform to the schema, or the ledger is corrupt
+        warnings = conforms to the schema but fails methodologically
+                   (see quality_warnings)
         """
         errors, warnings = [], []
         try:
@@ -243,22 +259,23 @@ class Ledger:
             warnings.extend(f"{rid}: {w}" for w in record_warnings)
             warnings.extend(quality_warnings(record))
             if rid in seen:
-                errors.append(f"{rid}: 编号重复")
+                errors.append(f"{rid}: duplicate id")
             seen[rid] = True
 
-        # 指向不存在材料的来源是**断链**：它自称可核验，实际核验不了。
-        # 这比自由文本来源更糟，所以算错误而不是警告。
+        # A source pointing at a missing material is a **dangling link**: it
+        # claims to be verifiable but cannot be verified. That is worse than a
+        # free-text source, so it counts as an error rather than a warning.
         known = existing_document_ids(self.project_dir)
         for record in records:
             ref = document_ref(record.get("source"))
             if ref and ref not in known:
                 errors.append(
-                    f"{record.get('id', '?')}: 来源指向材料 {ref}，"
-                    f"但材料库中没有这份材料（断链）"
+                    f"{record.get('id', '?')}: source points at material {ref}, "
+                    f"but the material library does not contain it (dangling link)"
                 )
         return errors, warnings
 
-    # ------------------------------------------------------------------ 查询
+    # ----------------------------------------------------------------- query
     def filter(self, kind=None, confidence=None, min_confidence=None, source=None):
         records = self.load()
         if kind:
@@ -299,7 +316,9 @@ class Ledger:
         }
 
     def high_leverage(self):
-        """高杠杆证据：可信度低、但会改变重大决策的记录。这些最该优先补证。"""
+        """High-leverage evidence: low-confidence records that would change a
+        major decision. These are the ones that most deserve further evidence
+        first."""
         return [
             r for r in self.load()
             if r.get("confidence") in ("LOW", "MEDIUM")
@@ -309,18 +328,20 @@ class Ledger:
 
 
 # ---------------------------------------------------------------------------
-# 与 project.json 的缺口分析
+# Gap analysis against project.json
 # ---------------------------------------------------------------------------
 
 def gaps(project_path) -> dict:
-    """找出「项目里声明了、但账本里没有证据支撑」的假设与未知项。"""
+    """Find the assumptions and unknowns that the project declares but the
+    ledger has no evidence for."""
     project_path = Path(project_path)
     project = json.loads(project_path.read_text(encoding="utf-8"))
     records = Ledger(project_path.parent).load()
 
     def covered(text):
-        """双向子串匹配。过短的文本（<4 字符）不参与匹配——
-        「成本」「渠道」这类词几乎会命中任何记录，那样的「已覆盖」是假象。"""
+        """Two-way substring matching. Text that is too short (< 4 characters)
+        does not take part — words like "cost" or "channel" would match almost
+        any record, and that kind of "already covered" is an illusion."""
         text = (text or "").strip()
         if not text:
             return True
@@ -350,7 +371,7 @@ def gaps(project_path) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 导出
+# Export
 # ---------------------------------------------------------------------------
 
 def to_markdown(project_dir) -> str:
@@ -359,13 +380,13 @@ def to_markdown(project_dir) -> str:
     summary = ledger.summary()
 
     lines = [
-        "# 证据账本",
+        "# Evidence ledger",
         "",
-        f"共 {summary['total']} 条："
-        + "、".join(f"{k} {v}" for k, v in summary["by_type"].items() if v)
-        if summary["total"] else "共 0 条。",
+        f"{summary['total']} records: "
+        + ", ".join(f"{k} {v}" for k, v in summary["by_type"].items() if v)
+        if summary["total"] else "0 records.",
         "",
-        "| ID | 类型 | 可信度 | 主张 | 来源 | 适用范围 | 会改变什么决策 |",
+        "| ID | Type | Confidence | Claim | Source | Scope | Decision it would change |",
         "|---|---|---|---|---|---|---|",
     ]
     for record in records:
@@ -379,7 +400,7 @@ def to_markdown(project_dir) -> str:
                 type=cell(record.get("type")),
                 confidence=cell(record.get("confidence")),
                 claim=cell(record.get("claim")),
-                source=cell(record.get("source") or "（未提供）"),
+                source=cell(record.get("source") or "(not provided)"),
                 scope=cell(record.get("scope")),
                 impact=cell(record.get("decision_impact")),
             )
@@ -387,10 +408,10 @@ def to_markdown(project_dir) -> str:
 
     counters = [r for r in records if r.get("counter_evidence")]
     if counters:
-        lines += ["", "## 反证记录", ""]
+        lines += ["", "## Falsification records", ""]
         for record in counters:
             lines.append(f"- **{record.get('id')}** {record.get('claim')}")
             for item in record["counter_evidence"]:
-                lines.append(f"  - 反证：{item}")
+                lines.append(f"  - Falsification: {item}")
 
     return "\n".join(lines) + "\n"

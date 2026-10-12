@@ -56,9 +56,9 @@ def make_completer(events=None, record=None, role_body="# 角色输出\n\n| 主�
     events = events or {}
 
     def complete(prompt):
-        if "门禁判定" in prompt:
+        if "Gate judgement" in prompt:
             for phase, event in FORWARD_EVENT.items():
-                if f"阶段 {phase}" in prompt:
+                if f"phase {phase}" in prompt:
                     event = events.get(phase, event)
                     if event is None:
                         return json.dumps(
@@ -67,7 +67,7 @@ def make_completer(events=None, record=None, role_body="# 角色输出\n\n| 主�
                     return json.dumps(
                         {"event": event, "passed": True, "reason": "输出满足门禁"}
                     )
-        if "各阶段输出摘要" in prompt:
+        if "Summary of outputs by phase" in prompt:
             return json.dumps(record or valid_decision_record(), ensure_ascii=False)
         return role_body
 
@@ -128,17 +128,17 @@ class TaskPacketTests(TempProjectCase):
     def test_packet_contains_contract_and_requirements(self):
         context = O.collect_context(self.dir)
         packet = O.build_task_packet("business_model", "ECONOMICS", context)
-        self.assertIn("商业模型 Agent", packet)
-        self.assertIn("决策问题", packet)
-        self.assertIn("禁止事项", packet)
-        self.assertIn("验收标准", packet)
+        self.assertIn("Business Model Agent", packet)
+        self.assertIn("Decision question", packet)
+        self.assertIn("Prohibited", packet)
+        self.assertIn("Acceptance criteria", packet)
         self.assertIn("FACT", packet)
 
     def test_empty_ledger_forces_downgrade_language(self):
         context = O.collect_context(self.dir)
         packet = O.build_task_packet("red_team", "STRATEGY", context)
-        self.assertIn("证据账本为空", packet)
-        self.assertIn("不得假装掌握了事实", packet)
+        self.assertIn("The evidence ledger is empty", packet)
+        self.assertIn("must not pretend to know the facts", packet)
 
     def test_unknown_role_raises(self):
         with self.assertRaises(O.OrchestratorError):
@@ -253,7 +253,7 @@ class ModelRunTests(TempProjectCase):
         ).run()
         self.assertEqual(report["final_state"], "BLOCKED")
         self.assertEqual(len(report["gate_rejections"]), 1)
-        self.assertIn("不接受事件", report["gate_rejections"][0]["error"])
+        self.assertIn("does not accept event", report["gate_rejections"][0]["error"])
 
     def test_gate_that_requests_clarification_blocks(self):
         config = self.config(provider_name="fake", phases=["DISCOVER", "EVIDENCE"])
@@ -265,9 +265,9 @@ class ModelRunTests(TempProjectCase):
 
     def test_unparseable_gate_output_does_not_advance(self):
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 return "我觉得还行，但没有 JSON"
-            if "各阶段输出摘要" in prompt:
+            if "Summary of outputs by phase" in prompt:
                 return "{}"
             return "# 输出"
 
@@ -294,14 +294,14 @@ class ModelRunTests(TempProjectCase):
 
     def test_role_failure_does_not_lose_other_outputs(self):
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 # DISCOVER 必须放行，否则 EVIDENCE 会被状态机正确跳过
-                if "阶段 DISCOVER" in prompt:
+                if "phase DISCOVER" in prompt:
                     return json.dumps(
                         {"event": "evidence_ready", "passed": True, "reason": "ok"}
                     )
                 return json.dumps({"event": "", "passed": False, "reason": "x"})
-            if "客户证据 Agent" in prompt:
+            if "Customer Evidence Agent" in prompt:
                 raise RuntimeError("模拟调用失败")
             return "# 市场结构输出"
 
@@ -316,7 +316,7 @@ class ModelRunTests(TempProjectCase):
     def test_phases_after_a_stalled_gate_are_skipped(self):
         """门禁不放行时后续阶段不得执行——这正是阶段门禁存在的意义。"""
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 return json.dumps({"event": "", "passed": False, "reason": "证据不足"})
             return "# 输出"
 
@@ -398,7 +398,7 @@ class UsageAndCostTests(unittest.TestCase):
         u = O.summarize_usage(log)
         self.assertEqual(u["calls_with_usage"], 1)
         self.assertIn("note", u)
-        self.assertIn("不完整", u["note"])
+        self.assertIn("incomplete", u["note"])
 
     def test_summarize_empty_log(self):
         u = O.summarize_usage([])
@@ -420,7 +420,7 @@ class UsageAndCostTests(unittest.TestCase):
         self.assertAlmostEqual(cost["input"], 2.0)
         self.assertAlmostEqual(cost["output"], 4.0)
         self.assertAlmostEqual(cost["total"], 6.0)
-        self.assertIn("不是账单金额", cost["caveat"])
+        self.assertIn("not a bill amount", cost["caveat"])
 
     def test_cost_marks_incomplete_when_some_calls_lack_usage(self):
         config = O.RunConfig(project_dir=ROOT, price_input_per_million=1.0,
@@ -493,12 +493,12 @@ class PhaseGateTests(unittest.TestCase):
 
     def test_gate_packet_carries_phase_specific_text(self):
         pairs = {
-            "DISCOVER": "症状",
-            "EVIDENCE": "补证路径",
-            "STRATEGY": "为什么选 A 而不是 B",
-            "ECONOMICS": "分子分母",
-            "EXECUTION": "不得称为实验",
-            "REVIEW": "预期与实际",
+            "DISCOVER": "symptoms",
+            "EVIDENCE": "path to further evidence",
+            "STRATEGY": "why A rather than B",
+            "ECONOMICS": "numerator and denominator",
+            "EXECUTION": "must not be called an experiment",
+            "REVIEW": "expectation and actuals",
         }
         for phase, token in pairs.items():
             packet = O.build_gate_packet(phase, self.context, {"master_agent": "x"})
@@ -506,29 +506,29 @@ class PhaseGateTests(unittest.TestCase):
 
     def test_gate_packet_forbids_using_other_phases_criteria(self):
         packet = O.build_gate_packet("DISCOVER", self.context, {"master_agent": "x"})
-        self.assertIn("只按本阶段的标准判定", packet)
+        self.assertIn("Judge only by this phase's criteria", packet)
 
     def test_discover_gate_does_not_demand_sufficient_evidence(self):
         # R 阶段的要求是「未知被如实标记」，不是「证据充足」
         note = O.PHASE_GATES["DISCOVER"]["note"]
-        self.assertIn("不要求证据充足", note)
+        self.assertIn("does not require sufficient evidence", note)
 
     def test_economics_gate_allows_assumption_driven_progress(self):
         # U 阶段允许带假设推进：数据不全本身不是阻断理由
         note = O.PHASE_GATES["ECONOMICS"]["note"]
-        self.assertIn("数据不全", note)
+        self.assertIn("Incomplete data", note)
 
     def test_gate_offers_a_graded_path(self):
         """必须提供 DEGRADED（降级放行），否则流程只有「放行/阻断」两种选择，
         而真实项目几乎不可能等到证据齐全——结果就是永远阻断。"""
         packet = O.build_gate_packet("EVIDENCE", self.context, {"master_agent": "x"})
         self.assertIn("DEGRADED", packet)
-        self.assertIn("降级放行", packet)
+        self.assertIn("degraded pass", packet)
         self.assertIn("limitations", packet)
 
     def test_gate_states_that_hiding_gaps_is_the_real_failure(self):
         packet = O.build_gate_packet("EVIDENCE", self.context, {"master_agent": "x"})
-        self.assertIn("假装证据是完整的", packet)
+        self.assertIn("pretending the evidence is complete", packet)
 
 
 class DecisionRecordSchemaTests(unittest.TestCase):
@@ -588,7 +588,7 @@ class FaultPathTests(TempProjectCase):
 
         def completer(prompt):
             calls.append(prompt)
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 raise AssertionError("角色全部失败时不应调用门禁")
             raise RuntimeError("模拟 API 故障")
 
@@ -598,13 +598,13 @@ class FaultPathTests(TempProjectCase):
         evidence = [p for p in report["phases"] if p["phase"] == "EVIDENCE"]
         # EVIDENCE 的两个角色都失败 → 门禁不应被调用
         self.assertFalse(
-            any("门禁判定" in c and "EVIDENCE" in c for c in calls),
+            any("Gate judgement" in c and "EVIDENCE" in c for c in calls),
             "角色全失败时仍然调用了门禁",
         )
 
     def test_gate_call_exception_does_not_advance(self):
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 raise RuntimeError("429 Too Many Requests")
             return "# 输出"
 
@@ -617,10 +617,10 @@ class FaultPathTests(TempProjectCase):
 
     def test_decision_record_failure_does_not_crash_the_run(self):
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 return json.dumps({"event": "evidence_ready", "passed": True,
                                    "reason": "ok"})
-            if "各阶段输出摘要" in prompt:
+            if "Summary of outputs by phase" in prompt:
                 raise RuntimeError("连接被重置")
             return "# 输出"
 
@@ -633,10 +633,10 @@ class FaultPathTests(TempProjectCase):
 
     def test_truncated_json_in_decision_record_is_reported_not_raised(self):
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 return json.dumps({"event": "evidence_ready", "passed": True,
                                    "reason": "ok"})
-            if "各阶段输出摘要" in prompt:
+            if "Summary of outputs by phase" in prompt:
                 # 响应被截断：JSON 未闭合
                 return '{"decision_id": "DR-001", "question": "被截断的响应'
             return "# 输出"
@@ -644,11 +644,11 @@ class FaultPathTests(TempProjectCase):
         config = self.config(provider_name="fake", phases=["DISCOVER"])
         report = O.Orchestrator(config, completer=completer).run()
         self.assertIn("error", report["decision_record"])
-        self.assertIn("无法解析为 JSON", report["decision_record"]["error"])
+        self.assertIn("cannot be parsed as JSON", report["decision_record"]["error"])
 
     def test_truncated_json_in_gate_does_not_advance(self):
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 return '{"event": "evidence_ready", "passed": tru'   # 截断
             return "# 输出"
 
@@ -666,10 +666,10 @@ class FaultPathTests(TempProjectCase):
 
     def test_error_records_which_role_failed(self):
         def completer(prompt):
-            if "门禁判定" in prompt:
+            if "Gate judgement" in prompt:
                 return json.dumps({"event": "evidence_ready", "passed": True,
                                    "reason": "ok"})
-            if "客户证据 Agent" in prompt:
+            if "Customer Evidence Agent" in prompt:
                 raise RuntimeError("该角色专属故障")
             return "# 市场结构输出"
 

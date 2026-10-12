@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""本地文件数据源。
+"""Local file data source.
 
-支持：CSV / TSV / JSON / JSONL / TXT / MD / XLSX。
+Supports: CSV / TSV / JSON / JSONL / TXT / MD / XLSX.
 
-两处刻意为之的设计：
+Two deliberate design decisions:
 
-1. **中文编码兜底。** 中文用户导出的 CSV 十有八九是 GBK 或带 BOM 的 UTF-8。
-   直接按 UTF-8 打开会整片乱码，而乱码喂进模型比没有数据更糟——
-   模型会照着乱码编。因此按 utf-8-sig → utf-8 → gb18030 → latin-1 依次尝试。
+1. **Chinese encoding fallback.** A CSV exported by a Chinese user is nine times
+   out of ten GBK, or UTF-8 with a BOM. Opening it as plain UTF-8 turns the
+   whole file into mojibake, and mojibake fed to a model is worse than no data
+   at all — the model will fabricate along the mojibake. So encodings are tried
+   in order: utf-8-sig → utf-8 → gb18030 → latin-1.
 
-2. **XLSX 用标准库解析。** xlsx 本质是 zip + XML，用 zipfile 与
-   xml.etree 足以读出首个工作表的值。这样就不必为了读一个 Excel
-   而给整个项目引入 pandas / openpyxl 依赖。
+2. **XLSX is parsed with the standard library.** An xlsx is essentially zip +
+   XML, and zipfile plus xml.etree are enough to read the values of the first
+   worksheet. That avoids pulling pandas / openpyxl into the whole project just
+   to read a single Excel file.
 """
 from __future__ import annotations
 
@@ -25,7 +28,7 @@ from pathlib import Path
 
 from .base import Document, SourceError
 
-#: 依次尝试的编码。gb18030 覆盖 GBK/GB2312，放在 utf-8 之后。
+#: Encodings tried in order. gb18030 covers GBK/GB2312 and comes after utf-8.
 ENCODINGS = ("utf-8-sig", "utf-8", "gb18030", "big5", "latin-1")
 
 TEXT_SUFFIXES = {".txt", ".md", ".markdown", ".log"}
@@ -38,34 +41,35 @@ SUPPORTED_SUFFIXES = (
     TEXT_SUFFIXES | JSON_SUFFIXES | JSONL_SUFFIXES | CSV_SUFFIXES | XLSX_SUFFIXES
 )
 
-#: JSON 美化输出的行数上限，超过就不美化（避免小文件变大文件）。
+#: Line-count ceiling for pretty-printed JSON output; beyond it the output is
+#: left unformatted (so a small file does not turn into a big one).
 PRETTY_JSON_MAX_CHARS = 50_000
 
 
 def decode_bytes(raw: bytes) -> tuple[str, str]:
-    """按候选编码解码，返回 (文本, 采用的编码)。"""
+    """Decode using the candidate encodings; returns (text, encoding used)."""
     for encoding in ENCODINGS:
         try:
             return raw.decode(encoding), encoding
         except UnicodeDecodeError:
             continue
-    raise SourceError("无法用任何候选编码解码该文件（已尝试 utf-8 / gb18030 / big5 / latin-1）")
+    raise SourceError("cannot decode this file with any candidate encoding (tried utf-8 / gb18030 / big5 / latin-1)")
 
 
 def read_file(path) -> tuple[str, str, dict]:
-    """读取一个文件，返回 (内容, media_type, meta)。"""
+    """Read one file; returns (content, media_type, meta)."""
     path = Path(path)
     if not path.exists():
-        raise SourceError(f"文件不存在：{path}")
+        raise SourceError(f"file does not exist: {path}")
     if not path.is_file():
-        raise SourceError(f"不是文件：{path}")
+        raise SourceError(f"not a file: {path}")
 
     suffix = path.suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
         supported = ", ".join(sorted(SUPPORTED_SUFFIXES))
         raise SourceError(
-            f"不支持的文件类型 {suffix or '(无扩展名)'}。支持：{supported}\n"
-            f"如果这是纯文本，请改名为 .txt。"
+            f"unsupported file type {suffix or '(no extension)'}. Supported: {supported}\n"
+            f"If this is plain text, rename it to .txt."
         )
 
     if suffix in XLSX_SUFFIXES:
@@ -91,7 +95,7 @@ def _read_csv(text: str, suffix: str, meta: dict) -> tuple[str, str, dict]:
     try:
         rows = list(csv.reader(io.StringIO(text), delimiter=delimiter))
     except csv.Error as exc:
-        raise SourceError(f"CSV 解析失败：{exc}") from exc
+        raise SourceError(f"CSV parse failed: {exc}") from exc
 
     rows = [r for r in rows if any(cell.strip() for cell in r)]
     meta["rows"] = max(len(rows) - 1, 0)
@@ -105,7 +109,7 @@ def _read_json(text: str, meta: dict) -> tuple[str, str, dict]:
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise SourceError(f"JSON 解析失败（第 {exc.lineno} 行）：{exc.msg}") from exc
+        raise SourceError(f"JSON parse failed (line {exc.lineno}): {exc.msg}") from exc
 
     if isinstance(data, list):
         meta["records"] = len(data)
@@ -123,13 +127,13 @@ def _read_jsonl(text: str, meta: dict) -> tuple[str, str, dict]:
         try:
             json.loads(line)
         except json.JSONDecodeError as exc:
-            raise SourceError(f"JSONL 第 {index} 行不是合法 JSON：{exc.msg}") from exc
+            raise SourceError(f"JSONL line {index} is not valid JSON: {exc.msg}") from exc
     meta["records"] = len(lines)
     return text, "application/x-ndjson", meta
 
 
 # ---------------------------------------------------------------------------
-# XLSX（标准库实现）
+# XLSX (standard-library implementation)
 # ---------------------------------------------------------------------------
 
 _NS = {"main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
@@ -142,15 +146,15 @@ def _read_xlsx(path: Path) -> tuple[str, str, dict]:
             shared = _xlsx_shared_strings(archive, names)
             sheet_name = _xlsx_first_sheet(archive, names)
             if sheet_name is None:
-                raise SourceError(f"{path.name} 中找不到工作表")
+                raise SourceError(f"no worksheet found in {path.name}")
             rows = _xlsx_rows(archive.read(sheet_name), shared)
     except zipfile.BadZipFile as exc:
         raise SourceError(
-            f"{path.name} 不是有效的 xlsx（可能是 .xls 旧格式或被改名）。"
-            f"请用 Excel 另存为 .xlsx 或 .csv。"
+            f"{path.name} is not a valid xlsx (it may be the old .xls format or a renamed file). "
+            f"Please use Excel to save it as .xlsx or .csv."
         ) from exc
     except ET.ParseError as exc:
-        raise SourceError(f"{path.name} 的 XML 结构无法解析：{exc}") from exc
+        raise SourceError(f"the XML structure of {path.name} cannot be parsed: {exc}") from exc
 
     rows = [r for r in rows if any(cell.strip() for cell in r)]
     meta = {
@@ -173,7 +177,7 @@ def _xlsx_shared_strings(archive, names) -> list[str]:
     root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
     strings = []
     for si in root.findall("main:si", _NS):
-        # 一个 <si> 可能由多个 <t> 片段组成（富文本）
+        # A single <si> may be made of several <t> fragments (rich text)
         strings.append("".join(t.text or "" for t in si.iter(
             "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}t"
         )))
@@ -181,7 +185,7 @@ def _xlsx_shared_strings(archive, names) -> list[str]:
 
 
 def _xlsx_first_sheet(archive, names):
-    """取工作簿里第一个工作表的 XML 路径。"""
+    """Return the XML path of the first worksheet in the workbook."""
     if "xl/workbook.xml" in names:
         try:
             root = ET.fromstring(archive.read("xl/workbook.xml"))
@@ -215,7 +219,7 @@ def _xlsx_rel_target(archive, names, rel_id):
 
 
 def _column_index(cell_ref: str) -> int:
-    """A1 -> 0, B1 -> 1, AA1 -> 26。用于补齐被跳过的空单元格。"""
+    """A1 -> 0, B1 -> 1, AA1 -> 26. Used to pad skipped empty cells."""
     letters = re.match(r"([A-Z]+)", cell_ref or "")
     if not letters:
         return 0
@@ -256,11 +260,11 @@ def _xlsx_rows(xml_bytes: bytes, shared: list[str]) -> list[list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# 便捷入口
+# Convenience entry points
 # ---------------------------------------------------------------------------
 
 def add_file(store, path) -> Document:
-    """读一个本地文件并存入项目的材料库。"""
+    """Read one local file and store it in the project's material library."""
     path = Path(path)
     content, media_type, meta = read_file(path)
     meta["kind"] = "file"

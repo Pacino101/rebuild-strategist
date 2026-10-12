@@ -75,7 +75,7 @@ class WriteTests(LedgerTestCase):
         self.ledger.add(good_record(id="E-001"))
         with self.assertRaises(L.EvidenceError) as ctx:
             self.ledger.add(good_record(id="E-001"))
-        self.assertIn("已存在", str(ctx.exception))
+        self.assertIn("already exists", str(ctx.exception))
 
     def test_chinese_survives_roundtrip(self):
         self.ledger.add(good_record())
@@ -90,7 +90,7 @@ class CorruptionTests(LedgerTestCase):
             handle.write("{ this is not json }\n")
         with self.assertRaises(L.EvidenceError) as ctx:
             self.ledger.load()
-        self.assertIn("不是合法 JSON", str(ctx.exception))
+        self.assertIn("is not valid JSON", str(ctx.exception))
 
     def test_validate_reports_corruption_as_error(self):
         self.ledger.path.write_text("garbage\n", encoding="utf-8")
@@ -102,7 +102,7 @@ class QualityWarningTests(LedgerTestCase):
     def test_fact_without_source_warns(self):
         self.ledger.add(good_record(source=None))
         _, warnings = self.ledger.validate()
-        self.assertTrue(any("FACT 但未提供 source" in w for w in warnings), warnings)
+        self.assertTrue(any("labelled FACT but no source" in w for w in warnings), warnings)
 
     def test_assumption_without_recheck_warns(self):
         self.ledger.add(good_record(type="ASSUMPTION", confidence="LOW"))
@@ -120,17 +120,17 @@ class QualityWarningTests(LedgerTestCase):
     def test_unknown_with_high_confidence_warns(self):
         self.ledger.add(good_record(type="UNKNOWN", confidence="HIGH"))
         _, warnings = self.ledger.validate()
-        self.assertTrue(any("UNKNOWN" in w and "可信度" in w for w in warnings), warnings)
+        self.assertTrue(any("UNKNOWN" in w and "confidence" in w for w in warnings), warnings)
 
     def test_empty_decision_impact_warns(self):
         self.ledger.add(good_record(decision_impact="无"))
         _, warnings = self.ledger.validate()
-        self.assertTrue(any("会改变什么决策" in w for w in warnings), warnings)
+        self.assertTrue(any("which decision" in w for w in warnings), warnings)
 
     def test_fact_with_low_confidence_warns(self):
         self.ledger.add(good_record(confidence="LOW"))
         _, warnings = self.ledger.validate()
-        self.assertTrue(any("语义冲突" in w for w in warnings), warnings)
+        self.assertTrue(any("conflict semantically" in w for w in warnings), warnings)
 
     def test_clean_record_has_no_warnings(self):
         self.ledger.add(good_record())
@@ -200,13 +200,13 @@ class ExportTests(LedgerTestCase):
     def test_markdown_contains_ledger_rows(self):
         self.ledger.add(good_record(claim="事实一"))
         text = L.to_markdown(self.dir)
-        self.assertIn("# 证据账本", text)
+        self.assertIn("# Evidence ledger", text)
         self.assertIn("事实一", text)
         self.assertIn("E-001", text)
 
     def test_markdown_handles_empty_ledger(self):
         text = L.to_markdown(self.dir)
-        self.assertIn("共 0 条", text)
+        self.assertIn("0 records", text)
 
     def test_markdown_escapes_pipe(self):
         self.ledger.add(good_record(claim="A | B"))
@@ -239,7 +239,7 @@ class ProvenanceTests(LedgerTestCase):
         # 断链比自由文本更糟：它自称可核验，实际核验不了
         self.ledger.add(good_record(source="DOC-999"))
         errors, _ = self.ledger.validate()
-        self.assertTrue(any("断链" in e for e in errors), errors)
+        self.assertTrue(any("dangling link" in e for e in errors), errors)
         report = L.provenance_report(self.dir)
         self.assertEqual(len(report["dangling"]), 1)
 

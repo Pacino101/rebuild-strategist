@@ -1,5 +1,62 @@
 # Changelog
 
+## V3.11.0 — Full English documentation
+
+The repository was Chinese-only: **111,894 CJK characters, zero English**. An
+international visitor could not tell what it was. This release translates it.
+
+### What is now English
+
+| Area | Files |
+|---|---|
+| Entry point | `README.md` (Chinese preserved as `README.zh-CN.md`) |
+| Methodology | `core/REBUILD_METHOD.md`, all 9 `agents/*.md` role contracts |
+| Docs | `docs/*`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `LICENSE_DECISION.md` |
+| Schemas | all 6 `schemas/*.json` descriptions |
+| Benchmark | `bench/*.md`, `bench/cases/*.json`, `bench/prompts/*.txt` |
+| Host integration | `harness/README.md`, `harness/deepseek/SKILL.md` |
+| Case study | `examples/*/README.md`, `ANONYMIZATION.md`, project and decision files |
+| Code | comments, docstrings and user-facing messages across `core/`, `sources/`, `bench/` |
+
+### What is deliberately still Chinese
+
+**66 characters outside the case study, every one justified:**
+
+| Where | Why it stays Chinese |
+|---|---|
+| `examples/metro_apartment/source/` (19,929) | **The client's own documents.** Translating raw evidence would be *altering evidence* — the exact thing this project exists to prevent. |
+| `examples/metro_apartment/rebuild/` (36,660) | Artefacts that quote and analyse those documents. |
+| `README.zh-CN.md` (5,201) | The original Chinese README, kept byte-for-byte. |
+| `bench/runs/` (4,058) | Recorded model outputs — data, not documentation. |
+| `ANONYMIZATION.md` (28) | Live `grep` regex ranges, e.g. `[一-龥]{2,12}(有限公司|...)`. Translating them breaks the command. |
+| Case README (22) | Real source file names that exist on disk. |
+| `core/ledger.py` (3) | `{"无", "待定"}` — values a *user* may type. Translating them stops matching Chinese input. |
+| `core/orchestrator.py` (2) | A table-header skip list that keeps older Chinese-language model output parseable. |
+| Copyright notices (6) | Must match `LICENSE` verbatim. |
+
+The English case README explains what the case found and what it does not prove,
+so a non-Chinese reader gets the finding without the evidence being rewritten.
+
+### Verification
+
+Translation was performed by four agents working on disjoint file sets, then
+verified independently. Structure was diffed against the previous revision:
+identical line counts, heading levels, table rows, code fences and list markers.
+Two agents reported that proving "zero CJK" required touching test assertions
+that hard-coded Chinese substrings; **all such edits were declared**, and the
+final suite is green.
+
+**297 tests pass. CI green on Python 3.9–3.13.**
+
+### One bug fixed along the way
+
+The case README contained a **self-contradiction introduced when the follow-up
+section was added**: one section recorded that the owner adopted the
+recommendation, while a surviving bullet still said "this directory does not
+record whether it was adopted". In a document whose entire purpose is honesty,
+that had to go. It now states plainly that the outcome is
+**self-reported by the commissioning side and has not been independently verified**.
+
 ## V3.10.0 — English documentation, installer, Python 3.9
 
 Two fair criticisms of the previous state, both fixed.
@@ -43,438 +100,438 @@ lowered to 3.9+, and CI covers 3.9–3.13.
 Hiding a bug behind a version requirement is the same failure mode this project
 criticises elsewhere.
 
-## V3.9.0 — 决策循环首次真正闭合
+## V3.9.0 — The decision loop closes for real, for the first time
 
-这是整个项目**第一次**把真实世界的结果回填进决策库。D 阶段此前只有机制、
-没有使用记录。
+This is the **first time** the whole project has fed real-world outcomes back into the decision store. The D phase until now had only a mechanism,
+no record of use.
 
-### 现实结果
+### Real-world outcome
 
-那份真实案例分析的结论是「先做条款压力测试、重谈分成结构后再签」。结果是：
+The real case analysis concluded "run a clause stress test first, renegotiate the revenue-share structure, then sign". The outcome was:
 
-- 甲方**采纳**了建议，未按现条款签约，分成结构已调整；
-- **乙方未签约**，双方正在重谈；
-- 分析预测的阻塞点（乙方不接受该分成）**在现实中出现了**。
+- Party A **adopted** the recommendation, did not sign under the current terms, and the revenue-share structure has been adjusted;
+- **Party B did not sign**; the two sides are renegotiating;
+- The blocking point the analysis predicted (Party B would not accept that revenue split) **materialised in reality**.
 
-已记入 `examples/metro_apartment/decisions/DR-001.json` 与
-`decisions/outcomes/DR-001.json`，`project.json` 的 `decision_records`
-状态为 `REVIEWED`。
+Recorded in `examples/metro_apartment/decisions/DR-001.json` and
+`decisions/outcomes/DR-001.json`; the `decision_records` status in `project.json`
+is `REVIEWED`.
 
-### 修复：`deviation_type` 缺少「预期兑现」（第四个同类 schema 缺陷）
+### Fix: `deviation_type` was missing "as expected" (the fourth schema defect of the same kind)
 
-试着回填真实结果时卡住了：本次复盘是**预期兑现**，但枚举
-`EXECUTION / STRATEGY / ASSUMPTION / MIXED / UNKNOWN` 里**没有这一项**——
-它预设了「每次复盘都能找到偏差」。
+Backfilling the real outcome got stuck: this review was **as expected**, but the enum
+`EXECUTION / STRATEGY / ASSUMPTION / MIXED / UNKNOWN` **had no such value** —
+it assumed that "every review finds a deviation".
 
-于是「一切正常」只能被勉强归到 `UNKNOWN`，而 `UNKNOWN` 的语义是「无法归因」。
-**把「按预期发生了」说成「无法归因」，本身就是一种失真。**
+So "everything went normally" could only be forced into `UNKNOWN`, and `UNKNOWN` means "unattributable".
+**Describing "it happened as expected" as "unattributable" is itself a distortion.**
 
-已加入 `AS_EXPECTED`，并在 schema 描述里写明它是合法且重要的取值。
+`AS_EXPECTED` has been added, and the schema description now states that it is a legitimate and important value.
 
-### 新增：`decision outcome --assumption-update`
-复盘时更新关键假设（`CONFIRMED` / `REFUTED` / `STILL_UNKNOWN`）。
-本次记录更新了三条，其中「乙方会接受 65:35」被**推翻**。
+### New: `decision outcome --assumption-update`
+Update key assumptions during review (`CONFIRMED` / `REFUTED` / `STILL_UNKNOWN`).
+This record updated three, and "Party B will accept 65:35" was **refuted**.
 
-### 第四条同类模式
+### The fourth instance of the same pattern
 
-| 次数 | schema 假设 | 真实现象 |
+| Instance | Schema assumption | Real-world phenomenon |
 |---|---|---|
-| 1 | 假设是纯字符串 | 模型给结构化对象，更有用 |
-| 2 | 只用当前 schema | 真实项目跑在字段更宽的早期 schema 上 |
-| 3 | 决策一定会做出 | 证据不足时 `chosen_option` 为 null 才诚实 |
-| 4 | **复盘一定能找到偏差** | **预期兑现时无处安放，只能错标为「无法归因」** |
+| 1 | assumptions are plain strings | the model supplies a structured object, which is more useful |
+| 2 | only the current schema is used | a real project runs on an earlier schema with broader fields |
+| 3 | a decision will always be made | when evidence is insufficient, `chosen_option` being null is the honest answer |
+| 4 | **a review will always find a deviation** | **when the outcome is as expected there is nowhere to put it, so it is mislabelled "unattributable"** |
 
-四次全部由真实使用发现。这已经不能叫「偶发缺陷」，而是**一种稳定的失效模式**：
-把「正常情况」当成「唯一情况」写进 schema。
+All four were found through real use. This can no longer be called an "occasional defect"; it is **a stable failure mode**:
+writing "the normal case" into the schema as "the only case".
 
-### 关于「被采纳」
+### On "adopted"
 
-案例 README 中明确写了「被采纳 ≠ 被验证」：
+The case README states plainly that "adopted ≠ verified":
 
-- 分析**改变了一个真实决策**（✅ 可确认）；
-- 分析预测的阻塞点**出现了**（✅ 可确认）；
-- 分析**是否算对了**（❌ 未确认——乙方未签也可能是别的原因）；
-- 新的分成结构**是否成立**（❌ 未确认——**尚未测算**）；
-- 项目**是否真的可行**（❌ 未确认——尚未开业，无经营数据）。
+- the analysis **changed a real decision** (✅ confirmable);
+- the blocking point the analysis predicted **materialised** (✅ confirmable);
+- whether the analysis **got it right** (❌ unconfirmed — Party B not signing could have other causes);
+- whether the new revenue-share structure **holds** (❌ unconfirmed — **not yet modelled**);
+- whether the project is **actually viable** (❌ unconfirmed — not yet open, no operating data).
 
-> 甲方说「可行」，恰恰是模型预测的结果——模型说的就是「这个条款对甲方成立、
-> 对乙方不成立」，甲方本来就是算得过来的那一方。
+> Party A saying "viable" is exactly what the model predicted — the model said "this clause works for Party A,
+> but not for Party B", and Party A was always the side the numbers work out for.
 
-### 变更
-- 单元测试 294 → 297 项。
+### Changes
+- Unit tests 294 → 297.
 
-## V3.8.0 — 成本核算
+## V3.8.0 — Cost accounting
 
-上一版给的待办最后一条：跑一次到底花多少，之前从没量过。现在量出来了。
+The last item on the previous version's to-do list: how much a run actually costs had never been measured. Now it has been.
 
-### 实测数字（真实 API）
+### Measured numbers (real API)
 
-| 规模 | 调用 | tokens | 耗时 | 估算费用 |
+| Scale | Calls | tokens | Duration | Estimated cost |
 |---|---|---|---|---|
-| 两阶段（DISCOVER + EVIDENCE） | 6 次 | 28,671 | 56 s | $0.0095 |
-| **完整六阶段循环** | **16 次** | **91,723** | **~110 s** | **$0.0298** |
+| Two phases (DISCOVER + EVIDENCE) | 6 | 28,671 | 56 s | $0.0095 |
+| **Complete six-phase loop** | **16** | **91,723** | **~110 s** | **$0.0298** |
 
-即：跑完一次完整的 R→E→B→U→I→D 约 **16 次模型调用、9 万 token、3 美分、两分钟**。
+That is: one complete R→E→B→U→I→D run takes about **16 model calls, 90,000 tokens, 3 cents and two minutes**.
 
-### 两条设计约束
+### Two design constraints
 
-**① token 是事实，费用是估算，两者分开。**
-token 数直接读 API 响应的 `usage` 字段。读不到就记 `available: false`，
-并注明总数**不完整**——**绝不估算**。一个估出来的 token 数被当成实际用量
-写进报告，比没有数字更糟。费用只在用户给出单价时才计算。
+**① tokens are fact, cost is estimate, and the two are kept separate.**
+The token count is read directly from the `usage` field of the API response. If it cannot be read, `available: false` is recorded,
+and the total is noted to be **incomplete** — **never estimated**. A token count that was estimated and treated as actual usage
+and written into a report is worse than no number at all. Cost is computed only when the user supplies unit prices.
 
-**② 本项目不内置任何价格。**
-单价由使用者通过 `--price-input` / `--price-output` 提供。
-价格会变，把价格写死在代码里就是制造一个会悄悄失真的结论。
-费用结果始终带 caveat：这是按你给的单价算的估算，**不是账单金额**，
-未含缓存折扣与重试的重复计费。
+**② This project hard-codes no prices.**
+Unit prices are supplied by the user via `--price-input` / `--price-output`.
+Prices change; hard-coding a price in the code manufactures a conclusion that will silently drift.
+Cost results always carry a caveat: this is an estimate computed from the unit prices you supplied, **not a billed amount**,
+and it excludes cache discounts and duplicate charges from retries.
 
-### 新增
-- `bench/provider.py`：`complete_with_usage()` 返回 `(文本, usage)`；
-  `_extract_usage()` 同时支持 OpenAI（`prompt_tokens`）与 Anthropic
-  （`input_tokens`）两种形状，认不出来就报 `available: false`。
-- `core/orchestrator.py`：逐次调用记录用量与耗时，报告里给出
-  `usage`（含分阶段汇总）与 `cost_estimate`。
-- CLI：`run` 新增 `--price-input` / `--price-output` / `--currency`；
-  `compare` 新增成本汇总一节，跨运行合计。
-- 新增 17 项测试（含「取不到用量时不许估算」的专项断言）。
+### Added
+- `bench/provider.py`: `complete_with_usage()` returns `(text, usage)`;
+  `_extract_usage()` supports both the OpenAI (`prompt_tokens`) and Anthropic
+  (`input_tokens`) shapes, and reports `available: false` when it cannot recognise one.
+- `core/orchestrator.py`: records usage and duration per call, and the report gives
+  `usage` (with a per-phase summary) and `cost_estimate`.
+- CLI: `run` gains `--price-input` / `--price-output` / `--currency`;
+  `compare` gains a cost summary section, totalling across runs.
+- 17 new tests (including a dedicated assertion that "no estimation is allowed when usage is unavailable").
 
-单元测试 277 → 294 项。
+Unit tests 277 → 294.
 
-## V3.7.0 — 多次运行比对
+## V3.7.0 — Comparing multiple runs
 
-把「多跑几次看看稳不稳」从手工动作变成工具。上一版实测出「单次运行的输出不是
-答案，只是起点」，但没有任何工具支撑这句话——这一版补上。
+Turning "run it a few more times to see whether it is stable" from a manual action into a tool. The previous version measured that "the output of a single run is not the
+answer, only a starting point", but no tool backed that statement up — this version adds one.
 
-### 新增 `core/compare.py` + CLI `compare` 子命令
-- `run --repeat N`：同一输入重复 N 次，每次重置项目状态、各自独立产物目录。
-- `compare <项目> [--last N]`：确定性比对，输出迁移路径、终态分布、
-  逐阶段门禁档位、决策条目数量的极差。
-- `--judge-with <provider>`：用模型判定 N 份建议在**方向上**是否一致。
+### New `core/compare.py` + CLI `compare` subcommand
+- `run --repeat N`: repeat the same input N times, resetting project state each time and giving each run its own artefact directory.
+- `compare <project> [--last N]`: deterministic comparison, outputting transition paths, final-state distribution,
+  per-phase gate tiers, and the range of decision-item counts.
+- `--judge-with <provider>`: use a model to judge whether the N recommendations are consistent **in direction**.
 
-### 两类结论被刻意分开
-这是本模块最重要的一条设计约束：
+### Two kinds of conclusion are deliberately kept apart
+This is the most important design constraint of this module:
 
-| 轴 | 怎么算 | 能说明什么 |
+| Axis | How it is computed | What it can show |
 |---|---|---|
-| **过程可复现性** | 确定性计算，无需模型 | 路径 / 终态 / 档位是否一致 |
-| **结论一致性** | 模型判定，标注 `judged_by_model` | 建议方向是否一致 |
+| **Process reproducibility** | deterministic computation, no model needed | whether path / final state / tier are consistent |
+| **Conclusion consistency** | model judgement, labelled `judged_by_model` | whether the recommendation direction is consistent |
 
-**「迁移路径相同」不等于「建议相同」。** 把前者说成后者是这类工具最容易犯的错，
-因此返回值里带显式 caveat，模型判定结果也带自己的 caveat。
-过程不一致时返回非零退出码，便于脚本化使用。
+**"The same transition path" does not mean "the same recommendation".** Claiming the former is the latter is the easiest mistake this kind of tool can make,
+so the return value carries an explicit caveat, and the model-judgement result carries its own caveat too.
+When the process is inconsistent it returns a non-zero exit code, which makes scripting easier.
 
-### 修复：`chosen_option` 允许为 null（第三个 schema 缺陷）
+### Fix: `chosen_option` may be null (the third schema defect)
 
-`compare` 一跑出来就暴露了它：3 次运行中有 **2 次**的 `chosen_option` 是 `null`，
-被 schema 判为非法（`类型应为 string，实际为 null`）。
+`compare` exposed it the moment it ran: in **2 of 3** runs `chosen_option` was `null`,
+which the schema judged invalid (`type should be string, got null`).
 
-但 **null 是诚实的答案**——门禁判定证据不足、本轮应先补证再决策时，
-本来就没有「采用的方案」。之前的 schema 假设「决策一定会做出」，
-于是模型越诚实，产出越"非法"。
+But **null is the honest answer** — when the gate judges the evidence insufficient and this round should gather further evidence before deciding, there simply is no
+"adopted option". The earlier schema assumed "a decision will always be made",
+so the more honest the model was, the more "invalid" its output became.
 
-修法：
-- schema 允许 `chosen_option` 为 `string` 或 `null`；
-- 决策包明确告诉模型「写 null 是正确的，不要为了填满字段而编一个方案」；
-- 新增质量提示：null 且未给出 `validation_actions` → 「等同于没结论」；
-- `compare` 渲染区分「未产出决策记录」与「本轮未做出选择」——
-  两者混为一谈时，「没跑出结论」会被误读成「结论是不决策」。
+Fix:
+- the schema allows `chosen_option` to be `string` or `null`;
+- the decision packet tells the model explicitly that "writing null is correct; do not invent an option just to fill the field";
+- new quality hint: null with no `validation_actions` → "equivalent to no conclusion";
+- `compare` output distinguishes "no decision record produced" from "no choice made this round" —
+  conflating the two makes "no conclusion was produced" read as "the conclusion is not to decide".
 
-### 一个已经重复三次的模式
+### A pattern that has now repeated three times
 
-三次与 schema 相关的缺陷，全部由**真实运行**发现，全部是同一类问题——
-**schema 把「正常情况」写成了唯一情况**：
+All three schema-related defects were found by **real runs**, and all were the same class of problem —
+**the schema wrote "the normal case" as the only case**:
 
-| 次数 | schema 假设 | 真实现象 |
+| Instance | Schema assumption | Real-world phenomenon |
 |---|---|---|
-| 1 | 假设是纯字符串 | 模型给「假设 + 反证条件」的结构化对象，更有用 |
-| 2 | 本项目只用当前 schema | 真实项目跑在字段更宽的早期 schema 上 |
-| 3 | 决策一定会做出 | 证据不足时 `chosen_option` 为 null 才是诚实的 |
+| 1 | assumptions are plain strings | the model supplies a structured "assumption + falsification condition" object, which is more useful |
+| 2 | this project uses only the current schema | a real project runs on an earlier schema with broader fields |
+| 3 | a decision will always be made | when evidence is insufficient, `chosen_option` being null is the honest answer |
 
-单元测试一个都没抓到——它们测的是「代码是否符合 schema」，
-而问题出在「schema 是否符合现实」。
+Not one unit test caught them — they test "whether the code conforms to the schema",
+while the problem was "whether the schema conforms to reality".
 
-### 变更
-- 单元测试 251 → 277 项。
+### Changes
+- Unit tests 251 → 277.
 
-## V3.6.1 — 故障路径与运行间一致性
+## V3.6.1 — Failure paths and run-to-run consistency
 
-承接 V3.6.0 的两项待办。完整记录见 [`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md) 第六、七节。
+Picking up the two to-do items from V3.6.0. See sections 6 and 7 of [`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md) for the full record.
 
-### 故障路径
+### Failure paths
 
-**真实 API 探针**（对真实端点逐一触发）：无效密钥 → `401` 不重试；
-不存在的模型 → `400` 并回显可用模型名；不可达主机 → 退避重试 3 次后报错；
-错误路径 → `404` 并提示检查 base_url。**四类均判断正确。**
+**Real API probes** (each triggered in turn against the real endpoint): invalid key → `401`, no retry;
+non-existent model → `400` with the available model names echoed back; unreachable host → 3 backoff retries, then an error;
+wrong path → `404` with a hint to check base_url. **All four were judged correctly.**
 
-**修复两处：**
-- **全部角色调用失败时，门禁仍会被调用一次**——`role_outputs` 里是一串空字符串，
-  字典本身仍为真，于是拿着空输入白调一次模型。现在会先做内容检查。
-- **provider 名称写错时，每个角色各失败一次**，被记成 6 条「角色失败」——
-  使用者会去查网络，而真正的原因是名字拼错了。现在在写任何产物之前就报错并列出可用名称。
+**Two fixes:**
+- **When all role calls failed, the gate was still called once** — `role_outputs` held a list of empty strings,
+  the dictionary itself was still truthy, so it wastefully called the model once with empty input. It now checks the content first.
+- **When the provider name was misspelled, every role failed once**, recorded as 6 "role failures" —
+  the user would go and check the network, when the real cause was a typo. It now errors before writing any artefact and lists the available names.
 
-新增 7 项故障路径测试：单角色失败、全部角色失败、门禁抛异常、门禁返回截断 JSON、
-决策记录失败、决策记录截断、未知 provider 快速失败。
+7 new failure-path tests: single role failure, all roles failing, gate throwing, gate returning truncated JSON,
+decision-record failure, decision-record truncation, and fast failure on an unknown provider.
 
-### 运行间一致性
+### Run-to-run consistency
 
-同一输入各跑 3 次（温度 0 与 0.3）：
+The same input run 3 times each (temperature 0 and 0.3):
 
-- **走完流程：6 / 6。** 对比门禁缺陷修复前的 **0 / 4**。
-- **决策方向一致**：三次都得出「先验证、别急着上线」。
-- **细节不可复现**：反证条件 6 / 10 / 15 条（相差 2.5 倍），候选方案 3 / 3 / 4 个；
-  一次给出完整试点设计（4 周、30 人），另一次只说「先补证」。
-- **temperature=0 并不能消除差异**——多数 API 在 0 下也不保证确定性。
+- **Flow completed: 6 / 6.** Compare the **0 / 4** before the gate defect was fixed.
+- **Decision direction consistent**: all three concluded "validate first, don't rush to launch".
+- **Details not reproducible**: falsification conditions 6 / 10 / 15 (a 2.5× spread), options 3 / 3 / 4;
+  one run gave a complete pilot design (4 weeks, 30 people) while another said only "gather further evidence first".
+- **temperature=0 does not eliminate the differences** — most APIs do not guarantee determinism at 0 either.
 
-由此写进文档的一条使用约束：**单次运行的输出不能当作「答案」，只能当作起点。**
-系统目前**没有**内建多次运行比对——这是待补能力，已在文档中如实标注为未实现。
+One usage constraint written into the docs as a result: **the output of a single run must not be treated as "the answer", only as a starting point.**
+The system currently has **no** built-in multi-run comparison — this is a capability gap, and the docs honestly label it as not implemented.
 
-### 变更
-- CLI `run` 新增 `--temperature`（默认 0.3）。
-- 单元测试 244 → 251 项。
+### Changes
+- CLI `run` gains `--temperature` (default 0.3).
+- Unit tests 244 → 251.
 
-## V3.6.0 — 首次真实模型验证
+## V3.6.0 — First real-model validation
 
-编排器此前**从未接过真实模型**：27 项测试全部注入假模型，真实 provider 分支覆盖为零。
-这次接 DeepSeek `deepseek-chat` 跑通，发现并修复三个缺陷。完整记录见
-[`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md)。
+The orchestrator had **never been connected to a real model** before: all 27 tests injected a fake model, and coverage of the real provider branch was zero.
+This time it was run through against DeepSeek `deepseek-chat`, and three defects were found and fixed. See
+[`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md) for the full record.
 
-### 修复 1：所有阶段共用同一套门禁标准（严重）
-- **症状**：连续 4 次运行全部卡死在 DISCOVER，一次都没推进到第二阶段。
-- **原因**：六个阶段套用同一张门禁清单，第一条是「证据不足 → 不得进入战略定案」。
-  但 R 阶段**本来就发生在补证之前**，`REBUILD_METHOD.md` 给它的门禁是
-  「目标与症状分开写、缺少基线须标未知」——那是问题界定质量，不是证据充足度。
-- **修法**：新增 `PHASE_GATES`，逐阶段使用各自判据，并明确「只按本阶段的标准判定」。
-- **效果**：同一项目同一模型，修复前 4/4 阻断，修复后完整跑通 `DISCOVER → REVIEW`。
+### Fix 1: All phases shared the same gate criteria (severe)
+- **Symptom**: 4 consecutive runs all got stuck at DISCOVER; not one advanced to the second phase.
+- **Cause**: the same gate checklist was applied to all six phases, and its first item was "insufficient evidence → must not proceed to a strategy decision".
+  But the R phase **happens before evidence gathering by design**, and the gate `REBUILD_METHOD.md` gives it is
+  "write goals and symptoms separately; anything lacking a baseline must be marked unknown" — that is problem-framing quality, not evidence sufficiency.
+- **Fix**: added `PHASE_GATES`, so each phase uses its own criteria, with the explicit rule "judge only by this phase's criteria".
+- **Effect**: with the same project and same model, 4/4 blocked before the fix and a complete `DISCOVER → REVIEW` run succeeded after it.
 
-### 修复 2：门禁只有「放行 / 阻断」两种选择（严重）
-- **原因**：门禁包写着「放行一个证据不足的阶段，是本系统最严重的失败」，
-  把阻断变成唯一安全选项；而方法论明确允许**降级输出**，门禁包却从未提供该选项。
-- **修法**：引入三档 `SUFFICIENT` / `DEGRADED`（须逐条写明 `limitations`）/ `INSUFFICIENT`，
-  并重新定义失败：
-  > 最严重的失败**不是**带着不完整的证据推进，而是**推进时假装证据是完整的**。
-- **效果**：模型开始使用 `evidence_grade`，并能给出精确的选档理由。
+### Fix 2: The gate offered only two choices, "pass / block" (severe)
+- **Cause**: the gate packet said "passing a phase with insufficient evidence is the most severe failure of this system",
+  which made blocking the only safe option; yet the methodology explicitly allows **degraded output**, and the gate packet never offered that option.
+- **Fix**: introduced three tiers `SUFFICIENT` / `DEGRADED` (with `limitations` listed item by item) / `INSUFFICIENT`,
+  and redefined failure:
+  > The most severe failure is **not** advancing with incomplete evidence, but **pretending the evidence is complete while advancing**.
+- **Effect**: the model began using `evidence_grade` and could give precise reasons for its tier choice.
 
-### 修复 3：Schema 把模型的合理产出判为非法
-- **症状**：决策记录报 7 项错误，`key_assumptions` 类型不符。
-- **原因**：模型自发把每条假设与它的**反证条件**配成对，比 schema 允许的纯字符串更有用
-  ——而方法论正是要求「每条关键假设都要配一个能推翻它的条件」。
-- **修法**：`key_assumptions` 用 `oneOf` 同时接受字符串（向后兼容）与结构化对象。
-- **旁证**：这与真实项目案例的发现一致——案例跑在更早的 schema 上时就暴露出
-  「真实项目需要的字段比 schema 提供的多」。这次是现场复现。
+### Fix 3: The schema rejected a reasonable model output as invalid
+- **Symptom**: the decision record reported 7 errors, with a `key_assumptions` type mismatch.
+- **Cause**: the model spontaneously paired each assumption with its **falsification condition**, which is more useful than the plain strings the schema allowed
+  — and the methodology requires exactly that "every key assumption be paired with a condition that can refute it".
+- **Fix**: `key_assumptions` uses `oneOf` to accept both strings (backwards compatible) and structured objects.
+- **Corroboration**: this matches the finding from the real project case — running on an earlier schema already exposed
+  that "a real project needs more fields than the schema provides". This time it was reproduced live.
 
-### 附带修复
-- `BLOCKED` 状态下的跳过提示此前输出「可用序列：**[]**」，毫无帮助且恰是最需要指引的状态。
+### Incidental fix
+- The skip hint in the `BLOCKED` state used to print "available sequences: **[]**" — no help at all, in precisely the state that most needs guidance.
 
-### 验证覆盖
-- 三条状态机路径均已在真实模型上走通：**完整推进**、**回退**（`evidence_gap`）、
-  **阻断**。三次均为合法迁移，无非法事件被接受。
-- 新增 13 项回归测试，把上述三个缺陷钉死（门禁逐阶段化、降级通道、schema 双格式）。
-- 单元测试 232 → 244 项。
+### Validation coverage
+- All three state-machine paths were run through on a real model: **full advance**, **rollback** (`evidence_gap`),
+  and **block**. All three were legal transitions; no illegal event was accepted.
+- 13 new regression tests pin down the three defects above (per-phase gates, the degraded channel, and the dual-format schema).
+- Unit tests 232 → 244.
 
-### 仍未验证（如实记录）
-- **真实项目的完整循环仍未跑通**：真实案例在 R 阶段即正确阻断，
-  E/B/U/I/D 是用一个**构造的测试项目**跑通的，不是真实商业项目。
-- 故障路径（429 / 超时 / 响应截断）未测试。
-- 同一输入两次运行结果不同（一次推进、一次回退）——**单次运行不足以评价输出质量**。
-- 跑通 ≠ 分析得好：输出质量的绝对水平需要独立评审，目前没有。
+### Still unverified (recorded honestly)
+- **A full loop on a real project has still not been completed**: the real case was correctly blocked at the R phase,
+  and E/B/U/I/D were run through on a **constructed test project**, not a real business project.
+- Failure paths (429 / timeouts / truncated responses) were not tested.
+- The same input produced different results on two runs (one advanced, one rolled back) — **a single run is not enough to evaluate output quality**.
+- Running through ≠ analysing well: the absolute level of output quality requires independent review, which does not currently exist.
 
-## V3.5.0 — 真实项目案例（脱敏）
+## V3.5.0 — Real project case (anonymised)
 
-README 的成熟度声明里长期挂着「**未验证：在真实客户数据上能否端到端跑完一次完整的
-R→E→B→U→I→D**」。这一版把那句话划掉了。
+The README's maturity statement long carried "**unverified: whether a complete
+R→E→B→U→I→D can be run end to end on real client data**". This version strikes that line out.
 
-### 新增：`examples/metro_apartment/` —— 一次真实项目的完整运行
-- 三份脱敏后的真实输入材料（合作模式研究、地块专项研究、品牌营销全案）。
-- 完整产出：决策页、KPI 树、实验卡片、单位经济模型、功效核算、技能评估报告。
-- 6 个分析脚本可一键复现全部数字（`python3 scripts/run_all.py`，纯标准库）。
+### New: `examples/metro_apartment/` — a complete run on a real project
+- Three anonymised real input materials (partnership-model study, site-specific study, full brand marketing plan).
+- Complete outputs: decision page, KPI tree, experiment cards, unit-economics model, power calculation, skill assessment report.
+- 6 analysis scripts reproduce every number in one command (`python3 scripts/run_all.py`, standard library only).
 
-**这个案例跑出来的结论**：一份写得相当完整的营销全案，在单位经济上不成立——
-运营方每运营一个月都在烧押金，无论出租率是 60% 还是 93%；甲方 48 个月回本
-与乙方保本的分成约束**交集为空**。**不是营销问题，是分成结构问题。**
+**The conclusion this case produced**: a fairly complete marketing plan did not hold up on unit economics —
+the operator burns deposit money every month it operates, whether the occupancy rate is 60% or 93%; the revenue-share constraints for
+Party A's 48-month payback and Party B's break-even have an **empty intersection**. **This is not a marketing problem, it is a revenue-share structure problem.**
 
-### 新增：脱敏守卫（`tests/test_example_anonymization.py`）
-- 脱敏一旦被后续改动破坏，泄露是**不可逆的**——推进公开仓库后历史永久留痕。
-  因此把「脱敏是否完整」变成 CI 能抓住的错误。
-- 检查通用模式：公司/机构全称、具体门牌号、地铁站名、政策文号、本地绝对路径。
-- **测试文件刻意不含任何原始术语清单**——写明「××公司 → 甲方 A」的对照表等于把脱敏又还原一遍。
-- 已做误报回归：`同一集团`/`该集团`/`本合同` 等普通行文不误判。
+### New: anonymisation guard (`tests/test_example_anonymization.py`)
+- Once anonymisation is broken by a later change, the leak is **irreversible** — pushing to a public repository leaves a permanent trace in the history.
+  So "is the anonymisation complete" became an error CI can catch.
+- It checks generic patterns: full company/institution names, specific street addresses, subway station names, policy document numbers, local absolute paths.
+- **The test file deliberately contains no list of the original terms** — writing out a mapping table of "Company X → Party A" would amount to undoing the anonymisation all over again.
+- False-positive regression has been done: ordinary phrasing such as `the same group` / `this group` / `this contract` is not misflagged.
 
-### 新增：`ANONYMIZATION.md`
-- 说明脱敏了哪些**类别**（不含映射表）、刻意保留了什么、如何自查。
-- **如实列出残留风险**：数据组合本身可能具有指纹性；时间线未偏移；
-  政策环境可缩小城市范围；竞品结构特征未变。结论是——
-  本案例适合方法演示与教学，**不适合作为完全不可追溯的公开材料**。
+### New: `ANONYMIZATION.md`
+- Explains which **categories** were anonymised (without the mapping table), what was deliberately kept, and how to self-check.
+- **Honestly lists the residual risks**: the combination of data may itself be fingerprinting; the timeline was not shifted;
+  the policy environment can narrow down the city; competitor structural features are unchanged. The conclusion is —
+  this case is suitable for methodology demonstration and teaching, and **not suitable as fully untraceable public material**.
 
-### 变更
-- CI 增加案例复现步骤：跑不通脚本，案例就退化成一份静态文档。
-- 单元测试 223 → 232 项。
+### Changes
+- CI gains a case-reproduction step: if the scripts do not run, the case degrades into a static document.
+- Unit tests 223 → 232.
 
-### 已知偏差（已在案例 README 中列明）
-- 案例运行在一套更早的 schema 上（存档于 `legacy/v3.1`），字段比当前 `schemas/` **更宽**。
-  运行时快照随案例提供。**这个偏差本身是发现：真实项目需要的字段比当前 schema 提供的多。**
-- 单位经济模型中的乙方成本是**重建**的，不是原始数据。
-- 客群占比结构未经问卷验证；三个实验全部为 `proposed`，无一执行。
+### Known deviations (listed in the case README)
+- The case ran on an earlier schema (archived at `legacy/v3.1`) whose fields are **broader** than the current `schemas/`.
+  The runtime snapshot is provided with the case. **This deviation is itself a finding: a real project needs more fields than the current schema provides.**
+- Party B's costs in the unit-economics model are **reconstructed**, not original data.
+- The customer-segment proportions are not validated by survey; all three experiments are `proposed`, none executed.
 
-## V3.4.0 — 决策复盘闭环、来源可核验与 Skill 更新
+## V3.4.0 — Decision review loop, verifiable sources, and Skill update
 
-这一版补上的是**最后一段断掉的循环**：D（Decision Review）阶段此前完全没有实现——
-`project.json` 里的 `decision_records` 是个永远为空的数组，决策做完就散了，
-系统能产出决策却永远学不到自己的决策对不对。
+What this version closes is **the last broken segment of the loop**: the D (Decision Review) phase had not been implemented at all —
+`decision_records` in `project.json` was an array that stayed empty forever, decisions scattered once they were made,
+and the system could produce decisions yet never learn whether its own decisions were right.
 
-### 新增：决策记录与复盘（`core/decisions.py` + `schemas/outcome.schema.json`）
-- 决策入库、按复审日期管理、结果回填，并同步回 `project.json` 的 `decision_records`
-  （标注 `PENDING_REVIEW` / `REVIEWED`）。
-- **`decision due` 把「该复盘却没复盘」的决策主动摆到眼前**，而不是等使用者想起来。
-- **强制区分偏差类型**：`EXECUTION`（执行偏差）/ `STRATEGY`（策略失效）/
-  `ASSUMPTION`（假设错误）/ `MIXED` / `UNKNOWN`。选 `UNKNOWN` 必须说明为什么无法归因。
-- 结果回填时 `actual` 过短会被拒绝：复盘必须写出实际观察到的结果，
-  没有数据时须写「未采集到数据」，不得用印象代替。
-- 质量提示：无复审日期、无反证条件、无代价、无关键假设、单选项、
-  所选方案不在候选列表、同名选项、期限已过期。
-- **模型产出的决策记录不自动入库**：编排器只写运行产物，入库需人工执行
-  `decision import`——与证据同一条原则。
+### New: decision records and review (`core/decisions.py` + `schemas/outcome.schema.json`)
+- Decisions are stored, managed by review date, and backfilled with outcomes, synchronised back to `decision_records`
+  in `project.json` (labelled `PENDING_REVIEW` / `REVIEWED`).
+- **`decision due` puts decisions that "should have been reviewed but were not" right in front of you**, instead of waiting for the user to remember.
+- **Mandatory distinction of deviation types**: `EXECUTION` (execution failure) / `STRATEGY` (strategy failure) /
+  `ASSUMPTION` (assumption failure) / `MIXED` / `UNKNOWN`. Choosing `UNKNOWN` requires explaining why the outcome cannot be attributed.
+- When backfilling outcomes, an `actual` field that is too short is rejected: a review must state the outcome actually observed,
+  and when there is no data it must say "no data collected"; impressions must not be used as a substitute.
+- Quality hints: no review date, no falsification condition, no cost, no key assumptions, a single option,
+  the chosen option not in the candidate list, duplicate option names, an expired deadline.
+- **Decision records produced by the model are not stored automatically**: the orchestrator only writes run artefacts; storing
+  requires a human to run `decision import` — the same principle as for evidence.
 
-### 新增：证据来源可核验（`ledger.provenance_report` + `evidence provenance`）
-- `source` 写成 `DOC-001` 形式时视为指向材料库，**可被机器核验**；
-  写成自由文本则不能。系统明确区分这两种情况并统计可核验比例。
-- **断链是错误而非警告**：指向不存在的材料比自由文本更糟——
-  它自称可核验，实际核验不了。
-- `evidence add --source-doc DOC-001` 在写入前确认材料存在。
+### New: verifiable evidence sources (`ledger.provenance_report` + `evidence provenance`)
+- When `source` is written in the `DOC-001` form it is treated as pointing to the material library and **can be machine-verified**;
+  free text cannot. The system distinguishes the two cases explicitly and reports the verifiable ratio.
+- **A dangling link is an error, not a warning**: pointing at a non-existent material is worse than free text —
+  it claims to be verifiable but cannot actually be verified.
+- `evidence add --source-doc DOC-001` confirms the material exists before writing.
 
-### 更新：宿主接入（`harness/`）
-- `harness/deepseek/SKILL.md` 重写：此前完全没有提及 V3.3 引入的任何能力
-  （编排器 / 证据账本 / 数据源 / 决策库），现已全部纳入，并补充边界声明。
-- 新增 `harness/README.md`：安装步骤、DSH 技能发现规则、卸载方式与能力边界。
-- 新增 `tests/test_harness_skill.py`：把「frontmatter 不合法会导致技能被静默丢弃」
-  变成 CI 能抓住的错误。
+### Updated: host integration (`harness/`)
+- `harness/deepseek/SKILL.md` rewritten: it previously mentioned none of the capabilities introduced in V3.3
+  (orchestrator / evidence ledger / data sources / decision store); all are now included, along with boundary statements.
+- New `harness/README.md`: installation steps, DSH skill discovery rules, uninstall instructions, and capability boundaries.
+- New `tests/test_harness_skill.py`: turns "invalid frontmatter makes the skill silently discarded"
+  into an error CI can catch.
 
-### 变更
-- `schemas/` 由 5 份增至 6 份（新增 `outcome.schema.json`）。
-- 单元测试由 174 项增至 211 项。
+### Changes
+- `schemas/` goes from 5 to 6 files (adding `outcome.schema.json`).
+- Unit tests go from 174 to 211.
 
-## V3.3.0 — 运行时、证据账本与数据源
+## V3.3.0 — Runtime, evidence ledger and data sources
 
-这一版把三处「文档里写了、代码里没有」的缺口补上：Schema 只是规范文件、
-证据账本无处存放、角色契约没有编排器。**注意：这些是能力补齐，不是质量证明**——
-编排器的输出质量尚未在任何真实模型上验证。
+This version closes three gaps where "the docs describe it but the code does not have it": the Schema was only a specification file,
+the evidence ledger had nowhere to live, and the role contracts had no orchestrator. **Note: these are capability additions, not proof of quality** —
+the orchestrator's output quality has not yet been validated on any real model.
 
-### 新增：JSON Schema 校验器（`core/schema_validator.py`）
-- 纯标准库实现，覆盖本仓库 Schema 实际使用的关键字，另含 `anyOf` / `oneOf` / `allOf`。
-- **未实现的关键字会报 warning，而不是静默忽略。** 静默忽略会让「校验通过」变成假象。
-- `rebuild_cli.py validate` 默认执行 schema 校验；新增 `schema` 子命令校验任意 JSON。
+### New: JSON Schema validator (`core/schema_validator.py`)
+- Implemented with the standard library only, covering the keywords this repository's schemas actually use, plus `anyOf` / `oneOf` / `allOf`.
+- **Unimplemented keywords raise a warning rather than being silently ignored.** Silent ignoring would make "validation passed" an illusion.
+- `rebuild_cli.py validate` runs schema validation by default; a new `schema` subcommand validates arbitrary JSON.
 
-### 新增：证据账本（`core/ledger.py`）
-- 把 `evidence.schema.json` 从规范文件变成可用的存储：`<项目>/evidence.jsonl`，追加写入、可 diff、无数据库依赖。
-- **写入前强制校验**，不合规的记录直接拒绝，不会「先写进去再说」。
-- 账本损坏时报错而不是跳过坏行——静默跳过会让证据悄悄消失。
-- schema 之外的语义检查（以 warning 呈现）：`FACT` 无来源、`ASSUMPTION` 无重查条件、
-  `UNKNOWN` 却给高可信度、`decision_impact` 写成「无」。
-- 新增 `evidence add / list / check / gaps / export` 子命令；`gaps` 找出项目里声明了但账本没覆盖的假设与未知项。
+### New: evidence ledger (`core/ledger.py`)
+- Turns `evidence.schema.json` from a specification file into usable storage: `<project>/evidence.jsonl`, append-only, diffable, with no database dependency.
+- **Mandatory validation before writing**: non-conforming records are rejected outright, never "written first and sorted out later".
+- A corrupt ledger raises an error instead of skipping the bad line — silent skipping would make evidence quietly disappear.
+- Semantic checks beyond the schema (presented as warnings): `FACT` with no source, `ASSUMPTION` with no re-check condition,
+  `UNKNOWN` given high confidence, `decision_impact` written as "none".
+- New `evidence add / list / check / gaps / export` subcommands; `gaps` finds assumptions and unknowns declared in the project but not covered by the ledger.
 
-### 新增：数据源层（`sources/`）
-- 本地文件：CSV / TSV / JSON / JSONL / TXT / MD / XLSX。
-- **中文编码兜底**：utf-8-sig → utf-8 → gb18030 → big5 → latin-1。乱码喂进模型比没数据更糟。
-- **XLSX 用标准库解析**（zipfile + xml.etree），不引入 pandas / openpyxl。
-- 自建 HTTP 端点：URL、方法、取值路径由使用者给出；**不内置任何平台连接器**。
-- 密钥只从环境变量读取，spec 文件不存密钥；检测到疑似密钥会警告。
-- 每条材料存 SHA-256，`source verify` 可校验来源是否被改动。
+### New: data source layer (`sources/`)
+- Local files: CSV / TSV / JSON / JSONL / TXT / MD / XLSX.
+- **Chinese-encoding fallbacks**: utf-8-sig → utf-8 → gb18030 → big5 → latin-1. Feeding mojibake to the model is worse than having no data.
+- **XLSX is parsed with the standard library** (zipfile + xml.etree), without pulling in pandas / openpyxl.
+- Self-hosted HTTP endpoints: the URL, method and value path are supplied by the user; **no platform connectors are built in**.
+- Secrets are read only from environment variables and are not stored in spec files; anything resembling a secret triggers a warning.
+- Each material stores a SHA-256, and `source verify` can check whether a source has been altered.
 
-### 新增：运行时编排器（`core/orchestrator.py`）
-- 按阶段顺序调度角色契约、注入证据与材料、收集输出、判定门禁、推进状态、产出决策记录。
-- **顺序执行，不假装并行**：一个角色一次模型调用，角色之间不通信。
-- **状态迁移由状态机裁决**：模型只回答「应触发哪个事件」；合法性由 `state_machine.json` 决定，
-  模型给出非法事件会被拒绝并记入报告。
-- **模型提出的证据不自动入账**：写入运行产物供人工审核。自动入账会让证据账本退化成「模型说过的话清单」。
-- 默认 `--provider manual`：只生成任务包，零网络请求；`--dry-run` 同样零网络、零状态变更。
+### New: runtime orchestrator (`core/orchestrator.py`)
+- Dispatches role contracts in phase order, injects evidence and materials, collects outputs, decides the gate, advances state, and produces decision records.
+- **Sequential execution, no pretending to be parallel**: one model call per role, and roles do not communicate with each other.
+- **State transitions are adjudicated by the state machine**: the model only answers "which event should be triggered"; legality is decided by `state_machine.json`,
+  and an illegal event from the model is rejected and recorded in the report.
+- **Evidence proposed by the model is not entered into the ledger automatically**: it is written to run artefacts for human review. Automatic entry would degrade the evidence ledger into "a list of things the model said".
+- Default `--provider manual`: it only generates task packets, with zero network requests; `--dry-run` likewise means zero network and zero state changes.
 
-### 变更
-- `rebuild_cli.validate_project()` 返回值由 `errors` 列表改为 `(errors, warnings)` 元组，
-  以便暴露「schema 中未被检查的约束」。这是**破坏性变更**，调用方需同步调整。
-- `tests/test_rebuild.py` 的临时文件改写到系统临时目录，不再污染仓库工作区。
-- `.gitignore` 增加 `runs/`、`sources/documents/`、`sources/index.jsonl`、`sources/specs/`、`evidence.jsonl`：
-  这些目录默认含客户数据与模型输出。
-- CI 增加端到端冒烟测试（导入材料 → 写入证据 → 干跑编排），并断言示例目录未被产物污染。
+### Changes
+- `rebuild_cli.validate_project()` now returns an `(errors, warnings)` tuple instead of an `errors` list,
+  in order to expose "constraints in the schema that were not checked". This is a **breaking change**, and callers must be updated accordingly.
+- `tests/test_rebuild.py` writes its temporary files to the system temp directory and no longer pollutes the repository workspace.
+- `.gitignore` gains `runs/`, `sources/documents/`, `sources/index.jsonl`, `sources/specs/`, `evidence.jsonl`:
+  these directories contain client data and model output by default.
+- CI gains an end-to-end smoke test (import materials → write evidence → dry-run the orchestrator) and asserts that the example directories are not polluted by artefacts.
 
-### 测试
-- 单元测试由 28 项增至 174 项。
-- 编排器测试全部注入假模型，**不产生任何网络请求**。
+### Tests
+- Unit tests go from 28 to 174.
+- All orchestrator tests inject a fake model and **make no network requests whatsoever**.
 
-## V3.2.4 — 边界声明与模型接口文档
+## V3.2.4 — Boundary statements and model interface documentation
 
-### 修正
-- **SECURITY.md 的事实性错误**：原文称「作为纯本地工具运行，不产生网络请求」。自 V3.2.2 引入 `bench/provider.py` 后该声明已不成立。现如实说明：不采集行为数据、不含遥测，但启用 `--provider` 时会向用户指定的模型端点发起请求并外发提示词内容；默认手动模式不产生网络请求。
+### Corrections
+- **A factual error in SECURITY.md**: the original text said "runs as a purely local tool and makes no network requests". That statement has not held since `bench/provider.py` was introduced in V3.2.2. It now states honestly: no behavioural data is collected and there is no telemetry, but enabling `--provider` sends requests to the model endpoint the user specifies and transmits the prompt content; the default manual mode makes no network requests.
 
-### 文档
-- README 新增「**这个项目不是什么**」：它不是投放 / CRM / 分析工具，不是自动化执行系统，不是多 Agent 运行时，不是数据接入层，也不保证结论正确。
-- README 明确声明商业价值假设（咨询交付 / 企业内训 / 评测层）**均未被验证**，仓库不为其背书。
-- README 新增「**接入你自己的模型**」，记录 provider 层的预设清单、自定义 OpenAI 兼容端点用法、盲评流程接入方式与扩展方法。
-- 成熟度声明如实标注两处此前未披露的缺口：
-  - **5 份 JSON Schema 没有任何代码读取**，CLI 只对 `project.json` 做手写字段检查；
-  - **证据账本只有 Schema、没有录入与读取路径**——而它是方法论的核心产物。
-- 快速验证段落修正：克隆地址由占位符改为真实仓库地址，测试数量由「5 项」更正为 28 项。
+### Documentation
+- README gains "**What this project is not**": it is not an ad-serving / CRM / analytics tool, not an automated execution system, not a multi-agent runtime, not a data ingestion layer, and it does not guarantee that its conclusions are correct.
+- README states explicitly that the commercial-value assumptions (consulting delivery / corporate training / evaluation layer) are **all unverified**, and the repository does not endorse them.
+- README gains "**Connect your own model**", documenting the provider layer's preset list, how to use a custom OpenAI-compatible endpoint, how to plug in the blind-review flow, and how to extend it.
+- The maturity statement honestly flags two previously undisclosed gaps:
+  - **no code reads the 5 JSON schemas**; the CLI only performs handwritten field checks on `project.json`;
+  - **the evidence ledger had only a Schema, with no path for entry or retrieval** — and it is the core artefact of the methodology.
+- Quick-verification section corrected: the clone URL changed from a placeholder to the real repository address, and the test count was corrected from "5" to 28.
 
-## V3.2.3 — 先导实验结果与 scorecard 校验
+## V3.2.3 — Pilot results and scorecard validation
 
-### 修正
-- **修复 `bench_runner.py` 中 `reveal()` 的列错位**：此前把 `config_key` 写进 `case_id` 列，导致公布的 scorecard 丢失真实用例编号（B01–B04）。现 `case_id` 取自 manifest，揭示后的配置名单独存放在 `config` 列。
-- `summarise()` 改为读取 `config` 列，同时兼容旧的 `config_blinded` 格式。
+### Corrections
+- **Fixed a column misalignment in `reveal()` in `bench_runner.py`**: `config_key` used to be written into the `case_id` column, so the published scorecard lost the real case IDs (B01–B04). `case_id` now comes from the manifest, and the revealed configuration name is stored separately in the `config` column.
+- `summarise()` now reads the `config` column and remains compatible with the older `config_blinded` format.
 
-### 评测
-- 公布一次先导实验（用例 B03，每配置 n=1）。**样本量远低于 `RUBRIC.md` 标准，不构成质量对照证据。**
-- 新增 `bench/PILOT_B03.md`，逐条声明局限：样本量不足、评审独立性未经验证、单一用例、满分异常。
+### Evaluation
+- Published one pilot (case B03, n=1 per configuration). **The sample size is far below the `RUBRIC.md` standard and does not constitute quality-comparison evidence.**
+- New `bench/PILOT_B03.md`, declaring the limitations item by item: insufficient sample size, unverified reviewer independence, a single case, and anomalous full marks.
 
 ### CI
-- 移除「scorecard 必须为空」的断言。该断言只能防住「还没跑实验就填数」，一旦产生真实数据必然误报，且无法识别填错的行。
-- 改为执行 `bench_runner.py check-scorecard`：校验表头、取值域、总分与分项之和一致性、必填字段。
+- Removed the assertion that "the scorecard must be empty". That assertion could only prevent "filling in numbers before running the experiment"; once real data exists it is bound to false-positive, and it cannot identify a mis-filled row.
+- Replaced with running `bench_runner.py check-scorecard`: it validates the header, value ranges, total-versus-component-sum consistency, and required fields.
 
-### 文档
-- README 的「当前 scorecard 为空」声明改为与仓库实际数据一致，并明确标注先导实验的局限。
-- README 成熟度声明同步：模型 Provider 接入层列为已实现，多 Agent 运行时调度仍为未实现。
+### Documentation
+- The README's statement that "the current scorecard is empty" was changed to match the repository's actual data, with the pilot's limitations explicitly flagged.
+- The README maturity statement was synchronised: the model Provider integration layer is listed as implemented, and multi-agent runtime scheduling remains not implemented.
 
-## V3.2.2 — Provider 接入层
-- 新增 `bench/provider.py`：OpenAI 兼容与 Anthropic 兼容两种调用方式。
-- `bench_runner.py` 增加 `render` 与 `execute` 子命令。
+## V3.2.2 — Provider integration layer
+- New `bench/provider.py`: OpenAI-compatible and Anthropic-compatible calling conventions.
+- `bench_runner.py` gains `render` and `execute` subcommands.
 
-## V3.2.1 — 盲评对照实验脚手架
-- 新增 `bench/bench_runner.py`：编号散列、呈现顺序打乱、身份隐藏、评审一致性检查，并拒绝不足两名评审或不完整覆盖。
-- 新增 `bench/HOWTO.md`、`bench/REVIEW_PROTOCOL.md`、`bench/prompts/`。
-- 新增 `tests/test_bench_runner.py`。
-- `.gitignore` 增加 `bench/runs/`（含盐值与未公开的模型输出）。
+## V3.2.1 — Blind-review controlled-experiment scaffold
+- New `bench/bench_runner.py`: ID hashing, shuffled presentation order, identity concealment, reviewer-consistency checks, and refusal when there are fewer than two reviewers or coverage is incomplete.
+- New `bench/HOWTO.md`, `bench/REVIEW_PROTOCOL.md`, `bench/prompts/`.
+- New `tests/test_bench_runner.py`.
+- `.gitignore` gains `bench/runs/` (containing the salt and unpublished model output).
 
 ## V3.2.0 — Original Decision-Centric OS
 
-### 方法论
-- 移除第三方营销工具集成目录与工具注册表。
-- 将系统重心改为原创决策协议、证据追溯、显式取舍、单位经济和反证闭环。
-- 六阶段决策循环（R-E-B-U-I-D）带阶段门禁与回退路径。
-- 南涧茶厂示例改为待核验框架，不预设项目成果。
+### Methodology
+- Removed the third-party marketing tool integration directory and the tool registry.
+- Shifted the system's focus to an original decision protocol, evidence traceability, explicit trade-offs, unit economics, and a falsification loop.
+- A six-phase decision loop (R-E-B-U-I-D) with phase gates and rollback paths.
+- The Nanjian tea factory example was changed into a framework awaiting verification, with no pre-set project results.
 
-### 工程
-- 增加确定性状态机与本地 CLI。
-- 增加 JSON Schema、基准案例、盲评规程和成熟度声明。
-- 增加 GitHub Actions CI（Python 3.10–3.13）。
+### Engineering
+- Added a deterministic state machine and a local CLI.
+- Added JSON Schema, benchmark cases, a blind-review protocol and a maturity statement.
+- Added GitHub Actions CI (Python 3.10–3.13).
 
-### 角色契约分化
-- 重写 8 个职能角色契约。此前各角色共用同一份通用模板（除标题外内容完全一致），角色边界模糊。
-- 每个角色现包含独立使命、输入边界与越权拒绝规则、角色专属交付字段、专属追问清单、专属失败模式。
-- 主 Agent 增加按阶段调度的角色调度表、降级规则、冲突处理与越权处理规则。
+### Role contract differentiation
+- Rewrote the 8 specialist role contracts. Previously all roles shared one generic template (identical apart from the title), leaving role boundaries vague.
+- Each role now has its own mission, input boundary and out-of-scope rejection rules, role-specific delivery fields, its own question checklist, and its own failure modes.
+- The master agent gains a per-phase role dispatch table, degradation rules, and conflict- and out-of-scope-handling rules.
 
-### 仓库基建
-- 修正 `docs/STATUS_AND_ROADMAP.md`：原文称 GitHub CI「未配置」，但 `.github/workflows/tests.yml` 已存在。
-- 清理 `__pycache__` 与 `.pyc` 残留。
-- 新增 `SECURITY.md`、`CODE_OF_CONDUCT.md`、PR 与 Issue 模板。
-- LICENSE 版权署名由占位式 `REBUILD Project Contributors` 改为实际作者。
-- README 按「决策中心方法论 OS」定位重写，明确区分已实现 / 未实现 / 未验证。
+### Repository infrastructure
+- Corrected `docs/STATUS_AND_ROADMAP.md`: it said GitHub CI was "not configured", but `.github/workflows/tests.yml` already existed.
+- Cleaned up leftover `__pycache__` and `.pyc` files.
+- New `SECURITY.md`, `CODE_OF_CONDUCT.md`, PR and issue templates.
+- The LICENSE copyright line changed from the placeholder `REBUILD Project Contributors` to the actual author.
+- README rewritten around the "decision-centric methodology OS" positioning, clearly distinguishing implemented / not implemented / unverified.
 
-### 评测脚手架（V3.2.1 提前落地）
-- 新增 `bench/bench_runner.py`：五步流程 generate → template → import → reveal → summarise，仅标准库。
-- 三组对照配置：A 普通提示词基线、B 结构化框架、C REBUILD 全流程。
-- 盲评防护：SHA-256 编号散列、呈现顺序打乱、配置身份隐藏、同 salt 可复现。
-- 强制校验：少于 2 名独立评审拒绝揭示；任一评审未覆盖全部条目拒绝揭示；两名评审分差 > 6 分提示复核。
-- 新增 `bench/REVIEW_PROTOCOL.md`（评分锚点与常见误判）、`bench/HOWTO.md`（操作手册）。
-- 新增 `bench/prompts/A_plain.txt`、`bench/prompts/B_skill.txt`。
-- 新增 `tests/test_bench_runner.py`，9 项测试覆盖上述防护机制；总测试数 5 → 14。
-- 修复 `bench_runner.py` 中 3 处未关闭的文件句柄（由 `-W error::ResourceWarning` 检查发现）。
-- CI 增加 ResourceWarning 严格模式、bench CLI 冒烟测试，以及 scorecard 空表守卫。
-- `.gitignore` 排除 `bench/runs/`（含未公开回答与盐值）。
+### Evaluation scaffold (V3.2.1 landed early)
+- New `bench/bench_runner.py`: a five-step flow generate → template → import → reveal → summarise, standard library only.
+- Three comparison arms: A plain-prompt baseline, B structured framework, C full REBUILD flow.
+- Blind-review safeguards: SHA-256 ID hashing, shuffled presentation order, concealed configuration identity, same-salt reproducibility.
+- Mandatory checks: refusal to reveal with fewer than 2 independent reviewers; refusal to reveal if any reviewer has not covered every item; a re-check prompt when two reviewers differ by > 6 points.
+- New `bench/REVIEW_PROTOCOL.md` (scoring anchors and common misjudgements), `bench/HOWTO.md` (operations manual).
+- New `bench/prompts/A_plain.txt`, `bench/prompts/B_skill.txt`.
+- New `tests/test_bench_runner.py`, with 9 tests covering the safeguards above; total test count 5 → 14.
+- Fixed 3 unclosed file handles in `bench_runner.py` (found by a `-W error::ResourceWarning` check).
+- CI gains a ResourceWarning strict mode, a bench CLI smoke test, and an empty-scorecard guard.
+- `.gitignore` excludes `bench/runs/` (containing unpublished answers and the salt).

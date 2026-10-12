@@ -20,6 +20,13 @@ It does not try to produce longer reports. It forces four questions:
 
 [中文说明见 README.zh-CN.md](README.zh-CN.md)
 
+### A note on language
+
+Documentation is in English. **Two things are deliberately still in Chinese:**
+
+1. **`README.zh-CN.md`** — the original Chinese README, kept byte-for-byte.
+2. **The case study's source material** (`examples/metro_apartment/source/`) and the artefacts derived from it. These are a real client's own documents. Translating raw evidence would be *altering evidence* — the exact thing this project exists to prevent. The English [`case README`](examples/metro_apartment/README.md) explains what the case found and what it does not prove.
+
 ---
 
 ## Install
@@ -40,9 +47,9 @@ Downloads the repository to `~/.rebuild-strategist`, runs the test suite, and in
 
 ```bash
 curl -L -o rebuild-strategist.tar.gz \
-  https://github.com/Pacino101/rebuild-strategist/archive/refs/tags/v3.10.0.tar.gz
+  https://github.com/Pacino101/rebuild-strategist/archive/refs/tags/v3.11.0.tar.gz
 tar -xzf rebuild-strategist.tar.gz
-cd rebuild-strategist-3.10.0
+cd rebuild-strategist-3.11.0
 python -m unittest discover -s tests
 ```
 

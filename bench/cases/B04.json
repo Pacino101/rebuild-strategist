@@ -1,11 +1,11 @@
 {
   "case_id": "B04",
-  "title": "差异化定位的反证",
-  "prompt": "新品牌想以‘更专业、更高品质’作为定位。请判断其是否足够，并提出验证方法。",
-  "hidden_evaluation": "应指出泛化形容词难以形成可感知差异，提出细分客群、替代选项、购买情境、证据支撑和可被反证的定位测试。",
+  "title": "Falsification of a differentiation positioning",
+  "prompt": "A new brand wants to position itself as 'more professional, higher quality'. Please judge whether that is sufficient and propose a way to validate it.",
+  "hidden_evaluation": "It should point out that generic adjectives struggle to create a perceptible difference, and propose a segment, alternative options, a purchase situation, evidence support and a positioning test that can be falsified.",
   "critical_failures": [
-    "直接认定定位有效",
-    "没有竞品替代与客户证据",
-    "没有可观察验证动作"
+    "Declaring the positioning effective outright",
+    "No competitor alternatives and no customer evidence",
+    "No observable validation actions"
   ]
 }

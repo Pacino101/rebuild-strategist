@@ -1,10 +1,10 @@
-# 许可证决策记录
+# License decision record
 
-- 选择：MIT License
-- 记录日期：2026-10-12
-- 适用范围：本仓库中由发布者拥有权利、且未另行注明许可证的项目内容。
-- 版权标识：Copyright (c) 2026 涂家荣
+- Choice: MIT License
+- Date of record: 2026-10-12
+- Scope: project content in this repository that the publisher holds the rights to and that is not licensed otherwise.
+- Copyright notice: Copyright (c) 2026 涂家荣
 
-MIT 允许使用、复制、修改、合并、发布、分发、再许可和销售软件副本，但需保留版权声明和许可声明；软件按“现状”提供，不附带明示或默示保证。
+MIT permits use, copying, modification, merging, publication, distribution, sublicensing and sale of copies of the software, provided the copyright notice and the permission notice are retained; the software is provided "as is", without warranty of any kind, express or implied.
 
-发布者在公开仓库前仍应确认对所有提交内容拥有发布权，并检查第三方素材、商标、案例资料和个人/客户信息。采用 MIT 不会自动授予他人对 REBUILD 名称或商标的使用权，也不代表项目已完成法律审查。
+Before making the repository public, the publisher should still confirm that they hold the right to publish all submitted content, and check third-party material, trademarks, case material and personal/client information. Adopting MIT does not automatically grant others the right to use the REBUILD name or trademark, and does not mean the project has completed a legal review.

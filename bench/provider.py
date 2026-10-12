@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-REBUILD Provider Adapter — 可插拔的模型调用层。
+REBUILD Provider Adapter — a pluggable model-calling layer.
 
-设计目标：任何人 clone 本仓库后，接上自己的任意 API 即可运行 REBUILD，
-无需修改任何代码。仅依赖 Python 标准库；requests 等第三方库为可选。
+Design goal: anyone who clones this repository can plug in any API of their own
+and run REBUILD without modifying a single line of code. Standard library only;
+third-party libraries such as requests are optional.
 
-支持两类接入方式：
-  1. manual   手动模式（默认，零配置）——渲染提示词，人工粘贴，拿回输出
-  2. http     HTTP 模式——对接任意 OpenAI 兼容 / Anthropic 兼容端点
+Two ways to connect:
+  1. manual   manual mode (default, zero configuration) — render the prompt,
+              paste it by hand, paste the output back
+  2. http     HTTP mode — talk to any OpenAI-compatible / Anthropic-compatible
+              endpoint
 
-为什么不做成 SDK 依赖：
-  营销从业者多熟悉命令行而非 Python 环境。任何需要 pip install 的步骤
-  都会显著提高放弃率。标准库 urllib 足以覆盖绝大多数 API 调用。
+Why this is not an SDK dependency:
+  Marketing practitioners are more at home on the command line than in a Python
+  environment. Any step that requires pip install sharply raises the drop-off
+  rate. The standard-library urllib is enough for the overwhelming majority of
+  API calls.
 """
 import json
 import os
@@ -23,10 +28,10 @@ from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
-# 配置
+# Configuration
 # ---------------------------------------------------------------------------
 
-#: 已知的 provider 预设。用户可新增，字段语义一致即可。
+#: Known provider presets. Users may add more, as long as field semantics match.
 PROVIDER_PRESETS = {
     "openai": {
         "label": "OpenAI",
@@ -50,7 +55,7 @@ PROVIDER_PRESETS = {
         "api_key_env": "MOONSHOT_API_KEY",
     },
     "qwen": {
-        "label": "阿里通义千问",
+        "label": "Alibaba Qwen",
         "api_style": "dashscope",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "model": "qwen-plus",
@@ -64,14 +69,14 @@ PROVIDER_PRESETS = {
         "api_key_env": "ANTHROPIC_API_KEY",
     },
     "ollama": {
-        "label": "Ollama 本地模型",
+        "label": "Ollama local model",
         "api_style": "openai",
         "base_url": "http://localhost:11434/v1",
         "model": "qwen2.5:14b",
-        "api_key_env": "OLLAMA_API_KEY",  # 本地通常不需要真 key
+        "api_key_env": "OLLAMA_API_KEY",  # a local server usually needs no real key
     },
     "custom": {
-        "label": "自定义 OpenAI 兼容端点",
+        "label": "Custom endpoint",
         "api_style": "openai",
         "base_url": "",
         "model": "",
@@ -82,9 +87,9 @@ PROVIDER_PRESETS = {
 
 @dataclass
 class ProviderConfig:
-    """一次运行所需的全部模型参数。字段与 PROJVIDER_PRESETS 对应。"""
+    """All model parameters needed for one run. Fields mirror PROVIDER_PRESETS."""
     name: str = "manual"
-    label: str = "手动模式"
+    label: str = "Manual mode"
     api_style: str = "manual"
     base_url: str = ""
     model: str = ""
@@ -100,7 +105,7 @@ class ProviderConfig:
         preset = PROVIDER_PRESETS.get(name)
         if preset is None:
             raise ValueError(
-                f"未知 provider: {name}。可用: {', '.join(PROVIDER_PRESETS)}"
+                f"unknown provider: {name}. Available: {', '.join(PROVIDER_PRESETS)}"
             )
         return cls(name=name, **preset)
 
@@ -121,10 +126,10 @@ class ProviderConfig:
             if key:
                 return key
             if self.name == "ollama":
-                return "ollama"  # 本地服务接受任意占位值
+                return "ollama"  # from a local server, any placeholder value will do
             raise RuntimeError(
-                f"未设置环境变量 {self.api_key_env}。\n"
-                f"请先 export {self.api_key_env}=你的密钥，或改用手动模式。"
+                f"environment variable {self.api_key_env} is not set.\n"
+                f"Run export {self.api_key_env}=your-key first, or switch to manual mode."
             )
         return os.environ.get(self.api_key_env, "")
 
@@ -133,7 +138,7 @@ class ProviderConfig:
 
 
 # ---------------------------------------------------------------------------
-# 调用实现
+# Call implementations
 # ---------------------------------------------------------------------------
 
 def _post_json(url, headers, payload, timeout):
@@ -145,7 +150,7 @@ def _post_json(url, headers, payload, timeout):
 
 
 def _call_openai_style(config, prompt):
-    """覆盖 OpenAI / DeepSeek / Qwen / Ollama 等兼容端点。"""
+    """Covers OpenAI / DeepSeek / Qwen / Ollama and other compatible endpoints."""
     key = config.resolve_api_key()
     url = config.base_url.rstrip("/") + "/chat/completions"
     headers = {
@@ -191,17 +196,18 @@ CALLERS = {
 
 
 def _extract_usage(result) -> dict:
-    """从 API 响应里取 token 用量。
+    """Read token usage out of an API response.
 
-    **取不到就返回 available=False，绝不估算。** 估出来的 token 数会被当成
-    实际成本写进报告，那比没有数字更糟。
+    **If it cannot be read, returns available=False. Never estimate.** An
+    estimated token count would be written into the report as actual cost,
+    which is worse than having no number at all.
 
-    OpenAI 兼容端点用 prompt_tokens / completion_tokens；
-    Anthropic 用 input_tokens / output_tokens。统一成同一形状。
+    OpenAI-compatible endpoints use prompt_tokens / completion_tokens;
+    Anthropic uses input_tokens / output_tokens. Both normalise to one shape.
     """
     usage = (result or {}).get("usage")
     if not isinstance(usage, dict):
-        return {"available": False, "reason": "响应中未包含 usage 字段"}
+        return {"available": False, "reason": "the response contains no usage field"}
 
     prompt_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
     completion_tokens = usage.get("completion_tokens", usage.get("output_tokens"))
@@ -210,7 +216,7 @@ def _extract_usage(result) -> dict:
         total = prompt_tokens + completion_tokens
 
     if prompt_tokens is None and completion_tokens is None:
-        return {"available": False, "reason": "usage 字段存在但没有可识别的 token 计数",
+        return {"available": False, "reason": "a usage field exists but holds no recognisable token counts",
                 "raw": usage}
 
     return {
@@ -223,48 +229,51 @@ def _extract_usage(result) -> dict:
 
 
 def complete(config, prompt):
-    """统一调用入口。含指数退避重试。"""
+    """Unified call entry point. Includes exponential-backoff retries."""
     if not config.needs_api:
-        raise RuntimeError("manual 模式不调用 API，请使用 render_prompt 流程")
+        raise RuntimeError("manual mode does not call the API; use the render_prompt flow")
 
     caller = CALLERS.get(config.api_style)
     if caller is None:
-        raise ValueError(f"不支持的 api_style: {config.api_style}")
+        raise ValueError(f"unsupported api_style: {config.api_style}")
 
     text, _ = complete_with_usage(config, prompt)
     return text
 
 
 def complete_with_usage(config, prompt):
-    """与 complete 相同，但额外返回 token 用量：`(文本, usage)`。
+    """Same as complete, but also returns token usage: `(text, usage)`.
 
-    用量取不到时 `usage["available"]` 为 False——调用方应如实记录
-    「本次未取得用量」，而不是补一个估算值。
+    When usage cannot be read, `usage["available"]` is False — the caller should
+    record "no usage obtained this time" honestly instead of filling in an
+    estimate.
     """
     if not config.needs_api:
-        raise RuntimeError("manual 模式不调用 API，请使用 render_prompt 流程")
+        raise RuntimeError("manual mode does not call the API; use the render_prompt flow")
 
     caller = CALLERS.get(config.api_style)
     if caller is None:
-        raise ValueError(f"不支持的 api_style: {config.api_style}")
+        raise ValueError(f"unsupported api_style: {config.api_style}")
 
     last_error = None
     for attempt in range(1, config.max_retries + 1):
         try:
             return caller(config, prompt)
         except urllib.error.HTTPError as exc:
-            # 读取错误响应体在个别情况下会失败（例如 HTTPError 未携带 fp——
-            # Python 3.9 会在这里抛 KeyError）。读不到就当没有响应体：
-            # 为了读一段错误信息而让整个调用崩掉，是把手段当成了目的。
+            # Reading the error response body can fail in rare cases (for
+            # example an HTTPError carrying no fp — Python 3.9 raises KeyError
+            # here). If it cannot be read, treat it as no body: crashing the
+            # whole call just to read an error message is mistaking the means
+            # for the end.
             try:
                 body = exc.read().decode("utf-8", errors="replace")[:300]
             except Exception:  # noqa: BLE001
                 body = ""
-            # 4xx 多为配置或配额问题，重试无意义
+            # 4xx is mostly a configuration or quota problem, so retrying is pointless
             if 400 <= exc.code < 500 and exc.code not in (429,):
                 raise RuntimeError(
-                    f"HTTP {exc.code}：{body}\n"
-                    f"请检查 base_url、model 名称与密钥是否正确。"
+                    f"HTTP {exc.code}: {body}\n"
+                    f"Check whether base_url, the model name and the key are correct."
                 ) from exc
             last_error = exc
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
@@ -272,61 +281,62 @@ def complete_with_usage(config, prompt):
 
         if attempt < config.max_retries:
             wait = 2 ** attempt
-            print(f"  调用失败（{last_error}），{wait}s 后重试 "
+            print(f"  call failed ({last_error}); retrying in {wait}s "
                   f"[{attempt}/{config.max_retries}]")
             time.sleep(wait)
 
-    raise RuntimeError(f"重试 {config.max_retries} 次后仍失败：{last_error}")
+    raise RuntimeError(f"still failing after {config.max_retries} retries: {last_error}")
 
 
 def check_available(config):
-    """预检：配置是否可用。返回 (是否可用, 说明)。
+    """Pre-flight check: is the configuration usable? Returns (usable, note).
 
-    检查顺序有意为之：先查结构性错误（缺 base_url / model），
-    再查凭据。这样 custom provider 的用户会先看到真正要修的问题，
-    而不是被"未设置密钥"误导。
+    The check order is deliberate: structural errors first (missing base_url /
+    model), credentials second. That way users of a custom provider see the
+    problem they actually need to fix, instead of being misled by "key not set".
     """
     if not config.needs_api:
-        return True, "手动模式无需预检"
+        return True, "manual mode needs no pre-flight check"
     if not config.base_url:
-        return False, "base_url 为空，请用 custom provider 并指定 --base-url"
+        return False, "base_url is empty; use the custom provider and pass --base-url"
     if not config.model:
-        return False, "model 为空，请在配置中指定 --model"
+        return False, "model is empty; specify --model in the configuration"
     try:
         key = config.resolve_api_key()
     except RuntimeError as exc:
         return False, str(exc)
     if not key:
-        return False, f"密钥为空（{config.api_key_env}）"
+        return False, f"key is empty ({config.api_key_env})"
     return True, f"{config.label} · {config.model}"
 
 
 def _pad(text, width):
-    """按显示宽度补齐：中文占 2 列，英文数字占 1 列。"""
+    """Pad to a display width: Chinese characters take 2 columns, Latin
+    letters and digits 1."""
     display = sum(2 if ord(c) > 0x2E7F else 1 for c in text)
     return text + " " * max(0, width - display)
 
 
 def describe_providers():
-    """列出所有已知 provider，供 CLI 展示。"""
-    lines = ["可用 provider 预设：", ""]
+    """List every known provider, for the CLI to display."""
+    lines = ["Available provider presets:", ""]
     for name, preset in PROVIDER_PRESETS.items():
         env = preset.get("api_key_env", "")
         if preset["api_style"] == "manual":
-            needs = "无需密钥"
+            needs = "no key needed"
         elif name == "ollama":
-            needs = "本地运行，通常无需密钥"
+            needs = "runs locally, usually no key needed"
         else:
-            needs = f"需要 {env}"
+            needs = f"needs {env}"
         lines.append(f"  {_pad(name, 13)}{_pad(preset['label'], 22)}{needs}")
     lines += [
         "",
-        "用法：",
+        "Usage:",
         "  python bench/provider.py check deepseek",
         "  export DEEPSEEK_API_KEY=sk-xxx",
         "  python bench/provider.py call deepseek --prompt-file prompt.txt",
         "",
-        "自定义 OpenAI 兼容端点：",
+        "Custom OpenAI-compatible endpoint:",
         "  python bench/provider.py call custom \\",
         "      --base-url https://your-endpoint/v1 \\",
         "      --model your-model \\",
@@ -343,25 +353,25 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="REBUILD 模型接入层：检查配置与单次调用测试"
+        description="REBUILD model adapter: check configuration and try a single call"
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("list", help="列出所有 provider 预设")
+    sub.add_parser("list", help="list all provider presets")
 
-    c = sub.add_parser("check", help="预检某个 provider 配置")
+    c = sub.add_parser("check", help="pre-flight check one provider configuration")
     c.add_argument("provider")
 
-    p = sub.add_parser("call", help="对任意 provider 发起一次测试调用")
+    p = sub.add_parser("call", help="make one test call to any provider")
     p.add_argument("provider")
-    p.add_argument("--prompt-file", required=True, help="提示词文件路径")
+    p.add_argument("--prompt-file", required=True, help="path to the prompt file")
     p.add_argument("--base-url", default=None)
     p.add_argument("--model", default=None)
     p.add_argument("--api-key-env", default=None)
     p.add_argument("--api-style", default=None, choices=list(CALLERS) + ["manual"])
     p.add_argument("--temperature", type=float, default=None)
     p.add_argument("--max-tokens", type=int, default=None)
-    p.add_argument("--output", default=None, help="结果写入文件")
+    p.add_argument("--output", default=None, help="write the result to a file")
     p.add_argument("--timeout", type=int, default=None)
 
     args = parser.parse_args()
@@ -373,7 +383,7 @@ def main():
     try:
         config = ProviderConfig.from_preset(args.provider)
     except ValueError as exc:
-        print(f"错误：{exc}", file=os.sys.stderr)
+        print(f"error: {exc}", file=os.sys.stderr)
         return 1
 
     if args.cmd == "check":
@@ -390,22 +400,22 @@ def main():
 
         ok, message = check_available(config)
         if not ok:
-            print(f"配置检查未通过：{message}", file=os.sys.stderr)
+            print(f"configuration check failed: {message}", file=os.sys.stderr)
             return 1
-        print(f"使用：{message}")
+        print(f"using: {message}")
 
         prompt = Path(args.prompt_file).read_text(encoding="utf-8")
-        print(f"提示词 {len(prompt)} 字符，调用中…")
+        print(f"prompt is {len(prompt)} characters; calling…")
 
         try:
             text = complete(config, prompt)
         except RuntimeError as exc:
-            print(f"调用失败：{exc}", file=os.sys.stderr)
+            print(f"call failed: {exc}", file=os.sys.stderr)
             return 1
 
         if args.output:
             Path(args.output).write_text(text, encoding="utf-8")
-            print(f"输出已写入 {args.output}（{len(text)} 字符）")
+            print(f"output written to {args.output} ({len(text)} characters)")
         else:
             print("-" * 60)
             print(text)

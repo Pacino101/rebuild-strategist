@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""REBUILD 数据源层。
+"""REBUILD data source layer.
 
-把外部材料取回来，变成**带哈希、可校验、可追溯**的文档，供证据账本引用。
+Fetches external material and turns it into documents that are **hashed,
+verifiable and traceable**, for the evidence ledger to reference.
 
-边界（刻意为之，不是能力缺失）
-------------------------------
-- 只读，不写回任何外部系统。
-- 不内置任何具体平台的连接器。URL、鉴权、字段路径都由使用者提供。
-- 不解析营销语义、不做归因、不采集用户行为。
+Boundaries (deliberate, not a capability gap)
+--------------------------------------------
+- Read-only; never writes back to any external system.
+- Ships no connector for any specific platform. URL, authentication and
+  field paths are all supplied by the user.
+- Does not parse marketing semantics, does not do attribution, does not
+  collect user behaviour.
 
-用法
-----
+Usage
+-----
     from sources import DocumentStore, files, http_api
 
     store = DocumentStore("projects/my-project")

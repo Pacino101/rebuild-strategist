@@ -1,6 +1,6 @@
 {
   "name": "REBUILD Strategist Original Decision-Centric Marketing Agent OS",
-  "version": "3.10.0",
+  "version": "3.11.0",
   "external_marketing_project_dependencies": [],
   "python_runtime_dependencies": [],
   "implemented": [
@@ -33,7 +33,8 @@
     "AS_EXPECTED deviation type: a review that finds no deviation is a legitimate conclusion, not UNKNOWN",
     "English documentation as the primary language; Chinese preserved as README.zh-CN.md",
     "one-command installer (install.sh) and a PATH launcher (bin/rebuild)",
-    "Python 3.9 support (widened from 3.10; the two remaining 3.9 failures were a real bug in error-body reading and are fixed)"
+    "Python 3.9 support (widened from 3.10; the two remaining 3.9 failures were a real bug in error-body reading and are fixed)",
+    "full English documentation (README, methodology, agent contracts, docs, schemas, benchmark, case study, code comments); Chinese preserved as README.zh-CN.md and in the case's source evidence"
   ],
   "not_implemented": [
     "parallel multi-agent dispatch (the orchestrator is strictly sequential: one role, one model call)",

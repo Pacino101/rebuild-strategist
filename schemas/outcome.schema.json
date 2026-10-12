@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "REBUILD Decision Outcome",
-  "description": "决策的实际结果回填。方法论要求复盘必须比较预期与实际、区分执行偏差与策略失效，并记录下一步如何改变——只有填了这个，决策循环才算闭合。",
+  "description": "Backfilling the actual outcome of a decision. The methodology requires that a review compare expected against actual, distinguish execution failure from strategy failure, and record how the next step changes — only when this is filled in is the decision loop closed.",
   "type": "object",
   "required": [
     "decision_id",
@@ -23,12 +23,12 @@
     "expected": {
       "type": "string",
       "minLength": 1,
-      "description": "当初预期的结果，须与决策记录中的验证动作对应"
+      "description": "The outcome expected at the time; must correspond to the validation actions in the decision record"
     },
     "actual": {
       "type": "string",
       "minLength": 1,
-      "description": "实际观察到的结果。没有数据时须写明「未采集到数据」，不得用印象代替"
+      "description": "The outcome actually observed. When there is no data, state \"no data was collected\"; impressions must not be used as a substitute"
     },
     "deviation_type": {
       "enum": [
@@ -39,14 +39,14 @@
         "MIXED",
         "UNKNOWN"
       ],
-      "description": "AS_EXPECTED=预期兑现（无需归因）；EXECUTION=执行偏差（方向对、力度不足）；STRATEGY=策略失效（方向本身错了）；ASSUMPTION=关键假设错误；MIXED=多重原因；UNKNOWN=无法归因。**注意 AS_EXPECTED 是合法且重要的取值**——不是每次复盘都能找到偏差，「按预期发生了」本身就是一个结论。此前枚举里没有这一项，导致预期兑现时只能勉强归到 UNKNOWN，等于把「一切正常」说成「无法归因」。"
+      "description": "AS_EXPECTED=as expected (no attribution needed); EXECUTION=execution failure (right direction, insufficient force); STRATEGY=strategy failure (the direction itself was wrong); ASSUMPTION=key assumption was wrong; MIXED=multiple causes; UNKNOWN=cannot be attributed. **Note that AS_EXPECTED is a legitimate and important value** — not every review can find a deviation, and \"it happened as expected\" is itself a conclusion. This value was previously absent from the enum, so an as-expected outcome could only be forced into UNKNOWN, which amounts to describing \"everything is normal\" as \"cannot be attributed\"."
     },
     "evidence_ids": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "支撑本次复盘判断的证据账本编号"
+      "description": "IDs in the evidence ledger that support this review's judgement"
     },
     "assumption_updates": {
       "type": "array",
@@ -84,7 +84,7 @@
         "STOP",
         "ROLLBACK"
       ],
-      "description": "继续 / 调整 / 停止 / 回退到受影响的决策阶段"
+      "description": "CONTINUE / ADJUST / STOP / ROLLBACK to the affected decision phase"
     },
     "notes": {
       "type": [

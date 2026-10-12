@@ -123,7 +123,7 @@ class AnonymizationGuardTests(unittest.TestCase):
 
     def test_case_readme_states_limitations(self):
         text = (CASE / "README.md").read_text(encoding="utf-8")
-        for token in ("已知偏差", "这个案例没有证明什么", "脱敏"):
+        for token in ("Known deviations", "What this case does not prove", "anonymisation"):
             self.assertIn(token, text, f"案例 README 缺少「{token}」一节")
 
 

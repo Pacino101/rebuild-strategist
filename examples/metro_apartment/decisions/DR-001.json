@@ -1,45 +1,45 @@
 {
-  "question": "在「甲方出 300 万装修 / 乙方出 100 万履约押金 / 65:35 分成」的条款下，是否承接该公寓项目的品牌运营？",
+  "question": "Under the clause “the owner contributes 3 million yuan for the fit-out / the operator contributes a 1 million yuan performance deposit / 65:35 revenue share”, should we take on the brand operation of this apartment project?",
   "deadline": null,
   "options": [
     {
-      "name": "按现条款签约",
-      "rationale": "立即锁定项目，但乙方单位经济结构性为负"
+      "name": "Sign under the current clause",
+      "rationale": "Locks in the project immediately, but the operator's unit economics are structurally negative"
     },
     {
-      "name": "先做条款压力测试、重谈分成结构后再签",
-      "rationale": "以数周时间换取条款确定性"
+      "name": "Run a clause stress test first, renegotiate the revenue-share structure, then sign",
+      "rationale": "Trades a few weeks for certainty on the terms"
     },
     {
-      "name": "直接放弃该项目",
-      "rationale": "避免全部投入，但放弃了已识别的市场机会"
+      "name": "Walk away from the project",
+      "rationale": "Avoids all the investment, but gives up a market opportunity that has already been identified"
     }
   ],
-  "chosen_option": "先做条款压力测试、重谈分成结构后再签",
+  "chosen_option": "Run a clause stress test first, renegotiate the revenue-share structure, then sign",
   "rejected_options": [
     {
-      "name": "按现条款签约",
-      "reason": "乙方月现金流 -44,523 元、押金 22 个月烧穿，签约即锁定一份乙方 8 年累计亏损的合同"
+      "name": "Sign under the current clause",
+      "reason": "The operator's monthly cash flow is -44,523 yuan and the deposit burns through in 22 months; signing locks in a contract under which the operator makes a cumulative loss over 8 years"
     },
     {
-      "name": "直接放弃该项目",
-      "reason": "证据不足以支撑「不承接」；两项 P0 合规核查未完成，可能通道根本不存在，也可能完全合法"
+      "name": "Walk away from the project",
+      "reason": "The evidence does not support “not taking it on”; the two P0 compliance checks are incomplete — the channel may not exist at all, or it may be entirely lawful"
     }
   ],
   "tradeoffs": [
-    "放弃立即锁定项目机会",
-    "承担甲方转向其他运营商的时间成本"
+    "Giving up the chance to lock in the project immediately",
+    "Bearing the time cost of the owner turning to another operator"
   ],
   "key_assumptions": [
-    "乙方会接受 65:35 的分成结构",
-    "稳态出租率可达 93%"
+    "The operator will accept the 65:35 revenue-share structure",
+    "Steady-state occupancy can reach 93%"
   ],
   "falsification_conditions": [
-    "若甲方坚持 65:35，乙方必然拒签或签约后违约退出",
-    "若同街实测稳态出租率低于 88%，全部回本测算翻转"
+    "If the owner insists on 65:35, the operator will inevitably refuse to sign, or default and exit after signing",
+    "If measured steady-state occupancy on the same street is below 88%, every payback calculation flips"
   ],
   "validation_actions": [
-    "把现条款与反解出的可行区间同时摆给双方，做条款压力测试"
+    "Put the current clause and the back-solved feasible range in front of both parties at the same time, and run a clause stress test"
   ],
   "review_date": "2026-06-30",
   "decision_id": "DR-001"

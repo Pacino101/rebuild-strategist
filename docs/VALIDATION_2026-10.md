@@ -1,221 +1,221 @@
-# 首次真实模型验证记录（2026-10-13）
+# First real-model validation log (2026-10-13)
 
-这份文件记录编排器**第一次**接真实语言模型运行的经过，以及它暴露出的问题。
+This file records the **first** time the orchestrator was run against a real language model, and the problems it exposed.
 
-在此之前，编排器的全部 27 项测试都注入假模型——**真实 provider 分支的测试覆盖为零**。
-「运行时」是一句声称，不是一个事实。这次运行把它变成了事实，代价是发现三个缺陷。
+Before this, all 27 orchestrator tests injected a fake model — **test coverage of the real provider branch was zero**.
+"Runtime" was a claim, not a fact. This run turned it into a fact, at the cost of finding three defects.
 
 ---
 
-## 一、运行设置
+## 1. Run setup
 
-| 项 | 内容 |
+| Item | Content |
 |---|---|
-| 模型 | DeepSeek `deepseek-chat`，temperature 0.3 |
-| 项目 | `examples/metro_apartment`（真实项目脱敏版）+ 一个完整证据的测试项目 |
-| 证据 | 5 条真实证据（来源指向材料库 `DOC-001/002/003`） |
-| 调用 | 每阶段：角色调用 + 1 次门禁判定；结束时 1 次决策记录生成 |
+| Model | DeepSeek `deepseek-chat`, temperature 0.3 |
+| Project | `examples/metro_apartment` (anonymised version of a real project) + a test project with complete evidence |
+| Evidence | 5 real evidence items (sources point to material library `DOC-001/002/003`) |
+| Calls | Per phase: role calls + 1 gate decision; 1 decision-record generation at the end |
 
 ---
 
-## 二、发现并修复的三个缺陷
+## 2. Three defects found and fixed
 
-### 缺陷 1：所有阶段共用同一套门禁标准（严重）
+### Defect 1: All phases shared the same gate criteria (severe)
 
-**症状**：连续 **4 次**运行全部卡死在 `DISCOVER`，一次都没能推进到第二个阶段。
+**Symptom**: **4** consecutive runs all got stuck at `DISCOVER`; not one advanced to the second phase.
 
-**原因**：`build_gate_packet()` 对六个阶段套用同一张门禁清单，其中第一条是
-「证据不足 → 不得进入战略定案」。但 `DISCOVER`（R 界定现实）**本来就发生在补证之前**——
-`REBUILD_METHOD.md` 给 R 阶段的门禁是「业务目标与症状分开写；缺少基线必须标记未知」，
-这是**问题界定质量**，不是证据充足度。
+**Cause**: `build_gate_packet()` applied the same gate checklist to all six phases, and its first item was
+"insufficient evidence → must not proceed to a strategy decision". But `DISCOVER` (R, framing reality) **happens before evidence gathering by design** —
+the gate `REBUILD_METHOD.md` gives the R phase is "write business goals and symptoms separately; anything lacking a baseline must be marked unknown",
+which is **problem-framing quality**, not evidence sufficiency.
 
-拿后一阶段的标准卡前一阶段，结果是流程永远无法推进。
+Applying a later phase's criteria to an earlier phase meant the flow could never advance.
 
-**修法**：新增 `PHASE_GATES`，逐阶段使用各自的判据（直接取自 `REBUILD_METHOD.md`），
-并在门禁包里明确写上「只按本阶段的标准判定」。
+**Fix**: added `PHASE_GATES`, so each phase uses its own criteria (taken directly from `REBUILD_METHOD.md`),
+and the gate packet now states explicitly: "judge only by this phase's criteria".
 
-**修复效果**：同一项目同一模型，修复前 4/4 阻断，修复后完整跑通 `DISCOVER → REVIEW`。
+**Effect of the fix**: with the same project and the same model, 4/4 runs were blocked before the fix and a complete `DISCOVER → REVIEW` run succeeded after it.
 
-### 缺陷 2：门禁只有「放行 / 阻断」两种选择（严重）
+### Defect 2: The gate offered only two choices, "pass / block" (severe)
 
-**症状**：即使门禁判据修好后，模型仍然倾向阻断。
+**Symptom**: Even after the gate criteria were fixed, the model still leaned towards blocking.
 
-**原因**：门禁包的措辞是——
+**Cause**: the gate packet was worded like this —
 
-> 若证据不足以支撑本阶段结论，选择表示回退或需要澄清的事件，而不是勉强放行。
-> **放行一个证据不足的阶段，是本系统最严重的失败。**
+> If the evidence does not support this phase's conclusion, choose the event that indicates rollback or the need for clarification, rather than forcing a pass.
+> **Passing a phase with insufficient evidence is the most severe failure of this system.**
 
-这句话把「阻断」变成了唯一安全选项。但方法论本身明确允许 **降级输出**
-（「证据不足时允许停留、补证或降级输出」），而门禁包从未提供这个选项。
+This wording made "block" the only safe option. But the methodology itself explicitly allows **degraded output**
+("when evidence is insufficient, staying put, gathering further evidence, or degraded output is allowed"), and the gate packet never offered that option.
 
-**修法**：引入三档判定——`SUFFICIENT` / `DEGRADED`（降级放行，须逐条写明 `limitations`）/
-`INSUFFICIENT`；并重新定义失败：
+**Fix**: introduced a three-tier decision — `SUFFICIENT` / `DEGRADED` (degraded pass, with `limitations` listed item by item) /
+`INSUFFICIENT`; and redefined failure:
 
-> 本系统最严重的失败**不是**「带着不完整的证据推进」，而是**「推进时假装证据是完整的」**。
+> The most severe failure of this system is **not** "advancing with incomplete evidence" but **"pretending the evidence is complete while advancing"**.
 
-**修复效果**：模型开始使用 `evidence_grade` 字段，并能给出**精确的选档理由**。
-例如在真实案例中它选择 `INSUFFICIENT` 并说明：「存在两项一票否决级阻塞……
-结论方向会因缺失信息而反转……该信息只有决策者本人能提供」——完全对应判据。
+**Effect of the fix**: the model began using the `evidence_grade` field and could give **precise reasons for its tier choice**.
+In the real case, for example, it chose `INSUFFICIENT` and explained: "there are two veto-level blockers …
+the direction of the conclusion would flip because of the missing information … only the decision-maker can supply that information" — matching the criteria exactly.
 
-### 缺陷 3：Schema 把模型的合理产出判为非法（中等）
+### Defect 3: The schema rejected a reasonable model output as invalid (moderate)
 
-**症状**：决策记录校验报 7 项错误：`$.key_assumptions[n]: 类型应为 string，实际为 object`。
+**Symptom**: decision-record validation reported 7 errors: `$.key_assumptions[n]: type should be string, got object`.
 
-**原因**：模型自发把每条关键假设与它的反证条件配成对：
+**Cause**: the model spontaneously paired each key assumption with its falsification condition:
 
 ```json
-{"assumption": "实测转化率 ≥15%",
- "falsification_condition": "实测 <5% 则推翻"}
+{"assumption": "measured conversion rate ≥15%",
+ "falsification_condition": "if measured <5%, the assumption is refuted"}
 ```
 
-而 schema 只允许 `array of string`。**模型的产出比 schema 更有用**——
-方法论要求「每条关键假设都要配一个能推翻它的条件」，模型正是这么做的。
+But the schema allowed only `array of string`. **The model's output was more useful than the schema** —
+the methodology requires that "every key assumption be paired with a condition that can refute it", and that is exactly what the model did.
 
-**修法**：放宽 `decision_record.schema.json` 的 `key_assumptions`，
-用 `oneOf` 同时接受纯字符串（向后兼容）与结构化对象。
+**Fix**: relaxed `key_assumptions` in `decision_record.schema.json`
+to accept both plain strings (backwards compatible) and structured objects via `oneOf`.
 
-> 这与真实项目案例的发现完全一致：案例跑在一套更早的 schema 上，
-> 当时就暴露出「真实项目需要的字段比 schema 提供的多」。这次是**现场复现**。
+> This matches the finding from the real project case exactly: the case ran on an earlier schema,
+> and even then it exposed that "a real project needs more fields than the schema provides". This time it was **reproduced live**.
 
-### 附带修复
+### Incidental fix
 
-`BLOCKED` 状态下的跳过提示此前输出「可用序列：**[]**」——对使用者毫无帮助，
-而它恰恰是最需要指引的状态。现在会说明如何解除阻塞。
+The skip hint in the `BLOCKED` state used to print "available sequences: **[]**" — no help to the user at all,
+in precisely the state that most needs guidance. It now explains how to clear the block.
 
 ---
 
-## 三、三条状态机路径均已在真实模型上走通
+## 3. All three state-machine paths have now been run through on a real model
 
-| 路径 | 观察到的结果 |
+| Path | Observed result |
 |---|---|
-| **完整推进** | `DISCOVER → EVIDENCE → STRATEGY → ECONOMICS → EXECUTION → REVIEW`，六阶段门禁全部判为 `DEGRADED`（证据不完整但可作出有条件结论） |
-| **回退** | `DISCOVER → EVIDENCE → DISCOVER`（门禁判 `DEGRADED` 但选择 `evidence_gap` 回退补证） |
-| **阻断** | 真实案例：`DISCOVER → BLOCKED`（两项 P0 一票否决项未核，模型判定不得推进） |
+| **Full advance** | `DISCOVER → EVIDENCE → STRATEGY → ECONOMICS → EXECUTION → REVIEW`; all six phase gates were judged `DEGRADED` (evidence incomplete but a conditional conclusion is possible) |
+| **Rollback** | `DISCOVER → EVIDENCE → DISCOVER` (the gate judged `DEGRADED` but chose `evidence_gap` to roll back and gather further evidence) |
+| **Block** | Real case: `DISCOVER → BLOCKED` (two P0 veto items unchecked; the model judged that it must not proceed) |
 
-三条路径都是状态机裁决的合法迁移，**没有任何一次非法事件被接受**。
-
----
-
-## 四、真实案例运行中值得记录的两点
-
-**① 模型拒绝了伪装成结论的假设。** 在情景测试中，注入的证据被标注为
-`ASSUMPTION`，模型明确写出「账本 E-006 仅为情景假设非已核实」，拒绝据此推进。
-把合成数据标为「合成」，模型就不会拿它当证据用。
-
-**② 模型发现了原始材料之间的一处实质矛盾。** 三份材料对分成方向的表述不一致
-（任务包 65:35 vs 一份文档推荐的 35:65），模型将其标为**证据冲突**并要求先裁决口径
-——这个矛盾在原始项目里没有被任何一方指出过。
+All three paths were legal transitions adjudicated by the state machine, and **not a single illegal event was accepted**.
 
 ---
 
-## 五、这次验证没有做到的事
+## 4. Two things worth recording from the real-case run
 
-- **仍未跑完一次「真实项目」的完整循环。** 真实案例在 R 阶段就正确阻断了，
-  因此 E/B/U/I/D 是用一个**测试项目**（本人构造，非真实商业项目）跑通的。
-- **未测试故障路径**：429、超时、响应被截断、返回非 JSON、模型返回无法解析的门禁输出
-  （最后一项有单元测试覆盖，其余没有）。
-- **未做重复运行**：同一输入跑两次得到不同结果（一次推进到 REVIEW，一次回退到 DISCOVER），
-  这是 temperature 0.3 下的正常波动，但也说明**单次运行不足以评价输出质量**。
-- **未评估输出质量的绝对水平**：跑通了 ≠ 分析得好。这需要独立评审，目前没有。
+**① The model refused an assumption disguised as a conclusion.** In a scenario test, the injected evidence was labelled
+`ASSUMPTION`, and the model wrote explicitly that "ledger E-006 is only a scenario assumption, not verified", refusing to advance
+on that basis. Label synthetic data as "synthetic" and the model will not treat it as evidence.
+
+**② The model found a substantive contradiction between the source materials.** The three materials described the revenue-share direction
+inconsistently (the task package said 65:35, while one document recommended 35:65); the model flagged it as an **evidence conflict** and required the basis to be adjudicated first
+— a contradiction that no party had pointed out in the original project.
 
 ---
 
-## 六、故障路径（第二轮）
+## 5. What this validation did not achieve
 
-### 真实 API 故障探针
+- **A full loop on a "real project" has still not been completed.** The real case was correctly blocked at the R phase,
+  so E/B/U/I/D were run through on a **test project** (constructed by the author, not a real business project).
+- **Failure paths were not tested**: 429, timeouts, truncated responses, non-JSON responses, and gate outputs the model returns that cannot be parsed
+  (the last has unit-test coverage; the rest do not).
+- **No repeated runs were done**: the same input run twice produced different results (one advanced to REVIEW, one rolled back to DISCOVER);
+  this is normal variance at temperature 0.3, but it also shows that **a single run is not enough to evaluate output quality**.
+- **The absolute level of output quality was not assessed**: running through ≠ analysing well. That requires independent review, which does not currently exist.
 
-对真实 DeepSeek 端点逐一触发故障，观察 `bench/provider.py` 的反应：
+---
 
-| 故障 | 实际行为 | 评价 |
+## 6. Failure paths (second round)
+
+### Real API failure probes
+
+Each failure was triggered in turn against the real DeepSeek endpoint, observing how `bench/provider.py` reacted:
+
+| Failure | Actual behaviour | Assessment |
 |---|---|---|
-| 无效密钥 | `HTTP 401`，**不重试**，回显 API 原文 + 提示检查密钥 | ✅ 4xx 重试无意义，判断正确 |
-| 不存在的模型 | `HTTP 400`，回显 API 支持的模型名列表 | ✅ 错误信息足以自助修复 |
-| 不可达主机 | 重试 3 次（2s/4s/8s 退避）后报连接错误 | ✅ 瞬时故障值得重试 |
-| 错误的 base_url 路径 | `HTTP 404` + 「请检查 base_url、model 名称与密钥」 | ✅ |
+| Invalid key | `HTTP 401`, **no retry**, echoes the API's original text + a hint to check the key | ✅ retrying a 4xx is pointless; the judgement is correct |
+| Non-existent model | `HTTP 400`, echoes the list of model names the API supports | ✅ the error message is enough to self-repair |
+| Unreachable host | retries 3 times (2s/4s/8s backoff), then reports a connection error | ✅ transient failures are worth retrying |
+| Wrong base_url path | `HTTP 404` + "check base_url, model name and key" | ✅ |
 
-> 小瑕疵：404 响应体为空时，错误信息里「HTTP 404：」后面是空白，读起来像漏了内容。
+> Minor blemish: when the 404 response body is empty, the error message has nothing after "HTTP 404:", which reads as if content were missing.
 
-### 编排器故障路径（新增 7 项测试）
+### Orchestrator failure paths (7 new tests)
 
-| 场景 | 行为 |
+| Scenario | Behaviour |
 |---|---|
-| 单个角色调用失败 | 其余角色产物保留，失败记入 `errors`（含角色名与原因） |
-| **全部角色失败** | 门禁**不再被调用**——此前会拿着空输入白调一次模型。已修 |
-| 门禁调用抛异常 | 不推进，`reason` 记录异常原文 |
-| 门禁返回被截断的 JSON | 不推进 |
-| 决策记录调用失败 | 运行正常收尾，状态迁移照样生效，错误记入 `decision_record.error` |
-| 决策记录返回被截断的 JSON | 同上，报「无法解析为 JSON」并指向原始输出文件 |
-| **provider 名称写错** | 此前每个角色各失败一次，被记成 6 条「角色失败」——使用者会去查网络。**已修**：现在在写任何产物之前就报错并列出可用名称 |
+| A single role call fails | the other roles' artefacts are kept; the failure is recorded in `errors` (with role name and reason) |
+| **All roles fail** | the gate is **no longer called** — previously it wastefully called the model once with empty input. Fixed |
+| The gate call throws | does not advance; `reason` records the exception text |
+| The gate returns truncated JSON | does not advance |
+| The decision-record call fails | the run finishes normally, the state transition still takes effect, and the error is recorded in `decision_record.error` |
+| The decision record returns truncated JSON | same as above; reports "cannot parse as JSON" and points to the raw output file |
+| **Provider name misspelled** | previously every role failed once, recorded as 6 "role failures" — and the user would go and check the network. **Fixed**: it now errors before writing any artefact and lists the available names |
 
 ---
 
-## 七、运行间一致性（第二轮）
+## 7. Run-to-run consistency (second round)
 
-同一输入、同一模型、同一证据，各跑 3 次。
+The same input, same model and same evidence, run 3 times each.
 
-### 是否走完流程
+### Did the flow complete
 
-| 温度 | 走完六阶段 | 终态 |
+| Temperature | Completed all six phases | Final state |
 |---|---|---|
-| 0 | **3 / 3** | DISCOVER ×2、REVIEW ×1（`new_cycle` 回到起点属正常路径） |
+| 0 | **3 / 3** | DISCOVER ×2, REVIEW ×1 (`new_cycle` returning to the start is a normal path) |
 | 0.3 | **3 / 3** | DISCOVER ×3 |
 
-> 对比：门禁缺陷修复前是 **0 / 4**（全部卡死在 DISCOVER）。修好后 **6 / 6** 走完。
+> Comparison: before the gate defect was fixed it was **0 / 4** (all stuck at DISCOVER). After the fix, **6 / 6** completed.
 
-### 决策内容是否一致
+### Was the decision content consistent
 
-| 运行 | 选择 | 候选 | 反证条件 | 验证动作 |
+| Run | Choice | Options | Falsification conditions | Validation actions |
 |---|---|---|---|---|
-| 1 | 暂不选择任何选项上线；若必须给方向则优先验证 B 的核销假设 | 3 | **15** | 12 |
-| 2 | 暂缓上线，先执行补证 | 3 | **6** | 8 |
-| 3 | 以选项 A 为方向，先执行 4 周限额 30 人封闭试点 | 4 | **10** | 10 |
+| 1 | Do not take any option live for now; if a direction is required, prioritise validating B's redemption assumption | 3 | **15** | 12 |
+| 2 | Defer launch; gather further evidence first | 3 | **6** | 8 |
+| 3 | Take option A as the direction; run a closed pilot of 30 people over 4 weeks first | 4 | **10** | 10 |
 
-**结论：方向一致，细节不可复现。**
+**Conclusion: the direction is consistent; the details are not reproducible.**
 
-- **方向稳定**：三次都得出「先验证、别急着上线」——这是该决策应有的结论。
-- **细节不稳**：反证条件 6 / 10 / 15 条，相差 2.5 倍；一次给出完整的试点设计（4 周、30 人），另一次只说「先补证」。
-- **temperature=0 并不能消除差异**。多数 API 在 temperature=0 下也不保证确定性。
+- **Direction is stable**: all three runs concluded "validate first, don't rush to launch" — which is the conclusion this decision should reach.
+- **Details are unstable**: falsification conditions numbered 6 / 10 / 15, a 2.5× spread; one run gave a complete pilot design (4 weeks, 30 people) while another said only "gather further evidence first".
+- **temperature=0 does not eliminate the differences.** Most APIs do not guarantee determinism even at temperature=0.
 
-**这对使用者意味着什么：**
+**What this means for users:**
 
-1. **单次运行的输出不能当作「答案」**，只能当作「一个可用的起点」。
-2. 要获得稳定结论，应多次运行后比较——若方向一致而细节不同，方向可信；若方向都不同，说明证据本身不足以支撑该决策，此时 `INSUFFICIENT` 是诚实的答复。
-3. 系统目前**没有内建多次运行比对**。这是待补的能力，不是已完成的能力。
+1. **The output of a single run must not be treated as "the answer"**, only as "a usable starting point".
+2. To obtain a stable conclusion, run several times and compare — if the direction is consistent but the details differ, the direction is credible; if even the direction differs, the evidence itself does not support the decision, and `INSUFFICIENT` is then the honest answer.
+3. The system currently has **no built-in multi-run comparison**. This is a capability gap, not a completed capability.
 
 ---
 
-## 八、成本核算（第三轮）
+## 8. Cost accounting (third round)
 
-一次完整循环的实际消耗，用真实 API 量出来的：
+The actual consumption of one complete loop, measured against the real API:
 
-| 规模 | 模型调用 | tokens | 耗时 | 估算费用 |
+| Scale | Model calls | tokens | Duration | Estimated cost |
 |---|---|---|---|---|
-| 两个阶段（DISCOVER + EVIDENCE） | 6 次 | 28,671 | 56 s | $0.0095 |
-| **完整六阶段循环** | **16 次** | **91,723** | **~110 s** | **$0.0298** |
+| Two phases (DISCOVER + EVIDENCE) | 6 | 28,671 | 56 s | $0.0095 |
+| **Complete six-phase loop** | **16** | **91,723** | **~110 s** | **$0.0298** |
 
-（单价按输入 $0.28 / 输出 $0.42 每百万 token 计；费用是估算，不是账单。）
+(unit prices are $0.28 input / $0.42 output per million tokens; the cost is an estimate, not a bill.)
 
-**一句话：跑完一次完整的 R→E→B→U→I→D 约 16 次模型调用、9 万 token、3 美分、两分钟左右。**
+**In one line: one complete R→E→B→U→I→D run costs about 16 model calls, 90,000 tokens, 3 cents and roughly two minutes.**
 
-调用次数为什么是 16 而不是 6 阶段 × 3：DISCOVER 只需主 Agent，
-后续每阶段是「角色数 + 1 次门禁」，末尾再加 1 次决策记录生成。
+Why the call count is 16 rather than 6 phases × 3: DISCOVER needs only the master agent,
+each later phase is "number of roles + 1 gate", and one decision-record generation is added at the end.
 
-### 两条设计约束
+### Two design constraints
 
-1. **token 是事实，费用是估算。** token 数直接从 API 响应的 `usage` 字段读，
-   读不到就记 `available: false` **并说明总数不完整——绝不估算**。
-   一个估算出来的 token 数被当成实际用量写进报告，比没有数字更糟。
-2. **本项目不内置任何价格。** 单价由使用者通过 `--price-input` / `--price-output`
-   提供。价格会变，把价格写死在代码里，就是制造一个会悄悄失真的结论。
+1. **tokens are fact, cost is estimate.** The token count is read directly from the `usage` field of the API response;
+   if it cannot be read, `available: false` is recorded **and the total is stated to be incomplete — never estimated**.
+   A token count that was estimated and then written into a report as actual usage is worse than no number at all.
+2. **This project hard-codes no prices.** Unit prices are supplied by the user via `--price-input` / `--price-output`.
+   Prices change; hard-coding a price in the code manufactures a conclusion that will silently drift.
 
-费用结果里始终带一句 caveat：这是按你给的单价算的估算，**不是账单金额**，
-未含缓存命中折扣、批量折扣，也未扣除失败重试的重复计费。
+Cost results always carry a caveat: this is an estimate computed from the unit prices you supplied, **not a billed amount**,
+and it excludes cache-hit discounts and batch discounts, and does not deduct duplicate charges from failed retries.
 
 ---
 
-## 九、这三轮验证之后仍未解决的事
+## 9. What remains unresolved after these three rounds
 
-- 真实商业项目的完整循环（真实案例在 R 阶段正确阻断，E–D 是在构造项目上跑通的）
-- 输出质量的**绝对**水平（跑通 ≠ 分析得好；方向一致 ≠ 方向正确）
-- 模型判定的结论一致性本身是否可靠（它也是模型输出，同样受温度影响）
-- 多人协作与项目持久化
+- A full loop on a real business project (the real case was correctly blocked at the R phase; E–D were run through on a constructed project)
+- The **absolute** level of output quality (running through ≠ analysing well; consistent direction ≠ correct direction)
+- Whether the model-judged conclusion consistency is itself reliable (it too is model output and equally affected by temperature)
+- Multi-user collaboration and project persistence

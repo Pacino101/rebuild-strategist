@@ -1,27 +1,27 @@
 {
   "decision_id": "DR-001",
-  "expected": "若按现条款 65:35 签约，乙方月现金流为负、押金约 22 个月烧穿；应先做条款压力测试再签约",
-  "actual": "甲方采纳建议，未按现条款签约，分成结构已调整；乙方未签约，双方正在重谈。截至记录时点尚无签约、无经营数据",
+  "expected": "If signed under the current 65:35 clause, the operator's monthly cash flow would be negative and the deposit would burn through in about 22 months; a clause stress test should be run before signing",
+  "actual": "The owner adopted the recommendation and did not sign under the current clause; the revenue-share structure has been adjusted; the operator did not sign, and the two parties are renegotiating. As at the time of recording there is still no signed contract and no operating data",
   "deviation_type": "AS_EXPECTED",
   "evidence_ids": [],
   "assumption_updates": [
     {
-      "assumption": "乙方会接受 65:35 的分成结构",
+      "assumption": "The operator will accept the 65:35 revenue-share structure",
       "status": "REFUTED",
-      "note": "乙方未签约，正在重谈——与分析预测的『必然拒签或违约退出』一致"
+      "note": "The operator did not sign and is renegotiating — consistent with the analysis's prediction that it would “inevitably refuse to sign or default and exit”"
     },
     {
-      "assumption": "稳态出租率可达 93%",
+      "assumption": "Steady-state occupancy can reach 93%",
       "status": "STILL_UNKNOWN",
-      "note": "尚未开业，无经营数据"
+      "note": "Not yet open; no operating data"
     },
     {
-      "assumption": "甲方回本约束与乙方保本约束交集为空",
+      "assumption": "The owner's payback constraint and the operator's break-even constraint have an empty intersection",
       "status": "CONFIRMED",
-      "note": "双方确实未能在原条款上达成一致"
+      "note": "The two parties did indeed fail to reach agreement on the original clause"
     }
   ],
   "next_action": "CONTINUE",
-  "notes": "预测的阻塞点（乙方不接受现分成）在现实中出现了。但**新的分成结构尚未测算**——若甲方分成仍高于 31.1%，新条款可能依然不成立，只是不那么明显。",
+  "notes": "The predicted blocker (the operator would not accept the current revenue share) materialised in reality. But **the new revenue-share structure has not been modelled yet** — if the owner's share is still higher than 31.1%, the new clause may still not hold, just less obviously.",
   "recorded_at": "2026-10-12T19:33:25+00:00"
 }

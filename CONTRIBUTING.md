@@ -1,7 +1,7 @@
 # Contributing
 
-1. 不提交客户隐私、密钥或未经授权的数据。
-2. 新增战略规则时，必须说明它影响的决策、适用边界和失败条件。
-3. 新增案例时，标记真实/合成/匿名化属性与证据来源。
-4. 新增自动化能力时，附可重复运行的测试；未运行测试不得标为通过。
-5. 任何指标都要写清公式、口径、时间窗和数据源。
+1. Do not submit client privacy, secrets or unauthorised data.
+2. When adding a strategy rule, you must state the decision it affects, its applicable boundary and its failure conditions.
+3. When adding a case, mark whether it is real/synthetic/anonymised and its evidence sources.
+4. When adding automated capability, include a repeatable test; a test that has not been run must not be marked as passing.
+5. Every metric must state its formula, basis, time window and data source.

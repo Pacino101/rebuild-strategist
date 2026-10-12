@@ -117,7 +117,7 @@ class DistributionTests(unittest.TestCase):
 
     def test_caveat_says_process_is_not_conclusion(self):
         result = C.compare([make_report(), make_report()])
-        self.assertIn("不等于", result["caveat"])
+        self.assertIn("does not equal", result["caveat"])
 
 
 class CollectionTests(unittest.TestCase):
@@ -160,7 +160,7 @@ class CollectionTests(unittest.TestCase):
 class JudgeTests(unittest.TestCase):
     def test_judge_parses_verdict_and_marks_it_model_judged(self):
         def fake_call(prompt):
-            self.assertIn("各次运行的建议", prompt)
+            self.assertIn("The recommendations from each run", prompt)
             return json.dumps({"agree": True, "direction": "都主张先验证",
                                "groups": [["r1", "r2"]], "why": "三次均要求补证",
                                "confidence": "MEDIUM"}, ensure_ascii=False)
@@ -168,7 +168,7 @@ class JudgeTests(unittest.TestCase):
         verdict = C.judge_agreement([make_report("r1"), make_report("r2")], fake_call)
         self.assertTrue(verdict["agree"])
         self.assertTrue(verdict["judged_by_model"])
-        self.assertIn("模型判定", verdict["caveat"])
+        self.assertIn("model judgement", verdict["caveat"])
 
     def test_judge_handles_unparseable_output(self):
         verdict = C.judge_agreement(
@@ -197,9 +197,9 @@ class JudgeTests(unittest.TestCase):
 class RenderTests(unittest.TestCase):
     def test_markdown_contains_both_axes(self):
         text = C.render_markdown(C.compare([make_report("r1"), make_report("r2")]))
-        self.assertIn("过程可复现性", text)
-        self.assertIn("结论一致性", text)
-        self.assertIn("模型判定", text)
+        self.assertIn("Process reproducibility", text)
+        self.assertIn("Agreement of conclusions", text)
+        self.assertIn("model judgement", text)
         self.assertIn("PATH_IDENTICAL", text)
 
     def test_markdown_lists_each_run(self):
@@ -239,12 +239,12 @@ class UsageAggregationTests(unittest.TestCase):
     def test_no_pricing_reports_zero_cost_info(self):
         result = C.compare([make_report("r1"), make_report("r2")])
         self.assertIsNone(result["total_usage"]["cost_total"])
-        self.assertIn("未提供单价", result["total_usage"]["cost_note"])
+        self.assertIn("no unit price was provided", result["total_usage"]["cost_note"])
 
     def test_markdown_has_cost_section(self):
         text = C.render_markdown(C.compare([self._with_usage("r1", 1000, 0.1),
                                             self._with_usage("r2", 2000, 0.2)]))
-        self.assertIn("成本与耗时", text)
+        self.assertIn("Cost and elapsed time", text)
         self.assertIn("3,000", text)
         self.assertIn("0.3", text)
 
@@ -256,8 +256,8 @@ class NullChoiceRenderTests(unittest.TestCase):
         missing = make_report("r2")
         missing["decision_record"] = {}
         text = C.render_markdown(C.compare([with_null, missing]))
-        self.assertIn("本轮未做出选择", text)
-        self.assertIn("未产出决策记录", text)
+        self.assertIn("no choice was made this run", text)
+        self.assertIn("no decision record produced", text)
 
 
 class RepeatedRunTests(unittest.TestCase):
@@ -270,12 +270,12 @@ class RepeatedRunTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def _completer(self, prompt):
-        if "门禁判定" in prompt:
-            if "阶段 DISCOVER" in prompt:
+        if "Gate judgement" in prompt:
+            if "phase DISCOVER" in prompt:
                 return json.dumps({"event": "evidence_ready", "passed": True,
                                    "reason": "ok"})
             return json.dumps({"event": "", "passed": False, "reason": "停"})
-        if "各阶段输出摘要" in prompt:
+        if "Summary of outputs by phase" in prompt:
             return json.dumps({
                 "decision_id": "DR-001", "question": "q",
                 "options": [{"name": "a", "rationale": "r"},

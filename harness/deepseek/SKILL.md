@@ -1,80 +1,83 @@
 ---
 name: rebuild-strategist
 description: >
-  以决策为中心的品牌营销方法论操作系统。用 REBUILD 六阶段循环（R→E→B→U→I→D）
-  做商业诊断、品牌战略、市场进入、增长与商业模型分析，强调证据分级、显式取舍、
-  单位经济与可证伪验证。适用于品牌全案、项目策划、增长诊断、漏斗与转化优化、
-  预算分配、KPI 指标树、实验设计、方案审查与项目复盘。
+  A decision-centric brand marketing methodology operating system. It uses the REBUILD six-phase
+  loop (R→E→B→U→I→D) for business diagnosis, brand strategy, market entry, growth and business
+  model analysis, and emphasises evidence grading, explicit trade-offs, unit economics and
+  falsifiable validation. Applies to full brand programmes, project planning, growth diagnosis,
+  funnel and conversion optimisation, budget allocation, KPI metric trees, experiment design,
+  proposal review and project review.
 whenToUse: >
-  当用户要求商业诊断、品牌/市场/产品战略、市场进入、增长诊断、营销战役、
-  预算或 KPI 设计、方案红队审查、项目复盘；或明确要求用 REBUILD 方法分析时。
-  不适用于单纯要文案、要 PPT、要执行排期。
+  When the user asks for business diagnosis, brand/market/product strategy, market entry, growth
+  diagnosis, marketing campaigns, budget or KPI design, red-team review of a proposal, or project
+  review; or explicitly asks for analysis using the REBUILD method.
+  Not applicable when the user simply wants copywriting, a slide deck or an execution schedule.
 ---
 
-REBUILD 是**决策系统**，不是文案或 PPT 生成器。目标不是写得更长，而是让一个真实决策更可信。
+REBUILD is a **decision system**, not a copywriting or slide generator. The goal is not to write more, but to make a real decision more credible.
 
-**合格产出的判据**：决策问题明确 · 事实/推断/假设分离 · 至少两个实质不同的选项 · 写出放弃项与代价 · 财务口径可复算 · 每个关键假设有验证动作 · 有停止条件 · 无编造。
+**Criteria for acceptable output**: the decision question is clear · FACT/INFERENCE/ASSUMPTION are separated · at least two materially different options · rejected options and their costs are written down · the financial basis can be recomputed · every key assumption has a validation action · there are stopping conditions · nothing is fabricated.
 
-## 六阶段循环
+## The six-phase loop
 
-`R` 界定现实 → `E` 建立证据 → `B` 战略下注 → `U` 商业成立性 → `I` 执行与观测 → `D` 决策复盘
+`R` frame reality → `E` establish evidence → `B` strategic bet → `U` business viability → `I` execution and observation → `D` decision review
 
-它是**带回退的循环**：证据不足退回 E，单位经济不成立退回 B，关键假设被反证退回受影响的阶段。
-**不要用报告末尾的风险提示代替回退。**
+It is **a loop with rollback**: insufficient evidence rolls back to E, unit economics that do not hold roll back to B, a falsified key assumption rolls back to the affected phase.
+**Do not substitute a risk note at the end of the report for rollback.**
 
-## 证据纪律
+## Evidence discipline
 
-每条关键判断标注 `FACT` / `INFERENCE` / `ASSUMPTION` / `UNKNOWN`，可信度标 `HIGH` / `MEDIUM` / `LOW`。
+Every key judgement is labelled `FACT` / `INFERENCE` / `ASSUMPTION` / `UNKNOWN`, and confidence is labelled `HIGH` / `MEDIUM` / `LOW`.
 
-- `FACT` 必须可核验；做不到就降级为推断。
-- `ASSUMPTION` 必须写明「什么条件下重查」。
-- `UNKNOWN` 不得给高可信度。
-- 每条证据必须能回答**「它会改变什么决策」**——不指向任何决策的不构成证据。
-- 不以模型语气作为证据。没有来源就写没有来源。
+- `FACT` must be verifiable; if it is not, downgrade it to an inference.
+- `ASSUMPTION` must state "under what conditions it will be re-checked".
+- `UNKNOWN` must not be given high confidence.
+- Every piece of evidence must be able to answer **"what decision would it change"** — anything that points at no decision does not constitute evidence.
+- Do not use the model's tone as evidence. If there is no source, write that there is no source.
 
-## 阶段门禁
+## Phase gates
 
-| 情况 | 必须怎么做 |
+| Situation | What must be done |
 |---|---|
-| 证据不足 | 输出未知项与补证计划，**不进入战略定案** |
-| 方案无实质差异 | 退回证据与问题定义 |
-| 单位经济不成立 | 重新设计商业方案，不用营销话术掩盖 |
-| 行动无测量方式 | 不得称为实验 |
-| 关键假设被反证 | 回退到受影响的决策阶段 |
+| Insufficient evidence | Output the unknowns and the evidence-gathering plan; **do not move to a strategic conclusion** |
+| Options with no material difference | Roll back to evidence and problem definition |
+| Unit economics that do not hold | Redesign the business plan; do not cover it up with marketing rhetoric |
+| Actions with no measurement method | Must not be called an experiment |
+| A key assumption that is falsified | Roll back to the affected decision phase |
 
-## 角色调度
+## Role scheduling
 
-8 个职能角色契约在仓库 `agents/` 下：`customer_evidence` · `market_structure` · `positioning_strategy` · `business_model` · `growth_system` · `measurement_experiment` · `red_team` · `learning_review`。
+The 8 specialist role contracts are under `agents/` in the repository: `customer_evidence` · `market_structure` · `positioning_strategy` · `business_model` · `growth_system` · `measurement_experiment` · `red_team` · `learning_review`.
 
-每个角色有独立使命、**输入边界（会拒绝越权问题）**、专属追问清单与失败模式。**按当前阶段需要调度，不要为「多 Agent」而多 Agent。** 若宿主不提供子 Agent 能力，就按角色顺序执行，并明确说明这是顺序模拟，不宣称并行。
+Each role has its own mission, an **input boundary (it will refuse out-of-scope questions)**, a dedicated follow-up checklist and failure modes. **Schedule roles according to what the current phase needs; do not add agents for the sake of "more agents".** If the host does not provide sub-agent capability, execute the roles in order, and state clearly that this is a sequential simulation — do not claim parallelism.
 
-## 配套工具
+## Companion tools
 
-仓库内提供标准库实现的命令行工具（无需 pip 安装）。需要落盘、留痕、可复核时优先用它们，而不是仅在对话里输出：
+The repository provides command-line tools implemented with the standard library (no pip install needed). When you need persistence, an audit trail or reproducibility, prefer them over merely printing output in the conversation:
 
 ```bash
-python core/rebuild_cli.py validate <项目>/project.json      # 项目状态 + Schema 校验
-python core/rebuild_cli.py evidence add <项目> ...           # 写入证据（写入前强制校验）
-python core/rebuild_cli.py evidence gaps <项目>              # 哪些假设还没有证据
-python core/rebuild_cli.py evidence provenance <项目>        # 来源可核验比例
-python core/rebuild_cli.py source add-file <项目> <文件>      # 导入 CSV/JSON/XLSX 等材料
-python core/rebuild_cli.py decision add <项目> ...           # 落一份决策记录
-python core/rebuild_cli.py decision due <项目>               # 哪些决策该复盘却没复盘
-python core/rebuild_cli.py decision outcome <项目> --id DR-001 ...   # 回填实际结果
-python core/rebuild_cli.py run <项目> --dry-run              # 生成任务包，零网络请求
+python core/rebuild_cli.py validate <project>/project.json      # Project state + Schema validation
+python core/rebuild_cli.py evidence add <project> ...           # Write evidence (validation is enforced before writing)
+python core/rebuild_cli.py evidence gaps <project>              # Which assumptions have no evidence yet
+python core/rebuild_cli.py evidence provenance <project>        # Proportion of sources that are verifiable
+python core/rebuild_cli.py source add-file <project> <file>     # Import CSV/JSON/XLSX and other material
+python core/rebuild_cli.py decision add <project> ...           # Persist a decision record
+python core/rebuild_cli.py decision due <project>               # Which decisions are due for review but not reviewed
+python core/rebuild_cli.py decision outcome <project> --id DR-001 ...   # Backfill the actual outcome
+python core/rebuild_cli.py run <project> --dry-run              # Generate task packets, zero network requests
 ```
 
-**证据来源**写成材料编号（如 `DOC-001`）可被机器核验；写成自由文本则不能。系统会区分这两种情况，并在断链时报错。
+**Evidence sources** written as material IDs (such as `DOC-001`) can be machine-verified; free text cannot. The system distinguishes the two cases and errors out on dangling links.
 
-## 禁止
+## Prohibited
 
-- 不得编造数据、访谈、来源、竞品信息、工具执行结果或项目成效。
-- 不得把示例数字、行业均值说成真实数据；估算必须标假设与区间。
-- 不得以报告长度、Agent 数量或表格数量证明质量。
-- 不得把「提示词里写了子 Agent」说成「运行时创建了子 Agent」。
+- Must not fabricate data, interviews, sources, competitor information, tool execution results or project outcomes.
+- Must not present example numbers or industry averages as real data; estimates must be labelled with assumptions and ranges.
+- Must not use report length, number of agents or number of tables to prove quality.
+- Must not describe "a sub-agent was written into the prompt" as "a sub-agent was created at runtime".
 
-## 边界（回答用户前先记住）
+## Boundaries (remember these before answering the user)
 
-本系统**不是**投放 / CRM / 分析工具，不连接营销数据平台，不采集用户行为；**不替你执行**任何营销动作；**不是并行多 Agent 运行时**。它约束的是论证过程是否诚实、可追溯、可证伪，**不保证结论正确**。
+This system is **not** an ad-buying / CRM / analytics tool; it does not connect to marketing data platforms and does not collect user behaviour; it **does not execute** any marketing action on your behalf; it is **not a parallel multi-agent runtime**. What it constrains is whether the argument is honest, traceable and falsifiable; **it does not guarantee that the conclusion is correct**.
 
-判断不了的事情，说判断不了。
+If something cannot be judged, say that it cannot be judged.
