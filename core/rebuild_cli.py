@@ -1,46 +1,458 @@
 #!/usr/bin/env python3
-"""Minimal stdlib validator and deterministic REBUILD state-machine CLI."""
-import argparse, json, sys
+"""REBUILD 命令行入口。
+
+子命令
+------
+  validate    校验项目状态（含 JSON Schema 校验）
+  transition  查询一次状态机迁移是否合法
+  schema      用指定 schema 校验任意 JSON 文件
+  evidence    证据账本：写入 / 列出 / 校验 / 缺口 / 导出
+  source      数据源：导入本地文件 / 抓取自建端点 / 查看材料
+  run         运行时编排：按阶段调度角色、判定门禁、推进状态
+
+退出码：0 成功；1 校验未通过；2 运行错误。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent
-STATE_FILE = ROOT / "core" / "state_machine.json"
+
+_HERE = Path(__file__).resolve().parent
+ROOT = _HERE.parent
+for _extra in (_HERE, ROOT):
+    if str(_extra) not in sys.path:
+        sys.path.insert(0, str(_extra))
+
+import schema_validator as sv  # noqa: E402
+
+STATE_FILE = _HERE / "state_machine.json"
+SCHEMAS = ROOT / "schemas"
+
+
+def _collect_domain_errors():
+    """收集各模块自定义的异常类型。
+
+    这些异常的消息是写给使用者看的，应当作为错误信息打印，
+    而不是抛出带堆栈的 traceback——堆栈对使用者没有帮助。
+    """
+    found = []
+    for module_name, attribute in (
+        ("sources", "SourceError"),
+        ("ledger", "EvidenceError"),
+        ("orchestrator", "OrchestratorError"),
+    ):
+        try:
+            module = __import__(module_name)
+            found.append(getattr(module, attribute))
+        except (ImportError, AttributeError):
+            continue
+    return tuple(found)
+
+
+DOMAIN_ERRORS = _collect_domain_errors()
+
+
+# ---------------------------------------------------------------------------
+# 基础
+# ---------------------------------------------------------------------------
 
 def load_json(path):
-    with open(path, encoding="utf-8") as f: return json.load(f)
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def project_dir_of(path) -> Path:
+    """接受项目目录或 project.json 路径，统一返回项目目录。"""
+    path = Path(path)
+    if path.is_dir():
+        return path
+    if path.name == "project.json":
+        return path.parent
+    raise ValueError(f"请给出项目目录或其中的 project.json，而不是：{path}")
+
 
 def transition(state, event):
     machine = load_json(STATE_FILE)
     if state not in machine["states"]:
-        raise ValueError(f"Unknown state: {state}")
+        raise ValueError(f"未知状态：{state}。可用：{machine['states']}")
     nxt = machine["transitions"].get(state, {}).get(event)
     if not nxt:
-        raise ValueError(f"Transition not allowed: {state} + {event}")
+        raise ValueError(
+            f"不允许的迁移：{state} + {event}。"
+            f"该状态可用事件：{sorted(machine['transitions'].get(state, {}))}"
+        )
     return {"from": state, "event": event, "to": nxt}
 
-def validate_project(path):
-    data = load_json(path)
-    errors=[]
-    for field in ("project_id", "name", "decision_question", "current_state", "goals", "constraints"):
-        if field not in data: errors.append(f"missing required field: {field}")
-    machine=load_json(STATE_FILE)
-    if data.get("current_state") not in machine["states"]: errors.append("current_state is not a known state")
-    if not isinstance(data.get("goals", []), list): errors.append("goals must be an array")
-    if not isinstance(data.get("constraints", []), list): errors.append("constraints must be an array")
-    return errors
 
-def main():
-    p=argparse.ArgumentParser(description="REBUILD V3.2 local validation tools")
-    sub=p.add_subparsers(dest="cmd", required=True)
-    v=sub.add_parser("validate"); v.add_argument("project")
-    t=sub.add_parser("transition"); t.add_argument("--state", required=True); t.add_argument("--event", required=True)
-    a=p.parse_args()
+def validate_project(path, use_schema=True):
+    """返回 (errors, warnings)。"""
+    data = load_json(path)
+    errors = []
+    machine = load_json(STATE_FILE)
+    if data.get("current_state") not in machine["states"]:
+        errors.append(
+            f"current_state 不是已知状态：{data.get('current_state')!r}。"
+            f"可用：{machine['states']}"
+        )
+    if not isinstance(data.get("goals", []), list):
+        errors.append("goals 必须是数组")
+    if not isinstance(data.get("constraints", []), list):
+        errors.append("constraints 必须是数组")
+
+    warnings = []
+    if use_schema:
+        schema_path = sv.guess_schema(path, SCHEMAS)
+        if schema_path is None:
+            warnings.append(
+                f"未找到与 {Path(path).name} 匹配的 schema，已跳过 schema 校验"
+            )
+        else:
+            schema_errors, schema_warnings = sv.validate_file(path, schema_path)
+            errors.extend(schema_errors)
+            warnings.extend(schema_warnings)
+    return errors, warnings
+
+
+# ---------------------------------------------------------------------------
+# evidence
+# ---------------------------------------------------------------------------
+
+def cmd_evidence(args):
+    import ledger as ledger_module
+
+    directory = project_dir_of(args.project)
+    ledger = ledger_module.Ledger(directory)
+
+    if args.action == "add":
+        record = {
+            "claim": args.claim,
+            "type": args.type,
+            "source": args.source,
+            "observed_at": args.observed_at,
+            "confidence": args.confidence,
+            "scope": args.scope,
+            "counter_evidence": args.counter_evidence or [],
+            "decision_impact": args.decision_impact,
+            "recheck_trigger": args.recheck_trigger,
+        }
+        if args.id:
+            record["id"] = args.id
+        saved = ledger.add(record)
+        warnings = ledger_module.quality_warnings(saved)
+        print(json.dumps({"added": saved}, ensure_ascii=False, indent=2))
+        if warnings:
+            print("\n质量提示（不阻断写入，但请处理）：", file=sys.stderr)
+            for warning in warnings:
+                print(f"  ⚠ {warning}", file=sys.stderr)
+        return 0
+
+    if args.action == "list":
+        records = ledger.filter(
+            kind=args.type, confidence=args.confidence,
+            min_confidence=args.min_confidence,
+        )
+        if args.json:
+            print(json.dumps(records, ensure_ascii=False, indent=2))
+        else:
+            if not records:
+                print(f"证据账本为空（{ledger.path}）")
+                return 0
+            for record in records:
+                print(
+                    f"{record.get('id'):<8}{record.get('type'):<12}"
+                    f"{record.get('confidence'):<8}{record.get('claim')}"
+                )
+        return 0
+
+    if args.action == "check":
+        errors, warnings = ledger.validate()
+        print(json.dumps(
+            {"records": len(ledger.load()), "errors": errors, "warnings": warnings},
+            ensure_ascii=False, indent=2,
+        ))
+        if errors:
+            return 1
+        if warnings:
+            print(
+                f"\n{len(warnings)} 条质量提示：这些记录字段合法，"
+                f"但方法学上不足以支撑判断。",
+                file=sys.stderr,
+            )
+        return 0
+
+    if args.action == "gaps":
+        project_file = directory / "project.json"
+        report = ledger_module.gaps(project_file)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        missing = (
+            len(report["assumptions_without_evidence"])
+            + len(report["unknowns_without_evidence"])
+            + len(report["known_facts_without_evidence"])
+        )
+        return 1 if missing else 0
+
+    if args.action == "export":
+        text = ledger_module.to_markdown(directory)
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            print(f"已导出到 {args.out}")
+        else:
+            print(text)
+        return 0
+
+    raise ValueError(f"未知的 evidence 动作：{args.action}")
+
+
+# ---------------------------------------------------------------------------
+# source
+# ---------------------------------------------------------------------------
+
+def cmd_source(args):
+    from sources import DocumentStore, SourceError, files, http_api
+
+    directory = project_dir_of(args.project)
+    store = DocumentStore(directory)
+
+    if args.action == "add-file":
+        document = files.add_file(store, args.path)
+        print(json.dumps(
+            {"doc_id": document.doc_id, "origin": document.origin,
+             "media_type": document.media_type, "sha256": document.sha256[:16],
+             "chars": len(document.content), "meta": document.meta},
+            ensure_ascii=False, indent=2,
+        ))
+        return 0
+
+    if args.action == "add-url":
+        header_env = dict(pair.split("=", 1) for pair in (args.header_env or []))
+        headers = dict(pair.split("=", 1) for pair in (args.header or []))
+        spec = http_api.HttpSourceSpec(
+            name=args.name, url=args.url, method=args.method,
+            headers=headers, header_env=header_env,
+            records_path=args.records_path or "", timeout=args.timeout,
+        )
+        for warning in spec.warnings():
+            print(f"  ⚠ {warning}", file=sys.stderr)
+        if args.save_spec:
+            print(f"已保存 spec：{http_api.save_spec(directory, spec)}")
+        documents = http_api.add_http(store, spec)
+        print(json.dumps(
+            {"fetched": len(documents),
+             "documents": [d.doc_id for d in documents]},
+            ensure_ascii=False, indent=2,
+        ))
+        return 0
+
+    if args.action == "list":
+        entries = store.list()
+        if not entries:
+            print("尚未导入任何材料")
+            return 0
+        for entry in entries:
+            print(
+                f"{entry.get('doc_id'):<10}{entry.get('media_type'):<50}"
+                f"{entry.get('origin')}"
+            )
+        return 0
+
+    if args.action == "show":
+        document = store.get(args.doc_id)
+        print(json.dumps(
+            {k: v for k, v in document.to_dict().items() if k != "content"},
+            ensure_ascii=False, indent=2,
+        ))
+        print("-" * 60)
+        print(document.content[:4000])
+        return 0
+
+    if args.action == "verify":
+        entries = store.list()
+        if not entries:
+            print("尚未导入任何材料")
+            return 0
+        bad = [e["doc_id"] for e in entries if not store.verify(e["doc_id"])]
+        print(json.dumps(
+            {"checked": len(entries), "tampered": bad}, ensure_ascii=False, indent=2
+        ))
+        return 1 if bad else 0
+
+    raise ValueError(f"未知的 source 动作：{args.action}")
+
+
+# ---------------------------------------------------------------------------
+# run
+# ---------------------------------------------------------------------------
+
+def cmd_run(args):
+    import orchestrator as orch
+
+    directory = project_dir_of(args.project)
+    phases = args.phase or list(orch.PHASES)
+    config = orch.RunConfig(
+        project_dir=directory,
+        provider_name=args.provider,
+        phases=phases,
+        dry_run=args.dry_run,
+        max_evidence=args.max_evidence,
+    )
+    report = orch.Orchestrator(config).run()
+
+    print(json.dumps(
+        {k: v for k, v in report.items() if k != "log"},
+        ensure_ascii=False, indent=2,
+    ))
+    print(f"\n产物目录：{report['run_dir']}", file=sys.stderr)
+    print(f"初始状态 {report['initial_state']} → 最终状态 {report['final_state']}",
+          file=sys.stderr)
+    if report.get("hint"):
+        print(f"\n提示：{report['hint']}", file=sys.stderr)
+    if report.get("gate_rejections"):
+        print("\n被拒绝的迁移（模型给出的非法事件）：", file=sys.stderr)
+        for item in report["gate_rejections"]:
+            print(f"  ✗ {item['phase']}: {item['event']} — {item['error']}",
+                  file=sys.stderr)
+
+    if args.mode == "dry-run" or args.provider == "manual":
+        print(
+            "\n当前是手动模式：只生成了任务包，没有调用任何模型。\n"
+            f"请打开 {report['run_dir']} 下的 *.packet.md，自行粘贴到模型，"
+            "再把输出保存为同名 .md 文件。",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def cmd_schema(args):
+    schema_path = Path(args.schema_file) if args.schema_file else sv.guess_schema(
+        args.file, SCHEMAS
+    )
+    if schema_path is None:
+        print(json.dumps(
+            {"valid": False,
+             "errors": [f"无法为 {args.file} 推断 schema，请用 --schema-file 指定"]},
+            ensure_ascii=False, indent=2,
+        ))
+        return 1
+    errors, warnings = sv.validate_file(args.file, schema_path)
+    print(json.dumps(
+        {"file": args.file, "schema": str(schema_path),
+         "valid": not errors, "errors": errors, "warnings": warnings},
+        ensure_ascii=False, indent=2,
+    ))
+    return 0 if not errors else 1
+
+
+# ---------------------------------------------------------------------------
+# 入口
+# ---------------------------------------------------------------------------
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="rebuild",
+        description="REBUILD —— 以决策为中心的品牌营销方法论工具集",
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    v = sub.add_parser("validate", help="校验项目状态（默认含 schema 校验）")
+    v.add_argument("project")
+    v.add_argument("--no-schema", action="store_true", help="跳过 JSON Schema 校验")
+
+    t = sub.add_parser("transition", help="查询一次状态机迁移是否合法")
+    t.add_argument("--state", required=True)
+    t.add_argument("--event", required=True)
+
+    s = sub.add_parser("schema", help="用 schema 校验任意 JSON 文件")
+    s.add_argument("file")
+    s.add_argument("--schema-file", default=None)
+
+    e = sub.add_parser("evidence", help="证据账本")
+    e.add_argument("action", choices=["add", "list", "check", "gaps", "export"])
+    e.add_argument("project")
+    e.add_argument("--claim")
+    e.add_argument("--type", choices=["FACT", "INFERENCE", "ASSUMPTION", "UNKNOWN"])
+    e.add_argument("--confidence", choices=["HIGH", "MEDIUM", "LOW"])
+    e.add_argument("--min-confidence", choices=["HIGH", "MEDIUM", "LOW"])
+    e.add_argument("--source", default=None)
+    e.add_argument("--observed-at", default=None)
+    e.add_argument("--scope", default=None)
+    e.add_argument("--decision-impact", default=None)
+    e.add_argument("--recheck-trigger", default=None)
+    e.add_argument("--counter-evidence", action="append")
+    e.add_argument("--id", default=None)
+    e.add_argument("--json", action="store_true")
+    e.add_argument("--out", default=None)
+
+    src = sub.add_parser("source", help="数据源")
+    src.add_argument("action",
+                     choices=["add-file", "add-url", "list", "show", "verify"])
+    src.add_argument("project")
+    src.add_argument("path", nargs="?", help="add-file 时的文件路径")
+    src.add_argument("--name", default=None)
+    src.add_argument("--url", default=None)
+    src.add_argument("--method", default="GET")
+    src.add_argument("--header", action="append", help="形如 NAME=VALUE")
+    src.add_argument("--header-env", action="append", help="形如 NAME=ENV_VAR")
+    src.add_argument("--records-path", default=None)
+    src.add_argument("--timeout", type=int, default=30)
+    src.add_argument("--save-spec", action="store_true")
+    src.add_argument("--doc-id", default=None, dest="doc_id")
+
+    r = sub.add_parser("run", help="运行时编排：调度角色、判定门禁、推进状态")
+    r.add_argument("project")
+    r.add_argument("--provider", default="manual",
+                   help="manual（默认，零网络）或 bench/provider.py 中的预设名")
+    r.add_argument("--phase", action="append", help="只跑指定阶段，可重复")
+    r.add_argument("--dry-run", action="store_true", help="只生成任务包")
+    r.add_argument("--max-evidence", type=int, default=60)
+    r.add_argument("--mode", default=None, help=argparse.SUPPRESS)
+
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     try:
-        if a.cmd=="validate":
-            errors=validate_project(a.project)
-            if errors:
-                print(json.dumps({"valid":False,"errors":errors},ensure_ascii=False,indent=2)); return 1
-            print(json.dumps({"valid":True,"project":a.project},ensure_ascii=False,indent=2)); return 0
-        print(json.dumps(transition(a.state,a.event),ensure_ascii=False,indent=2)); return 0
-    except (ValueError, OSError, json.JSONDecodeError) as e:
-        print(json.dumps({"error":str(e)},ensure_ascii=False,indent=2),file=sys.stderr); return 2
-if __name__=="__main__": sys.exit(main())
+        if args.cmd == "validate":
+            errors, warnings = validate_project(args.project,
+                                                use_schema=not args.no_schema)
+            print(json.dumps(
+                {"valid": not errors, "project": args.project,
+                 "errors": errors, "warnings": warnings},
+                ensure_ascii=False, indent=2,
+            ))
+            return 0 if not errors else 1
+        if args.cmd == "transition":
+            print(json.dumps(transition(args.state, args.event),
+                             ensure_ascii=False, indent=2))
+            return 0
+        if args.cmd == "schema":
+            return cmd_schema(args)
+        if args.cmd == "evidence":
+            return cmd_evidence(args)
+        if args.cmd == "source":
+            return cmd_source(args)
+        if args.cmd == "run":
+            return cmd_run(args)
+        raise ValueError(f"未知子命令：{args.cmd}")
+    except DOMAIN_ERRORS as exc:
+        print(json.dumps({"error": str(exc)}, ensure_ascii=False, indent=2),
+              file=sys.stderr)
+        return 2
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}, ensure_ascii=False, indent=2),
+              file=sys.stderr)
+        return 2
+    except OSError as exc:
+        print(json.dumps({"error": str(exc)}, ensure_ascii=False, indent=2),
+              file=sys.stderr)
+        return 2
+    except json.JSONDecodeError as exc:
+        print(json.dumps({"error": f"JSON 解析失败：{exc}"},
+                         ensure_ascii=False, indent=2), file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

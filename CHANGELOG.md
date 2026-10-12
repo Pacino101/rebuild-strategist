@@ -1,5 +1,52 @@
 # Changelog
 
+## V3.3.0 — 运行时、证据账本与数据源
+
+这一版把三处「文档里写了、代码里没有」的缺口补上：Schema 只是规范文件、
+证据账本无处存放、角色契约没有编排器。**注意：这些是能力补齐，不是质量证明**——
+编排器的输出质量尚未在任何真实模型上验证。
+
+### 新增：JSON Schema 校验器（`core/schema_validator.py`）
+- 纯标准库实现，覆盖本仓库 Schema 实际使用的关键字，另含 `anyOf` / `oneOf` / `allOf`。
+- **未实现的关键字会报 warning，而不是静默忽略。** 静默忽略会让「校验通过」变成假象。
+- `rebuild_cli.py validate` 默认执行 schema 校验；新增 `schema` 子命令校验任意 JSON。
+
+### 新增：证据账本（`core/ledger.py`）
+- 把 `evidence.schema.json` 从规范文件变成可用的存储：`<项目>/evidence.jsonl`，追加写入、可 diff、无数据库依赖。
+- **写入前强制校验**，不合规的记录直接拒绝，不会「先写进去再说」。
+- 账本损坏时报错而不是跳过坏行——静默跳过会让证据悄悄消失。
+- schema 之外的语义检查（以 warning 呈现）：`FACT` 无来源、`ASSUMPTION` 无重查条件、
+  `UNKNOWN` 却给高可信度、`decision_impact` 写成「无」。
+- 新增 `evidence add / list / check / gaps / export` 子命令；`gaps` 找出项目里声明了但账本没覆盖的假设与未知项。
+
+### 新增：数据源层（`sources/`）
+- 本地文件：CSV / TSV / JSON / JSONL / TXT / MD / XLSX。
+- **中文编码兜底**：utf-8-sig → utf-8 → gb18030 → big5 → latin-1。乱码喂进模型比没数据更糟。
+- **XLSX 用标准库解析**（zipfile + xml.etree），不引入 pandas / openpyxl。
+- 自建 HTTP 端点：URL、方法、取值路径由使用者给出；**不内置任何平台连接器**。
+- 密钥只从环境变量读取，spec 文件不存密钥；检测到疑似密钥会警告。
+- 每条材料存 SHA-256，`source verify` 可校验来源是否被改动。
+
+### 新增：运行时编排器（`core/orchestrator.py`）
+- 按阶段顺序调度角色契约、注入证据与材料、收集输出、判定门禁、推进状态、产出决策记录。
+- **顺序执行，不假装并行**：一个角色一次模型调用，角色之间不通信。
+- **状态迁移由状态机裁决**：模型只回答「应触发哪个事件」；合法性由 `state_machine.json` 决定，
+  模型给出非法事件会被拒绝并记入报告。
+- **模型提出的证据不自动入账**：写入运行产物供人工审核。自动入账会让证据账本退化成「模型说过的话清单」。
+- 默认 `--provider manual`：只生成任务包，零网络请求；`--dry-run` 同样零网络、零状态变更。
+
+### 变更
+- `rebuild_cli.validate_project()` 返回值由 `errors` 列表改为 `(errors, warnings)` 元组，
+  以便暴露「schema 中未被检查的约束」。这是**破坏性变更**，调用方需同步调整。
+- `tests/test_rebuild.py` 的临时文件改写到系统临时目录，不再污染仓库工作区。
+- `.gitignore` 增加 `runs/`、`sources/documents/`、`sources/index.jsonl`、`sources/specs/`、`evidence.jsonl`：
+  这些目录默认含客户数据与模型输出。
+- CI 增加端到端冒烟测试（导入材料 → 写入证据 → 干跑编排），并断言示例目录未被产物污染。
+
+### 测试
+- 单元测试由 28 项增至 174 项。
+- 编排器测试全部注入假模型，**不产生任何网络请求**。
+
 ## V3.2.4 — 边界声明与模型接口文档
 
 ### 修正

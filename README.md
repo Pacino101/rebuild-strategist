@@ -20,13 +20,15 @@ REBUILD 解决的是另一个问题：**你怎么知道这份报告里的结论�
 |---|---|
 | **不是投放 / CRM / 分析工具** | 不连接任何营销数据平台，不发送广告，不管理客户，不采集用户行为。这些事请继续用你现有的平台做。 |
 | **不是自动化执行系统** | 它不替你执行任何营销动作。产出是决策与验证方案，落地仍然靠人。 |
-| **不是开箱即用的多 Agent 运行时** | `agents/` 下是**方法论契约**（Markdown），不是运行中的 Agent 实例。目前没有编排器把它们真正跑起来。 |
-| **不是数据接入层** | 没有任何数据源连接器。你的证据需要以文本方式自行提供。 |
+| **不是并行多 Agent 运行时** | `core/orchestrator.py` 会**按顺序**逐个调用角色契约，一次一个模型调用。角色之间不通信、不并行、不互相评审。把顺序调用包装成「多 Agent 协同」正是本项目反对的事。 |
+| **不内置任何平台连接器** | 支持导入本地文件（CSV / TSV / JSON / JSONL / TXT / MD / XLSX）与你自建的 HTTP 端点，但**不预置** PostHog / Mautic / 广告平台的连接器或字段映射——那些由你自己给出 URL 与字段路径。 |
 | **不保证结论正确** | 它约束的是论证过程是否诚实、可追溯、可证伪，不是结论本身是否正确。 |
 
 **它的商业价值目前是假设，不是结论。** 可能的方向包括咨询交付、企业内训、以及作为评测层（对已有营销方案或 AI 输出做结构化审查）。**这三个方向均未被任何真实项目验证，本仓库不为它们背书。**
 
-目前**已被验证**的只有三件事：方法论自洽、状态机确定性、评测脚手架可端到端运行。其余全部是待验证假设。
+目前**已被验证**的是：方法论自洽、状态机确定性、Schema 校验生效、证据账本可写可查、数据源可导入本地文件与自建端点、编排器可零网络干跑并正确拒绝非法迁移、评测脚手架可端到端运行。
+
+**仍未验证**的是它能否在真实客户数据上跑完一次完整的 R→E→B→U→I→D，以及它的商业价值。这两件事都还没有证据。
 
 ## 六阶段决策循环
 
@@ -80,7 +82,7 @@ LTV 不标观察窗口即无效，CAC 不区分渠道/全口径/增量口径即�
 git clone https://github.com/Pacino101/rebuild-strategist.git
 cd rebuild-strategist
 
-# 单元测试（28 项）
+# 单元测试（174 项）
 python -m unittest discover -s tests -v
 
 # 项目状态校验
@@ -130,7 +132,83 @@ python bench/bench_runner.py execute --provider deepseek
 
 > ⚠️ **密钥只从环境变量读取**，不落盘、不进仓库。一旦使用 HTTP 模式，提示词内容会发送到你所指定的端点——涉及客户资料或商业机密时，请改用手动模式或本地模型。
 
-> **注意**：该接入层目前只服务于 `bench/` 评测流程。**REBUILD 方法论本身没有运行时**——`agents/` 下是契约文档，不存在把它们串起来执行的编排器（见上方「这个项目不是什么」）。
+> **注意**：provider 层同时服务于 `bench/` 评测流程与 `core/orchestrator.py` 运行时。编排器按阶段**顺序**调用角色契约，不是并行多 Agent（见上方「这个项目不是什么」）。
+
+## 证据账本
+
+方法论要求「每条关键判断可追溯」，但在此之前**没有地方存证据**——`evidence.schema.json` 定义了却没有任何代码读它。现在它可用了：
+
+```bash
+# 写入一条证据（写入前强制校验 schema，不合规直接拒绝）
+python core/rebuild_cli.py evidence add projects/my-project \
+    --claim "春茶季前两周询价量约为平峰期 3 倍" \
+    --type FACT --confidence MEDIUM \
+    --source "门店台账 2026-03" --observed-at 2026-03-20 \
+    --scope "南涧县自营门店自饮客群" \
+    --decision-impact "决定是否把全年预算改为春茶季集中投放"
+
+python core/rebuild_cli.py evidence list   projects/my-project
+python core/rebuild_cli.py evidence check  projects/my-project   # schema + 语义质量
+python core/rebuild_cli.py evidence gaps   projects/my-project   # 哪些假设还没有证据
+python core/rebuild_cli.py evidence export projects/my-project --out ledger.md
+```
+
+存储为 `<项目>/evidence.jsonl`：每行一条，可 diff、可人工审阅、无数据库依赖。
+
+**schema 之外还查什么。** schema 只能保证字段齐全、取值合法，保证不了这条证据有用。因此额外检查：
+
+| 情况 | 为什么算问题 |
+|---|---|
+| 标为 `FACT` 却没有来源 | 事实必须可核验，做不到就该降级为推断 |
+| 标为 `ASSUMPTION` 却没写重查条件 | 未验证的前提必须说明什么情况下重查 |
+| 标为 `UNKNOWN` 却给 `HIGH` 可信度 | 语义冲突：信息不足不应给高可信度 |
+| `decision_impact` 写成「无」 | 不指向任何决策的证据不构成证据 |
+
+这些是**警告而非错误**：不阻断写入，但会出现在 `evidence check` 的输出里。
+
+## 导入你的数据
+
+```bash
+# 本地文件：CSV / TSV / JSON / JSONL / TXT / MD / XLSX
+python core/rebuild_cli.py source add-file projects/my-project ~/Downloads/orders.csv
+
+# 你自己的 HTTP 端点
+python core/rebuild_cli.py source add-url projects/my-project \
+    --name my-orders --url https://api.example.com/orders \
+    --header-env "Authorization=MY_API_TOKEN" \
+    --records-path "data.items" --save-spec
+
+python core/rebuild_cli.py source list   projects/my-project
+python core/rebuild_cli.py source verify projects/my-project   # 内容与哈希是否一致
+```
+
+两处刻意设计：
+
+- **中文编码兜底。** 依次尝试 utf-8-sig → utf-8 → gb18030 → big5 → latin-1。中文导出的 CSV 十有八九是 GBK，按 UTF-8 读会整片乱码——**乱码喂进模型比没有数据更糟**，模型会照着乱码编。
+- **密钥不进 spec 文件。** spec 只记录「哪个请求头对应哪个环境变量」，真实值运行时从环境变量读取。写在文件里的密钥迟早会进 git。
+
+XLSX 用标准库 `zipfile` + `xml.etree` 解析，**不需要 pandas 或 openpyxl**。每条材料都存 SHA-256，`source verify` 可校验来源是否被改动过。
+
+## 运行编排
+
+```bash
+# 默认手动模式：只生成任务包，零网络请求
+python core/rebuild_cli.py run projects/my-project --dry-run
+
+# 接上你自己的模型跑完整循环
+export DEEPSEEK_API_KEY=sk-xxx
+python core/rebuild_cli.py run projects/my-project --provider deepseek
+```
+
+编排器做四件事：按阶段调度角色 → 注入证据与材料 → 请模型判定门禁 → **由状态机裁决迁移**。
+
+三条不可让步的约束：
+
+1. **顺序执行，不假装并行。** 一个角色一次模型调用，依次进行，角色之间不通信。
+2. **状态迁移由状态机裁决，不由模型裁决。** 模型只回答「应触发哪个事件」；该事件是否合法、迁移到哪个状态，一律由 `core/state_machine.json` 决定。模型给出非法事件会被拒绝并记入报告。
+3. **模型提出的证据不进入账本。** 模型输出不是证据。它建议的条目只写入运行产物供人工审核——自动入账会让「证据账本」退化成「模型说过的话清单」。
+
+产物写入 `<项目>/runs/<时间戳>/`：每个角色的任务包与输出、门禁判定原文、决策记录（经 schema 校验）。`runs/` 默认不提交。
 
 ## 成熟度声明
 
@@ -139,10 +217,13 @@ python bench/bench_runner.py execute --provider deepseek
 **已实现并通过测试**
 - 原创方法论与阶段门禁（已文档化）
 - 确定性状态机：7 状态 / 合法与回退迁移
-- 项目 JSON 校验 CLI
-- 5 份数据 Schema 的规范定义：项目、证据、决策、实验、KPI 树
+- **JSON Schema 校验器**（纯标准库）：type / required / properties / additionalProperties / items / enum / 范围与长度 / anyOf / oneOf / allOf。**未实现的关键字会报警而不是静默通过**
+- **证据账本**：JSONL 追加存储、写入前强制 schema 校验、语义质量检查、缺口分析、Markdown 导出
+- **数据源层**：本地文件（CSV / TSV / JSON / JSONL / TXT / MD / XLSX，含中文编码兜底）+ 自建 HTTP 端点（密钥只走环境变量）+ 内容哈希校验
+- **运行时编排器**：按阶段顺序调度角色、注入证据与材料、模型判定门禁、**状态机裁决迁移**（模型的非法事件会被拒绝）、产出经 schema 校验的决策记录
+- 5 份数据 Schema：项目、证据、决策、实验、KPI 树
 - 8 个角色的完整契约
-- 单元测试（28 项，Python 3.10–3.13）
+- 单元测试（174 项，Python 3.10–3.13）
 - 盲评实验脚手架：编号散列、身份隐藏、评审一致性检查、拒绝不足两名评审与不完整覆盖
 - 模型 Provider 接入层（OpenAI 兼容 / Anthropic 兼容两种调用方式）
 - scorecard 结构校验：总分与分项一致性、取值域、必填字段
@@ -150,11 +231,10 @@ python bench/bench_runner.py execute --provider deepseek
 - 一轮先导实验（1/4 用例，样本不足，见 `bench/PILOT_B03.md`）
 
 **未实现**
-- **JSON Schema 的实际校验** —— 5 份 Schema 目前只是规范文件，**没有任何代码读取它们**。CLI 只对 `project.json` 做手写的字段存在性检查。这意味着 Schema 与实际校验之间存在缺口。
-- **证据账本** —— 方法论的核心产物是「可追溯的证据账本」，但目前**没有录入与读取路径**：`evidence.schema.json` 已定义却无人使用，证据只能以自由文本散落在各处。
-- 多 Agent 运行时调度（子 Agent 目前是方法论契约，不是运行实例）
-- **营销数据平台接入** —— 无任何数据源连接器（刻意不包含，非能力缺失）
+- **并行多 Agent 调度** —— 编排器是顺序执行：一个角色一次模型调用。真正的并行与互相评审需要宿主支持（如 DeepSeek Harness 的子 Agent），本项目不假装具备
+- **内置营销数据平台连接器** —— 刻意不包含。数据源层只接受你自己给的文件或端点
 - 项目持久化与决策历史版本
+- 决策记录的实际落地执行与效果回填
 - DeepSeek Harness 端到端集成
 
 **未验证**
@@ -164,6 +244,7 @@ python bench/bench_runner.py execute --provider deepseek
 - 真实商业项目中的 ROI 改善
 - 商业价值假设：咨询交付 / 企业内训 / 评测层三条路径**均未验证**
 - 在真实客户数据上能否端到端跑完一次完整的 R→E→B→U→I→D
+- 编排器接上真实模型后的输出质量（现有测试全部使用注入的假模型）
 
 > `agents/*.md` 中的角色是**方法论契约**，不是运行时的 Agent 实例。
 > 提示词里写了子 Agent，不等于运行时创建了子 Agent。
@@ -219,8 +300,9 @@ python bench/bench_runner.py summarise            # 汇总并检查门槛
 ## 目录
 
 ```text
-core/            方法论、状态机、决策协议、CLI
+core/            方法论、状态机、Schema 校验器、证据账本、运行时编排器、CLI
 agents/          主 Agent 与 8 个职能角色契约
+sources/         数据源层：本地文件与自建 HTTP 端点
 schemas/         项目、证据、决策、实验、KPI 数据结构
 bench/           基准用例、评分量表、盲评脚手架、评审规程
 examples/        案例框架（不含未经验证的项目数据）

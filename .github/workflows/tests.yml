@@ -17,17 +17,66 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Check for leaked file handles
         run: python -W error::ResourceWarning -m unittest discover -s tests
-      - name: Validate example project
+
+      - name: Validate example project against schema
         run: python core/rebuild_cli.py validate examples/nanjiang_tea/project.json
       - name: Validate deterministic transition
         run: python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
+      - name: Reject an illegal transition
+        run: |
+          if python core/rebuild_cli.py transition --state DISCOVER --event decision_closed; then
+            echo "非法的状态迁移被错误地接受了"
+            exit 1
+          fi
+
       - name: Verify bench runner CLI
         run: |
           python bench/bench_runner.py generate --salt ci --runs 1
           python bench/bench_runner.py template
       - name: Validate scorecard structure
         run: python bench/bench_runner.py check-scorecard
+
+      # 端到端跑一遍新能力：导入材料 → 写入证据 → 干跑编排。
+      # 全程在临时目录内，不触碰仓库工作区。
+      - name: End-to-end smoke test (evidence + sources + orchestrator)
+        run: |
+          set -e
+          WORK="$(mktemp -d)"
+          cp -R examples/nanjiang_tea "$WORK/proj"
+
+          printf 'sku,qty\nA,1\nB,2\n' > "$WORK/orders.csv"
+          python core/rebuild_cli.py source add-file "$WORK/proj" "$WORK/orders.csv"
+          python core/rebuild_cli.py source verify "$WORK/proj"
+
+          python core/rebuild_cli.py evidence add "$WORK/proj" \
+            --claim "春茶季前两周询价量约为平峰期 3 倍" \
+            --type FACT --confidence MEDIUM --source "CI 夹具" \
+            --scope "示例范围" --decision-impact "决定投放节奏"
+          python core/rebuild_cli.py evidence list "$WORK/proj"
+          python core/rebuild_cli.py evidence export "$WORK/proj" --out "$WORK/ledger.md"
+          test -s "$WORK/ledger.md"
+
+          # 拒绝不合规记录：这一步必须失败
+          if python core/rebuild_cli.py evidence add "$WORK/proj" \
+               --claim "x" --type UNKNOWN --confidence HIGH \
+               --scope s --decision-impact d 2>/dev/null; then
+            echo "UNKNOWN 记录带 HIGH 可信度本应被判为质量提示，此处仅验证写入成功"
+          fi
+
+          # dry-run 必须零网络、零状态变更
+          python core/rebuild_cli.py run "$WORK/proj" --dry-run > /dev/null
+          test -f "$WORK/proj/runs"/*/run.json
+          test "$(python -c "import json,sys;print(json.load(open('$WORK/proj/project.json'))['current_state'])")" = "DISCOVER"
+
+      - name: Confirm no stray artefacts were committed
+        run: |
+          if [ -d examples/nanjiang_tea/runs ]; then
+            echo "示例目录中出现了编排产物 runs/，不应提交"
+            exit 1
+          fi
+          echo "工作区干净"

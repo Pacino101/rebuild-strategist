@@ -11,3 +11,14 @@ htmlcov/
 # Bench 运行产物：含未公开的模型回答与盐值，默认不提交。
 # scorecard.csv 是要公开的，不在此列。
 bench/runs/
+
+# 编排器运行产物：含模型输出与项目材料摘录，可能涉及客户信息。
+# 需要公开某次运行结果时，请显式 git add -f 单个文件。
+runs/
+
+# 项目材料库与证据账本：通常是客户数据，默认不提交。
+# 示例项目若要提交，请在该目录下单独放 .gitignore 例外。
+sources/documents/
+sources/index.jsonl
+sources/specs/
+evidence.jsonl
