@@ -19,7 +19,21 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+      - name: Check for leaked file handles
+        run: python -W error::ResourceWarning -m unittest discover -s tests
       - name: Validate example project
         run: python core/rebuild_cli.py validate examples/nanjiang_tea/project.json
       - name: Validate deterministic transition
         run: python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
+      - name: Verify bench runner CLI
+        run: |
+          python bench/bench_runner.py generate --salt ci --runs 1
+          python bench/bench_runner.py template
+      - name: Confirm scorecard has no fabricated results
+        run: |
+          lines=$(wc -l < bench/scorecard.csv | tr -d ' ')
+          if [ "$lines" -gt 1 ]; then
+            echo "scorecard.csv 含数据行，请确认这是真实评审产物而非占位数据。"
+            exit 1
+          fi
+          echo "scorecard.csv 为空（仅表头），符合预期"

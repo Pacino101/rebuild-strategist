@@ -87,7 +87,8 @@ python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
 - 项目 JSON 校验 CLI
 - 5 份数据 Schema：项目、证据、决策、实验、KPI 树
 - 8 个角色的完整契约
-- 单元测试与 GitHub Actions（Python 3.10–3.13）
+- 单元测试（14 项，Python 3.10–3.13）
+- 盲评实验脚手架：编号散列、身份隐藏、评审一致性检查
 - 基准用例与 32 分评分量表
 
 **未实现**
@@ -115,9 +116,21 @@ python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
 
 ## 评测
 
-`bench/` 提供四个固定基准用例与 32 分八项量表，其中**诚实性得 0 分即判定样本失败**，不以总分抵消。
+`bench/` 提供四个固定基准用例、32 分八项量表，以及一套**防止自欺的盲评脚手架**。
 
-评分规程要求同一案例跑三组对照（普通提示词 / 单 Skill / 多 Agent）、每组至少 3 次独立运行、两名评审盲评。
+其中**诚实性得 0 分即判定样本失败**，不以总分抵消。
+
+```bash
+python bench/bench_runner.py generate --runs 3    # 生成盲评清单
+python bench/bench_runner.py template             # 空白评分表
+python bench/bench_runner.py import r1.csv r2.csv  # 合并评审
+python bench/bench_runner.py reveal               # 揭示身份（需 ≥2 名评审）
+python bench/bench_runner.py summarise            # 汇总并检查门槛
+```
+
+脚手架强制执行：编号由 SHA-256 散列生成且同配置每次运行不同、呈现顺序打乱、评审看不到配置身份、少于两名评审或任一评审未覆盖全部条目时拒绝揭示、两名评审分差超 6 分时提示复核。
+
+操作手册见 `bench/HOWTO.md`，评审规程见 `bench/REVIEW_PROTOCOL.md`。
 
 **当前 scorecard 为空。** 这意味着本项目尚未公布任何对照实验结果。评测框架已就绪，但数据要等真实运行之后才有——在那之前，本项目不会声称自己在质量上优于任何方案。
 
@@ -127,7 +140,7 @@ python core/rebuild_cli.py transition --state DISCOVER --event evidence_ready
 core/            方法论、状态机、决策协议、CLI
 agents/          主 Agent 与 8 个职能角色契约
 schemas/         项目、证据、决策、实验、KPI 数据结构
-bench/           基准用例、评分量表、盲评规程
+bench/           基准用例、评分量表、盲评脚手架、评审规程
 examples/        案例框架（不含未经验证的项目数据）
 harness/         宿主接入说明与 Skill 文件
 tests/           单元测试与静态检查清单

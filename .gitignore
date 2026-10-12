@@ -7,3 +7,7 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Bench 运行产物：含未公开的模型回答与盐值，默认不提交。
+# scorecard.csv 是要公开的，不在此列。
+bench/runs/
