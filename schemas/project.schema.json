@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REBUILD Project State",
+  "type": "object",
+  "required": ["project_id", "name", "decision_question", "current_state", "goals", "constraints"],
+  "properties": {
+    "project_id": {"type":"string","minLength":1},
+    "name": {"type":"string","minLength":1},
+    "decision_question": {"type":"string","minLength":1},
+    "current_state": {"enum":["DISCOVER","EVIDENCE","STRATEGY","ECONOMICS","EXECUTION","REVIEW","BLOCKED"]},
+    "decision_deadline": {"type":["string","null"]},
+    "goals": {"type":"array","items":{"type":"string"}},
+    "constraints": {"type":"array","items":{"type":"string"}},
+    "known_facts": {"type":"array","items":{"type":"string"}},
+    "assumptions": {"type":"array","items":{"type":"string"}},
+    "unknowns": {"type":"array","items":{"type":"string"}},
+    "decision_records": {"type":"array","items":{"type":"object"}},
+    "last_updated": {"type":["string","null"]}
+  },
+  "additionalProperties": false
+}

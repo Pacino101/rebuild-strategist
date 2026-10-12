@@ -1,0 +1,18 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"REBUILD Evidence Record",
+  "type":"object",
+  "required":["id","claim","type","confidence","scope","decision_impact"],
+  "properties":{
+    "id":{"type":"string"},
+    "claim":{"type":"string"},
+    "type":{"enum":["FACT","INFERENCE","ASSUMPTION","UNKNOWN"]},
+    "source":{"type":["string","null"]},
+    "observed_at":{"type":["string","null"]},
+    "confidence":{"enum":["HIGH","MEDIUM","LOW"]},
+    "scope":{"type":"string"},
+    "counter_evidence":{"type":"array","items":{"type":"string"}},
+    "decision_impact":{"type":"string"},
+    "recheck_trigger":{"type":["string","null"]}
+  },"additionalProperties":false
+}

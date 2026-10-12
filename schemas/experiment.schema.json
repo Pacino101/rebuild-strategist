@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"REBUILD Experiment Card",
+  "type":"object",
+  "required":["experiment_id","hypothesis","target_segment","intervention","primary_metric","guardrail_metrics","decision_rule","budget_cap","duration_days"],
+  "properties":{
+    "experiment_id":{"type":"string"},"hypothesis":{"type":"string"},"target_segment":{"type":"string"},"intervention":{"type":"string"},
+    "primary_metric":{"type":"string"},"guardrail_metrics":{"type":"array","items":{"type":"string"}},"baseline":{"type":["string","number","null"]},
+    "target_effect":{"type":["string","number","null"]},"decision_rule":{"type":"string"},"budget_cap":{"type":"number","minimum":0},"duration_days":{"type":"integer","minimum":1},
+    "stop_conditions":{"type":"array","items":{"type":"string"}},"owner":{"type":["string","null"]}
+  },"additionalProperties":false
+}

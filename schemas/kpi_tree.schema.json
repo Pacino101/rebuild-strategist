@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","title":"REBUILD KPI Tree","type":"object",
+  "required":["north_star","outcome_metrics","leading_metrics","guardrails"],
+  "properties":{"north_star":{"type":"string"},"outcome_metrics":{"type":"array","items":{"type":"object","required":["name","formula","window"],"properties":{"name":{"type":"string"},"formula":{"type":"string"},"window":{"type":"string"},"source":{"type":["string","null"]}}}},"leading_metrics":{"type":"array","items":{"type":"string"}},"guardrails":{"type":"array","items":{"type":"string"}}},"additionalProperties":false
+}

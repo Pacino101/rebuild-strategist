@@ -1,0 +1,13 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"REBUILD Decision Record",
+  "type":"object",
+  "required":["decision_id","question","options","chosen_option","rejected_options","tradeoffs","key_assumptions","falsification_conditions","validation_actions","review_date"],
+  "properties":{
+    "decision_id":{"type":"string"},"question":{"type":"string"},"deadline":{"type":["string","null"]},
+    "options":{"type":"array","minItems":2,"items":{"type":"object","required":["name","rationale"],"properties":{"name":{"type":"string"},"rationale":{"type":"string"},"risks":{"type":"array","items":{"type":"string"}}}}},
+    "chosen_option":{"type":"string"},"rejected_options":{"type":"array","items":{"type":"object","required":["name","reason"],"properties":{"name":{"type":"string"},"reason":{"type":"string"}}}},
+    "tradeoffs":{"type":"array","items":{"type":"string"}},"key_assumptions":{"type":"array","items":{"type":"string"}},
+    "falsification_conditions":{"type":"array","items":{"type":"string"}},"validation_actions":{"type":"array","items":{"type":"string"}},"review_date":{"type":"string"}
+  },"additionalProperties":false
+}

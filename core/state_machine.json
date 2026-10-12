@@ -1,0 +1,14 @@
+{
+  "version": "3.2.0",
+  "initial_state": "DISCOVER",
+  "states": ["DISCOVER", "EVIDENCE", "STRATEGY", "ECONOMICS", "EXECUTION", "REVIEW", "BLOCKED"],
+  "transitions": {
+    "DISCOVER": {"evidence_ready": "EVIDENCE", "need_clarification": "BLOCKED"},
+    "EVIDENCE": {"evidence_sufficient": "STRATEGY", "evidence_gap": "DISCOVER", "need_clarification": "BLOCKED"},
+    "STRATEGY": {"decision_recorded": "ECONOMICS", "choice_not_distinct": "EVIDENCE", "evidence_contradiction": "EVIDENCE"},
+    "ECONOMICS": {"unit_economics_checked": "EXECUTION", "economics_failed": "STRATEGY", "evidence_gap": "EVIDENCE"},
+    "EXECUTION": {"instrumentation_ready": "REVIEW", "plan_not_measurable": "EXECUTION", "evidence_contradiction": "STRATEGY"},
+    "REVIEW": {"new_cycle": "DISCOVER", "decision_closed": "REVIEW", "strategy_falsified": "STRATEGY"},
+    "BLOCKED": {"clarification_received": "DISCOVER", "cancelled": "BLOCKED"}
+  }
+}
