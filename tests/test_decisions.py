@@ -133,6 +133,27 @@ class QualityWarningTests(Base):
         _, warnings = self.store.validate()
         self.assertTrue(any("已过期" in w for w in warnings), warnings)
 
+    def test_null_choice_without_validation_warns(self):
+        """真实运行中发现：门禁判证据不足时，模型会诚实地把 chosen_option
+        留空。这是对的——但必须写明补什么才能决策，否则等同于没结论。"""
+        self.store.add(good_record(chosen_option=None, validation_actions=[]))
+        _, warnings = self.store.validate()
+        self.assertTrue(any("未做出选择" in w for w in warnings), warnings)
+
+    def test_null_choice_with_validation_is_acceptable(self):
+        self.store.add(good_record(
+            chosen_option=None,
+            validation_actions=["补齐 P0 合规核查后方可决策"],
+        ))
+        errors, warnings = self.store.validate()
+        self.assertEqual(errors, [])
+        self.assertFalse([w for w in warnings if "未做出选择" in w], warnings)
+
+    def test_null_choice_passes_schema(self):
+        # schema 允许 null；它曾经要求 string，导致真实运行的产出被判非法
+        saved = self.store.add(good_record(chosen_option=None))
+        self.assertIsNone(saved["chosen_option"])
+
     def test_clean_record_has_no_warnings(self):
         self.store.add(good_record())
         errors, warnings = self.store.validate()

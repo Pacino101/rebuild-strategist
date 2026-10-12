@@ -323,6 +323,26 @@ def cmd_run(args):
         max_evidence=args.max_evidence,
         temperature=args.temperature,
     )
+    if args.repeat > 1:
+        reports = orch.run_repeated(config, args.repeat)
+        print(json.dumps(
+            [
+                {"run_id": r["run_id"], "final_state": r["final_state"],
+                 "gate_grades": [
+                     (p.get("gate") or {}).get("evidence_grade")
+                     for p in r["phases"] if not p.get("skipped")
+                 ]}
+                for r in reports
+            ],
+            ensure_ascii=False, indent=2,
+        ))
+        states = {r["final_state"] for r in reports}
+        print(f"\n{args.repeat} 次运行完成，终态 {len(states)} 种：{sorted(states)}",
+              file=sys.stderr)
+        print(f"比对：python {Path(__file__).name} compare {args.project} "
+              f"--last {args.repeat}", file=sys.stderr)
+        return 0 if len(states) == 1 else 1
+
     report = orch.Orchestrator(config).run()
 
     print(json.dumps(
@@ -482,6 +502,55 @@ def cmd_decision(args):
     raise ValueError(f"未知的 decision 动作：{args.action}")
 
 
+def cmd_compare(args):
+    import compare as compare_module
+
+    directory = project_dir_of(args.project)
+    reports = compare_module.collect_runs(directory, last=args.last)
+    result = compare_module.compare(reports)
+
+    if args.judge_with:
+        import orchestrator as orch
+
+        config = orch.RunConfig(project_dir=directory,
+                                provider_name=args.judge_with,
+                                dry_run=True)
+        provider_layer, provider_config = orch.Orchestrator(config)._resolve_provider()
+
+        def call(prompt):
+            return provider_layer.complete(provider_config, prompt)
+
+        try:
+            result["agreement"] = compare_module.judge_agreement(reports, call)
+        except Exception as exc:  # noqa: BLE001 - 判定失败不应丢掉比对结果
+            result["agreement"] = {"judged_by_model": True, "error": str(exc)}
+
+    text = compare_module.render_markdown(result)
+    if args.out:
+        Path(args.out).write_text(text, encoding="utf-8")
+        print(f"已写入 {args.out}")
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(text)
+
+    if result.get("agreement"):
+        agreement = result["agreement"]
+        print("\n" + "=" * 60)
+        if agreement.get("error"):
+            print(f"结论一致性判定失败：{agreement['error']}", file=sys.stderr)
+        else:
+            print(f"结论方向一致：{agreement.get('agree')}"
+                  f"（置信度 {agreement.get('confidence')}）")
+            print(f"共同方向：{agreement.get('direction')}")
+            print(f"理由：{agreement.get('why')}")
+        print("\n⚠️ 这是模型判定，不是事实。", file=sys.stderr)
+
+    # 过程不一致时返回非零，便于脚本化使用
+    return 0 if result["final_state_consistent"] else 1
+
+
 def cmd_schema(args):
     schema_path = Path(args.schema_file) if args.schema_file else sv.guess_schema(
         args.file, SCHEMAS
@@ -593,6 +662,15 @@ def build_parser():
     src.add_argument("--save-spec", action="store_true")
     src.add_argument("--doc-id", default=None, dest="doc_id")
 
+    c = sub.add_parser("compare", help="比对同一项目的多次运行（过程可复现性 + 可选结论一致性）")
+    c.add_argument("project")
+    c.add_argument("--last", type=int, default=None, help="只比最近 N 次")
+    c.add_argument("--judge-with", default=None, dest="judge_with",
+                   help="用指定 provider 判定「结论方向是否一致」。"
+                        "这是模型判定，不是事实")
+    c.add_argument("--json", action="store_true")
+    c.add_argument("--out", default=None)
+
     r = sub.add_parser("run", help="运行时编排：调度角色、判定门禁、推进状态")
     r.add_argument("project")
     r.add_argument("--provider", default="manual",
@@ -600,6 +678,9 @@ def build_parser():
     r.add_argument("--phase", action="append", help="只跑指定阶段，可重复")
     r.add_argument("--dry-run", action="store_true", help="只生成任务包")
     r.add_argument("--max-evidence", type=int, default=60)
+    r.add_argument("--repeat", type=int, default=1,
+                   help="重复运行次数。同一输入多次运行可观察一致性；"
+                        "配合 `compare` 子命令使用")
     r.add_argument("--temperature", type=float, default=0.3,
                    help="采样温度，默认 0.3。设为 0 可提高运行间一致性，"
                         "但多数 API 不保证完全确定，仍需多次运行验证")
@@ -634,6 +715,8 @@ def main(argv=None):
             return cmd_source(args)
         if args.cmd == "run":
             return cmd_run(args)
+        if args.cmd == "compare":
+            return cmd_compare(args)
         raise ValueError(f"未知子命令：{args.cmd}")
     except DOMAIN_ERRORS as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False, indent=2),

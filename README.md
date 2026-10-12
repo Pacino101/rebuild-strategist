@@ -209,8 +209,7 @@ python core/rebuild_cli.py run projects/my-project --provider deepseek --tempera
 
 > ⚠️ **单次运行的输出不是「答案」，只是起点。** 实测同一输入跑三次，
 > 决策方向一致但细节差异可达 2.5 倍（反证条件 6/10/15 条）。
-> 系统**没有**内建多次运行比对——这是待补能力。
-> 详见 [`docs/VALIDATION_2026-10.md`](docs/VALIDATION_2026-10.md)。
+> 因此内置了多次运行比对——见下节。
 
 编排器做四件事：按阶段调度角色 → 注入证据与材料 → 请模型判定门禁 → **由状态机裁决迁移**。
 
@@ -221,6 +220,34 @@ python core/rebuild_cli.py run projects/my-project --provider deepseek --tempera
 3. **模型提出的证据不进入账本。** 模型输出不是证据。它建议的条目只写入运行产物供人工审核——自动入账会让「证据账本」退化成「模型说过的话清单」。
 
 产物写入 `<项目>/runs/<时间戳>/`：每个角色的任务包与输出、门禁判定原文、决策记录（经 schema 校验）。`runs/` 默认不提交。
+
+## 多次运行比对
+
+单个输出不能当作答案，所以有了这个：
+
+```bash
+# 同一输入重复 3 次（每次重置项目状态）
+python core/rebuild_cli.py run projects/my-project --provider deepseek \
+    --temperature 0 --repeat 3
+
+# 确定性比对：迁移路径、终态分布、逐阶段门禁档位、条目数量极差
+python core/rebuild_cli.py compare projects/my-project --last 3
+
+# 再用模型判定「几次建议在方向上是否一致」
+python core/rebuild_cli.py compare projects/my-project --last 3 --judge-with deepseek
+```
+
+**两类结论被刻意分开，不能混为一谈：**
+
+| 轴 | 怎么算 | 能说明什么 |
+|---|---|---|
+| **过程可复现性** | 确定性计算，不用模型 | 路径 / 终态 / 档位是否一致 |
+| **结论一致性** | 模型判定，标注 `judged_by_model` | 建议方向是否一致 |
+
+**「迁移路径相同」不等于「建议相同」。** 把前者说成后者是这类工具最容易犯的错。
+模型判定的结果也带自己的 caveat——它是参考信号，不是事实。
+
+过程不一致时 `compare` 返回非零退出码，可以直接用在脚本里。
 
 ## 决策记录与复盘
 

@@ -78,6 +78,13 @@ def quality_warnings(record) -> list[str]:
             f"{rid}: 没有反证条件——什么证据出现时应当推翻这个决定？"
         )
 
+    if record.get("chosen_option") is None:
+        if not record.get("validation_actions"):
+            problems.append(
+                f"{rid}: 未做出选择（chosen_option 为 null），且未给出验证动作——"
+                f"「先补证再决策」必须写明补什么才能决策，否则等同于没结论"
+            )
+
     if not record.get("tradeoffs"):
         problems.append(f"{rid}: 没有写明代价——说不清放弃什么，说明还没想清楚选择")
 

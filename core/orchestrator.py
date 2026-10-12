@@ -477,7 +477,7 @@ def build_decision_record_packet(context: dict, phase_outputs: dict) -> str:
         '  "question": "...",',
         '  "deadline": null,',
         '  "options": [{"name": "...", "rationale": "...", "risks": ["..."]}],',
-        '  "chosen_option": "...",',
+        '  "chosen_option": "采用的方案名，或 null",',
         '  "rejected_options": [{"name": "...", "reason": "..."}],',
         '  "tradeoffs": ["..."],',
         '  "key_assumptions": ["..."],',
@@ -489,7 +489,11 @@ def build_decision_record_packet(context: dict, phase_outputs: dict) -> str:
         "",
         "硬性要求：`options` 至少 2 个且必须实质不同；必须写出放弃项与代价；",
         "每条关键假设都要配一个能推翻它的条件。",
-        "若证据不足以做出选择，不要编造选项充数——如实说明还缺什么。",
+        "",
+        "**关于 `chosen_option`：** 如果本轮的结论是「先补证再决策」，"
+        "把它写为 `null`——这是**正确**的取值，不要为了填满字段而编一个方案。",
+        "此时必须在 `validation_actions` 里写明补什么才能决策。",
+        "编一个自己并不推荐的方案填进去，比留空严重得多。",
         "",
     ]
     return "\n".join(lines)
@@ -543,11 +547,14 @@ def extract_json_block(text: str):
 # ---------------------------------------------------------------------------
 
 class Orchestrator:
-    def __init__(self, config: RunConfig, completer=None):
+    def __init__(self, config: RunConfig, completer=None, run_label=None):
         self.config = config
         self.project_dir = config.project_dir
         self._completer = completer
         self.run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+        if run_label:
+            # 重复运行时用后缀区分，否则同一秒内的多次运行会写进同一个目录
+            self.run_id = f"{self.run_id}-{run_label}"
         self.run_dir = self.project_dir / "runs" / self.run_id
         self.state_machine = load_state_machine()
         self.log: list[str] = []
@@ -823,6 +830,43 @@ class Orchestrator:
         if errors:
             self._note(f"决策记录不符合 schema：{len(errors)} 项错误")
         return result
+
+
+def run_repeated(config: RunConfig, repeats: int, completer=None):
+    """同一输入重复运行 N 次，用于观察运行间一致性。
+
+    每次运行前把项目状态**重置回起始值**——否则第二次会从第一次的终态开始，
+    那就不是「同一输入」了。全部跑完后也恢复到起始值，避免「重复运行」这个
+    动作本身改变了项目。
+    """
+    if repeats < 1:
+        raise OrchestratorError("repeats 至少为 1")
+
+    project_path = Path(config.project_dir) / "project.json"
+    if not project_path.exists():
+        raise OrchestratorError(f"找不到项目文件：{project_path}")
+
+    def read_state():
+        return json.loads(project_path.read_text(encoding="utf-8")).get("current_state")
+
+    def write_state(state):
+        project = json.loads(project_path.read_text(encoding="utf-8"))
+        project["current_state"] = state
+        project_path.write_text(
+            json.dumps(project, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+
+    original_state = read_state()
+    reports = []
+    try:
+        for index in range(1, repeats + 1):
+            write_state(original_state)
+            orchestrator = Orchestrator(config, completer=completer,
+                                        run_label=f"r{index}")
+            reports.append(orchestrator.run())
+    finally:
+        write_state(original_state)
+    return reports
 
 
 # ---------------------------------------------------------------------------

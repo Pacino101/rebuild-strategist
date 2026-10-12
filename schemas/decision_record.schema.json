@@ -25,7 +25,10 @@
         }
       }
     },
-    "chosen_option": {"type": "string"},
+    "chosen_option": {
+      "type": ["string", "null"],
+      "description": "采用的方案名称。**允许为 null**——当门禁判定证据不足、本轮应当先补证再决策时，null 是诚实且正确的取值，好过编一个方案出来。此时 validation_actions 必须写明补什么才能决策。"
+    },
     "rejected_options": {
       "type": "array",
       "items": {
